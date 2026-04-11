@@ -5,9 +5,11 @@
 ```
 AppLogger (interface)
     │
-    ├── PrettyLoggerImpl (development - colorful console output)
-    └── ProductionLoggerImpl (production - structured, feeds CrashReporter)
+    ├── PrettyAppLogger      (development - colorful console output)
+    └── ProductionAppLogger  (production - structured, feeds CrashReporter)
 ```
+
+Naming follows the `HttpClient` → `DioHttpClient` convention: descriptive prefix on each variant, no `Impl` suffix.
 
 ---
 
@@ -45,7 +47,7 @@ The logger accepts a minimum level at construction. Messages below that level ar
 
 ---
 
-## PrettyLoggerImpl
+## PrettyAppLogger
 
 Wraps the `logger` package for colorful, structured console output.
 
@@ -81,7 +83,7 @@ Wraps the `logger` package for colorful, structured console output.
 ## Integration with CrashReporter
 
 For `warning` and `error` level logs:
-1. Log to console via `PrettyLoggerImpl`
+1. Log to console via the active `AppLogger`
 2. Additionally send to `CrashReporter.recordMessage()` as breadcrumb
 3. For `error` with exception: also call `CrashReporter.recordError()`
 

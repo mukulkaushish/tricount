@@ -148,7 +148,7 @@ These live in `core/` and are injected via GetIt:
 | Local DB | `AppDatabase` (Drift) + DAOs | `BookDao`, `ReadingDao` |
 | Secure Storage | `SecureStore` | `FlutterSecureStorageAdapter` |
 | Analytics | `AnalyticsService` | `CompositeAnalyticsService` |
-| Logging | `AppLogger` | `PrettyLoggerImpl` |
+| Logging | `AppLogger` | `PrettyAppLogger` (dev), `ProductionAppLogger` (prod) |
 | Connectivity | `ConnectivityService` | `ConnectivityPlusAdapter` |
 | Theme | `ThemeManager` | `BlocThemeManager` |
 | Token Management | `TokenProvider` | `SecureTokenProvider` |

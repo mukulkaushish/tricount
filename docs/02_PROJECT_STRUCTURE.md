@@ -76,8 +76,9 @@ lib/
 │   │
 │   ├── logging/
 │   │   ├── logging.dart                   # BARREL
-│   │   ├── app_logger.dart                # Abstract logger interface
-│   │   ├── pretty_logger.dart             # Console logger with formatting
+│   │   ├── app_logger.dart                # AppLogger interface
+│   │   ├── pretty_app_logger.dart         # Dev impl: colorful console output
+│   │   ├── production_app_logger.dart     # Prod impl: structured + CrashReporter
 │   │   └── log_level.dart                 # Enum: verbose, debug, info, warn, error
 │   │
 │   ├── network/
