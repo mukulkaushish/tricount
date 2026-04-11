@@ -99,7 +99,9 @@ All text styles are defined once and derive from a base configuration. Use Mater
 
 ### Font Family
 
-Declare one or two font families centrally (e.g. a primary UI font and an optional monospace for code). Bundle fonts in `assets/fonts/` and register them in `pubspec.yaml`; do not pull fonts at runtime from a network font provider.
+**Default font: `Montserrat`** — used as the primary UI font across the entire app. All `TextStyle`s in `AppTextStyles` set `fontFamily: 'Montserrat'` by default.
+
+Bundle Montserrat weights (Regular, Medium, SemiBold, Bold) in `assets/fonts/` and register them in `pubspec.yaml` under `family: Montserrat`. Do not pull fonts at runtime from a network font provider (no `google_fonts`). An optional monospace family may be declared centrally for code blocks.
 
 ### Font Scaling
 

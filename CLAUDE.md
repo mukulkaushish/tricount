@@ -13,6 +13,15 @@ Full template documentation lives in `docs/`. Read order:
 4. `docs/03_DEPENDENCY_MANIFEST.md` - All packages with justifications
 5. Remaining docs (04-20) cover specific subsystems
 
+## Delivery Workflow
+
+- If the user requests phased screen delivery, implement one screen at a time.
+- After each screen is implemented, run the app and capture a screenshot for
+  review.
+- Wait for explicit approval before implementing the next screen.
+- When the user requests a standalone project plan file and does not specify a
+  folder, place it at the repository root.
+
 ## Key Architectural Rules
 
 ### Layers (strict boundaries)

@@ -6,6 +6,17 @@ Before writing any code in this project, you MUST read and follow:
 1. `docs/00A_CODING_RULES.md` - Lint rules, barrel files, style rules
 2. `CLAUDE.md` - Architecture summary and key rules
 
+## Delivery Workflow
+
+- When the user requests screen-by-screen delivery, implement exactly one
+  screen at a time.
+- After finishing a screen, run the app, capture a screenshot, and present it
+  before moving to the next screen.
+- Do not implement the next screen until the user explicitly approves the
+  current screen.
+- If a plan file is requested without a location, prefer creating it at the
+  repository root instead of inside `/`.
+
 ## Flutter Code Agent
 
 When generating or modifying Flutter/Dart code:
