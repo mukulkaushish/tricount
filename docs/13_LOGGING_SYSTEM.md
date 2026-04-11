@@ -1,0 +1,105 @@
+# 13 - Logging System
+
+## Architecture
+
+```
+AppLogger (interface)
+    │
+    ├── PrettyLoggerImpl (development - colorful console output)
+    └── ProductionLoggerImpl (production - structured, feeds CrashReporter)
+```
+
+---
+
+## AppLogger Interface
+
+**File**: `lib/core/logging/app_logger.dart`
+
+| Method | Level | Use For |
+|--------|-------|---------|
+| `verbose(message, [error, stack])` | Verbose | Granular tracing (disabled in prod) |
+| `debug(message, [error, stack])` | Debug | Development diagnostics |
+| `info(message, [error, stack])` | Info | Noteworthy runtime events |
+| `warning(message, [error, stack])` | Warning | Recoverable issues |
+| `error(message, [error, stack])` | Error | Failures requiring attention |
+
+### Log Level Enum
+
+| Level | Value | Enabled In |
+|-------|-------|-----------|
+| `verbose` | 0 | Development only |
+| `debug` | 1 | Development only |
+| `info` | 2 | Development, Staging |
+| `warning` | 3 | All environments |
+| `error` | 4 | All environments |
+
+### Level Filtering
+
+The logger accepts a minimum level at construction. Messages below that level are silently dropped.
+
+| Environment | Minimum Level |
+|-------------|--------------|
+| Development | `verbose` |
+| Staging | `info` |
+| Production | `warning` |
+
+---
+
+## PrettyLoggerImpl
+
+Wraps the `logger` package for colorful, structured console output.
+
+**Output format** (development):
+```
+┌───────────────────────────────────────
+│ 🔵 DEBUG | DioClient
+│ ← 200 GET /v1/books (234ms)
+│ Response size: 12.4 KB
+└───────────────────────────────────────
+```
+
+---
+
+## Where Logging Happens
+
+| Component | What It Logs | Level |
+|-----------|-------------|-------|
+| LoggingInterceptor | HTTP requests/responses | debug |
+| LoggingInterceptor | HTTP errors | error |
+| AuthInterceptor | Token refresh attempts | info |
+| AuthInterceptor | 401 handling flow | warning |
+| RetryInterceptor | Retry attempts | warning |
+| CacheInterceptor | Cache hits/misses | debug |
+| BLoC (onError) | Unhandled BLoC errors | error |
+| AppBlocObserver | State transitions | verbose |
+| Bootstrap | Init step completion | info |
+| Repository | Data source fallbacks | info |
+| Use Cases | Business rule violations | warning |
+
+---
+
+## Integration with CrashReporter
+
+For `warning` and `error` level logs:
+1. Log to console via `PrettyLoggerImpl`
+2. Additionally send to `CrashReporter.recordMessage()` as breadcrumb
+3. For `error` with exception: also call `CrashReporter.recordError()`
+
+This ensures crash reports in Sentry/Firebase have full context breadcrumbs.
+
+---
+
+## Sensitive Data Policy
+
+**Never log**:
+- Auth tokens (mask as `Bearer ***`)
+- Passwords (redact entirely)
+- Personal user data (email, name)
+- Full request bodies containing sensitive fields
+
+**Always log**:
+- HTTP method and URL path
+- Response status codes
+- Error messages and types
+- Timing information
+- Cache hit/miss status
