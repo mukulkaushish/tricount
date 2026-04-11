@@ -2,23 +2,30 @@
 
 ## Connectivity Service
 
-### Interface
+### Design: Thin Typed Wrapper
 
 **File**: `lib/core/connectivity/connectivity_service.dart`
+
+A single concrete class that wraps `connectivity_plus`. No abstract interface — `connectivity_plus` is unlikely to be swapped out, and in tests you mock `ConnectivityService` itself via `mocktail`.
 
 | Method / Property | Returns | Purpose |
 |-------------------|---------|---------|
 | `isConnected` | `Future<bool>` | One-shot connectivity check |
 | `onConnectivityChanged` | `Stream<bool>` | Real-time connectivity stream |
 
-### Implementation
+### What It Does
 
-**File**: `lib/core/connectivity/connectivity_adapter.dart`
-
-- Wraps `connectivity_plus` package
-- Maps `ConnectivityResult` to simple `bool` (connected vs not)
+- Wraps `connectivity_plus` package's `Connectivity()` singleton
+- Maps `List<ConnectivityResult>` to simple `bool` (connected vs not)
 - `ConnectivityResult.none` → `false`; all others → `true`
 - Debounces rapid connectivity flips (500ms) to avoid UI flicker
+
+### What Was Removed
+
+| Removed | Why |
+|---------|-----|
+| Abstract `ConnectivityService` interface + `ConnectivityAdapter` impl | Over-abstraction for a thin wrapper. One concrete class is enough. Mock it directly in tests. |
+| `connectivity_adapter.dart` | Merged into `connectivity_service.dart` |
 
 ---
 

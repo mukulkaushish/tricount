@@ -38,7 +38,7 @@ Read refresh token from SecureStore
     │
     ├── Refresh token exists → POST /v1/auth/refresh
     │   ├── Success → save new tokens, retry original request
-    │   └── Failure → clear tokens, emit SessionExpired, redirect to login
+    │   └── Refresh fails → clear tokens, emit SessionExpired, redirect to login
     │
     └── No refresh token → clear tokens, redirect to login
 ```
@@ -90,7 +90,7 @@ For high-security requirements, configure Dio with certificate pinning:
 
 ### Configuration
 
-In `DioApiClient` setup:
+In `DioHttpClient` / Dio setup:
 - Provide custom `SecurityContext` to `HttpClient`
 - Or use Dio's `HttpClientAdapter` to validate server certificates
 - Include 2 pins: current certificate + backup/next certificate

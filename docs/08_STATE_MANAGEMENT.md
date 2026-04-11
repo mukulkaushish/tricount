@@ -43,7 +43,7 @@ Every feature state follows this sealed-class pattern:
 | `Initial` | Not yet loaded, no action taken | None |
 | `Loading` | Action in progress | Optional: previous data for optimistic UI |
 | `Loaded` | Data successfully retrieved | The domain data |
-| `Error` | Action failed | `Failure` object with type + message |
+| `Error` | Action failed | `AppException` with type + userMessage |
 
 ### Rules
 
@@ -158,7 +158,7 @@ Always provide `buildWhen` to prevent unnecessary rebuilds:
 
 ## Error Handling in BLoCs
 
-1. Use Cases return `Either<Failure, T>` (from dartz)
+1. Use Cases return `Either<AppException, T>` (from fpdart)
 2. BLoC maps `Left(failure)` → emit `Error` state
 3. BLoC maps `Right(data)` → emit `Loaded` state
 4. Unexpected exceptions in BLoC are caught by `onError` → reported to analytics
@@ -186,6 +186,6 @@ For each BLoC, test:
 
 ### Mocking
 
-- Use `@GenerateMocks([GetBooksUseCase, SearchBooksUseCase])` with Mockito
+- Use `mocktail`: `class MockGetBooksUseCase extends Mock implements GetBooksUseCase {}`
 - Or use `mocktail` for simpler mock setup without code generation
 - Mock at the Use Case level, not the repository level (BLoC tests don't care about data sources)

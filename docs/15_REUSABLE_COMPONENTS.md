@@ -147,7 +147,7 @@ Skeleton placeholder for content that hasn't loaded yet.
 | `height` | `double` | `16.0` | Height |
 | `borderRadius` | `double` | `4.0` | Corner radius |
 
-Uses `shimmer` package with colors derived from `colorScheme.surfaceContainerHighest`.
+Custom implementation using `AnimationController` + `ShaderMask` (~30 lines, no package). Base color derived from `colorScheme.surfaceContainerHighest`.
 
 ### Predefined Skeletons
 

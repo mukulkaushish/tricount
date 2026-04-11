@@ -13,7 +13,7 @@ main.dart
         │     ├── Register AppLogger (first - everything else may log)
         │     ├── Register SecureStore
         │     ├── Register Dio + Interceptors
-        │     ├── Register ApiClient
+        │     ├── Register HttpClient (DioHttpClient)
         │     ├── Register Drift Database
         │     ├── Register ConnectivityService
         │     ├── Register AnalyticsService
@@ -106,7 +106,7 @@ Each module is a separate file with a `void register()` function:
 
 | Module | Registers |
 |--------|-----------|
-| `network_module.dart` | Dio, interceptors, ApiClient |
+| `network_module.dart` | Dio, interceptors, HttpClient (DioHttpClient) |
 | `storage_module.dart` | Drift DB, SecureStore, SharedPreferences |
 | `analytics_module.dart` | AnalyticsService + adapters |
 | `feature_module.dart` | All feature repos, use cases, BLoCs |
@@ -115,7 +115,7 @@ Each module is a separate file with a `void register()` function:
 
 | Type | When |
 |------|------|
-| `registerLazySingleton` | Services: ApiClient, Database, Analytics, Repositories |
+| `registerLazySingleton` | Services: HttpClient, Database, Analytics, Repositories |
 | `registerFactory` | BLoCs (new instance per screen) |
 | `registerSingletonAsync` | Services requiring async init (Database) |
 

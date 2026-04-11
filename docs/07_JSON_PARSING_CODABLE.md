@@ -115,7 +115,7 @@ Used by `JsonParser` when a field is missing, null (when required), or the wrong
 | `message` | `String` | Human-readable description |
 | `fieldName` | `String` | The JSON key that failed |
 
-This exception is caught at the repository layer and mapped to a domain `Failure`.
+This exception is a subtype of `AppException` and flows through `Either` unchanged — no mapping needed.
 
 ---
 
@@ -167,7 +167,7 @@ For models with complex validation, use `validateRequiredFields` before parsing:
 **Where validation happens**:
 - `fromJson` validates structural correctness (types, required fields)
 - Domain entity validates business rules (non-empty title, valid ISBN)
-- Repository maps `DataMismatchException` to `Failure.parsing()`
+- Repository passes `DataMismatchException` through as `Either` Left (no mapping)
 
 ---
 

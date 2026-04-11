@@ -1,5 +1,11 @@
 # 03 - Dependency Manifest
 
+## Guiding Principle: Fewer Packages = Smaller App
+
+Every dependency adds binary size, maintenance burden, and potential breakage. Before adding a package, ask: "Can I do this in < 50 lines of Dart?" If yes, skip the package.
+
+---
+
 ## Production Dependencies
 
 ### Core Framework
@@ -12,14 +18,12 @@
 | Package | Version | Purpose |
 |---------|---------|---------|
 | `flutter_bloc` | ^9.0.0 | BLoC/Cubit state management |
-| `bloc` | ^9.0.0 | BLoC core (transitive, but pin for stability) |
 | `equatable` | ^2.0.7 | Value equality for events/states without boilerplate |
 
 ### Navigation
 | Package | Version | Purpose |
 |---------|---------|---------|
 | `auto_route` | ^9.0.0 | Declarative routing with deep linking |
-| `auto_route_generator` | ^9.0.0 | (dev_dependency) Code generation for routes |
 
 ### Networking
 | Package | Version | Purpose |
@@ -41,59 +45,41 @@
 | Package | Version | Purpose |
 |---------|---------|---------|
 | `get_it` | ^8.0.0 | Service locator for DI |
-| `injectable` | ^2.5.0 | Annotation-based DI registration |
-| `injectable_generator` | ^2.7.0 | (dev_dependency) Code gen for GetIt |
+
+### Functional Programming
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `fpdart` | ^1.1.0 | `Either` type for typed error handling (lighter than dartz, actively maintained) |
 
 ### Logging
 | Package | Version | Purpose |
 |---------|---------|---------|
 | `logger` | ^2.5.0 | Pretty console logging |
 
-### UI & Theming
+### UI
 | Package | Version | Purpose |
 |---------|---------|---------|
 | `cached_network_image` | ^3.4.0 | Image loading with disk cache |
-| `shimmer` | ^3.0.0 | Skeleton loading effect |
 | `flutter_svg` | ^2.0.0 | SVG rendering for icons/illustrations |
-| `google_fonts` | ^6.2.0 | Dynamic font loading from Google Fonts |
 
-### Functional Programming
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `dartz` | ^0.10.1 | Either, Option types for error handling |
-
-### Analytics (all optional - behind interface)
+### Analytics (all optional - behind interface, enable as needed)
 | Package | Version | Purpose |
 |---------|---------|---------|
 | `sentry_flutter` | ^8.12.0 | Crash reporting & performance monitoring |
-| `mixpanel_flutter` | ^2.3.0 | Product analytics (future integration) |
-| `firebase_analytics` | ^11.3.0 | Event tracking (future integration) |
 
 ---
 
 ## Dev Dependencies
 
-### Testing
 | Package | Version | Purpose |
 |---------|---------|---------|
 | `flutter_test` | SDK | Widget & unit test framework |
-| `mockito` | ^5.4.0 | Mock generation for testing |
+| `very_good_analysis` | ^10.2.0 | Strictest Flutter lint set (replaces flutter_lints) |
 | `build_runner` | ^2.4.0 | Code generation orchestrator |
 | `bloc_test` | ^9.1.0 | BLoC-specific testing utilities |
-| `mocktail` | ^1.0.0 | Alternative mocking (no code gen needed) |
-
-### Code Generation
-| Package | Version | Purpose |
-|---------|---------|---------|
+| `mocktail` | ^1.0.0 | Mocking without code generation |
 | `drift_dev` | ^2.22.0 | Drift code generation |
 | `auto_route_generator` | ^9.0.0 | Route code generation |
-| `injectable_generator` | ^2.7.0 | DI code generation |
-
-### Linting
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `flutter_lints` | ^6.0.0 | Recommended lint rules |
-| `custom_lint` | ^0.7.0 | Custom project lint rules (optional) |
 
 ---
 
@@ -133,38 +119,31 @@ dependencies:
   flutter_secure_storage: ^9.2.0
   shared_preferences: ^2.3.0
 
-  # Dependency Injection
+  # DI
   get_it: ^8.0.0
-  injectable: ^2.5.0
+
+  # Functional
+  fpdart: ^1.1.0
 
   # Logging
   logger: ^2.5.0
 
   # UI
   cached_network_image: ^3.4.0
-  shimmer: ^3.0.0
   flutter_svg: ^2.0.0
-  google_fonts: ^6.2.0
-
-  # Functional
-  dartz: ^0.10.1
 
   # Analytics (enable as needed)
   # sentry_flutter: ^8.12.0
-  # mixpanel_flutter: ^2.3.0
-  # firebase_analytics: ^11.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
+  very_good_analysis: ^10.2.0
   build_runner: ^2.4.0
-  mockito: ^5.4.0
   bloc_test: ^9.1.0
   mocktail: ^1.0.0
   drift_dev: ^2.22.0
   auto_route_generator: ^9.0.0
-  injectable_generator: ^2.7.0
 
 flutter:
   uses-material-design: true
@@ -172,7 +151,47 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/fonts/
+  fonts:
+    - family: Merriweather
+      fonts:
+        - asset: assets/fonts/Merriweather-Regular.ttf
+        - asset: assets/fonts/Merriweather-Bold.ttf
+          weight: 700
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
 ```
+
+---
+
+## What Was Removed & Why
+
+| Removed Package | Reason |
+|----------------|--------|
+| `dartz` | Replaced by `fpdart` - smaller, actively maintained, better Dart 3 support |
+| `injectable` + `injectable_generator` | Over-engineering for manual GetIt. Writing `sl.registerLazySingleton(...)` directly is 1 line per service. Annotation-based DI adds code gen overhead for zero gain at this scale. |
+| `mockito` | Replaced by `mocktail` - no code generation needed, same API, faster test iteration |
+| `shimmer` | A shimmer effect is ~30 lines of custom `AnimationController` + `ShaderMask`. No package needed. |
+| `google_fonts` | Bundle fonts in `assets/fonts/` instead. Eliminates runtime HTTP fetch, works offline, zero latency on first render, and reduces app startup time. |
+| `mixpanel_flutter` | Not needed at launch. Add when product analytics is actually integrated. |
+| `firebase_analytics` | Not needed at launch. Add when Firebase is actually integrated. |
+| `custom_lint` | Not needed. `very_good_analysis` is strict enough. |
+| `bloc` (explicit pin) | Transitive via `flutter_bloc`. No need to pin separately. |
+
+---
+
+## Dependency Count Comparison
+
+| | Before | After |
+|---|--------|-------|
+| Production deps | 22 | 15 |
+| Dev deps | 10 | 7 |
+| Code generators | 3 (`auto_route`, `drift`, `injectable`) | 2 (`auto_route`, `drift`) |
+| **Total** | **32** | **22** |
 
 ---
 
@@ -184,11 +203,13 @@ flutter:
 | State Mgmt | flutter_bloc | Riverpod, Provider, GetX | Event-driven, testable, large community, scales well |
 | Routing | auto_route | go_router, Navigator 2.0 | Deep linking, guards, code gen, nested nav |
 | Local DB | Drift | sqflite, Hive, Isar | Type-safe, reactive, migrations, DAO pattern |
-| DI | GetIt + Injectable | Riverpod, Provider | Framework-agnostic, works in non-widget code |
+| DI | GetIt (manual) | Injectable, Riverpod, Provider | Framework-agnostic, works in non-widget code, zero code gen |
 | Secure Storage | flutter_secure_storage | - | iOS Keychain + Android EncryptedSharedPrefs |
-| Analytics | Custom interface | firebase_analytics alone | Interface allows swapping providers without code changes |
+| Error Handling | fpdart (Either) | dartz, Result type, exceptions only | Lighter, maintained, Dart 3 native, functional composition |
 | Logging | logger | logging, print | Pretty formatting, log levels, zero config |
-| Error Handling | dartz (Either) | Result type, exceptions only | Functional composition, explicit error paths |
+| Mocking | mocktail | mockito | No code gen, same power, faster iteration |
+| Shimmer | Custom widget | shimmer package | 30 lines vs. a dependency |
+| Fonts | Bundled assets | google_fonts | Offline, no latency, smaller runtime footprint |
 
 ---
 
@@ -199,3 +220,18 @@ flutter:
 - **Flutter SDK**: Pin to minimum supported version
 - **Run `flutter pub outdated` monthly** to check for security patches
 - **Never use `any` version constraint** in production
+
+---
+
+## Adding a New Dependency Checklist
+
+Before adding any package, verify:
+
+1. Can this be done in < 50 lines without a package?
+2. Is the package actively maintained? (last publish < 6 months)
+3. pub.dev score > 120?
+4. Does it add native dependencies? (increases build complexity)
+5. What's the transitive dependency count? (`flutter pub deps --style=compact`)
+6. Is there a lighter alternative?
+
+If answers to 1 or 6 are "yes", skip the package.

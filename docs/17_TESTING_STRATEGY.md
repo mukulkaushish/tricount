@@ -34,14 +34,14 @@
 | Multiple events | Correct state sequence for event chains |
 | Debounce/throttle | Transformer behavior (e.g., search debounce) |
 
-**Mocking**: Mock Use Cases with `@GenerateMocks` (Mockito) or `MockTailMixin` (mocktail).
+**Mocking**: Mock Use Cases with `mocktail` - no code generation needed.
 
 ### Use Case Tests
 
 | Test Category | What to Verify |
 |---------------|---------------|
 | Delegation | Use case calls correct repository method |
-| Return mapping | `Either<Failure, T>` is passed through correctly |
+| Return mapping | `Either` result is passed through correctly |
 | Business logic | Any transformation/validation the use case performs |
 
 ### Repository Tests
@@ -49,7 +49,7 @@
 | Test Category | What to Verify |
 |---------------|---------------|
 | Remote success | API call → DTO parsed → entity returned as Right |
-| Remote failure | API exception → Failure returned as Left |
+| Remote failure | API exception → `AppException` returned as Left |
 | Cache fallback | Remote fails → local cache returned |
 | Cache update | Remote success → local cache updated |
 
@@ -117,7 +117,7 @@ pumpApp(tester, widget)
 Shared mock factories:
 - `mockBook()` → returns a `Book` entity with defaults
 - `mockChapter()` → returns a `Chapter` entity
-- `mockFailure()` → returns a `Failure.server()`
+- `mockException()` → returns a `ServerException()` (AppException subtype)
 
 ---
 
@@ -151,27 +151,21 @@ End-to-end test of the core reading journey:
 
 ---
 
-## Mockito Setup
+## Mocking with mocktail
 
-### Generation Command
-
-```bash
-dart run build_runner build --delete-conflicting-outputs
-```
+No code generation needed. Declare mock classes inline or in `test/helpers/mock_generators.dart`.
 
 ### What Gets Mocked
 
-| Layer | Mocked In | Mocked For |
-|-------|-----------|-----------|
-| Use Cases | `@GenerateMocks([GetBooksUseCase, ...])` | BLoC tests |
-| Repositories | `@GenerateMocks([LibraryRepository, ...])` | Use Case tests |
-| Data Sources | `@GenerateMocks([LibraryRemoteDataSource, ...])` | Repository tests |
-| ApiClient | `@GenerateMocks([ApiClient])` | Data source tests |
-| Services | `@GenerateMocks([ConnectivityService, TokenProvider, ...])` | Various |
+| Layer | How | Mocked For |
+|-------|-----|-----------|
+| Use Cases | `class MockGetBooksUseCase extends Mock implements GetBooksUseCase {}` | BLoC tests |
+| Repositories | `class MockLibraryRepository extends Mock implements LibraryRepository {}` | Use Case tests |
+| Data Sources | `class MockLibraryRemoteDataSource extends Mock implements LibraryRemoteDataSource {}` | Repository tests |
+| HttpClient | `class MockHttpClient extends Mock implements HttpClient {}` | Data source tests |
+| Services | `class MockConnectivityService extends Mock implements ConnectivityService {}` | Various |
 
-### Mock File Organization
-
-Each test file that needs mocks has a corresponding `.mocks.dart` generated file. Group mock annotations in the test file's top-level.
+Using `mocktail` - no code generation needed. Declare mock classes inline in test files or in `test/helpers/`.
 
 ---
 

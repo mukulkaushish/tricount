@@ -21,7 +21,7 @@ This application follows **Clean Architecture** with **feature-first organizatio
 
 ### Open/Closed (O)
 - The theming system is open for new color palettes (add a new `AppColorPalette`) but closed for modification (the `ThemeBuilder` contract never changes)
-- Interceptors are stackable - add new ones without modifying `DioClient`
+- Interceptors are stackable - add new ones without modifying `DioHttpClient`
 - Analytics adapters plug in without changing the `AnalyticsService` interface
 
 ### Liskov Substitution (L)
@@ -61,8 +61,8 @@ This application follows **Clean Architecture** with **feature-first organizatio
 
 ### Adapter Pattern
 - **Purpose**: Wrap third-party libraries behind app-owned interfaces
-- **Where**: Analytics adapters, storage adapters, network client wrapper
-- **Rule**: If a package appears in an `import`, it should be behind an adapter in `core/`
+- **Where**: Analytics adapters, storage adapters, `DioHttpClient` implementing `HttpClient`
+- **Rule**: If a package appears in an `import`, it should be behind an interface or adapter in `core/`
 
 ### Observer Pattern
 - **Purpose**: Connectivity changes, auth state changes, theme changes
@@ -144,8 +144,8 @@ These live in `core/` and are injected via GetIt:
 
 | Concern | Interface | Default Implementation |
 |---------|-----------|----------------------|
-| HTTP Client | `ApiClient` | `DioApiClient` |
-| Local DB | `LocalDatabase` | `DriftDatabase` |
+| HTTP Client | `HttpClient` | `DioHttpClient` |
+| Local DB | `AppDatabase` (Drift) + DAOs | `BookDao`, `ReadingDao` |
 | Secure Storage | `SecureStore` | `FlutterSecureStorageAdapter` |
 | Analytics | `AnalyticsService` | `CompositeAnalyticsService` |
 | Logging | `AppLogger` | `PrettyLoggerImpl` |
@@ -157,11 +157,23 @@ These live in `core/` and are injected via GetIt:
 
 ## Extension Strategy
 
-Extensions are used to:
+Extensions are used **only** when they add real value. Do not wrap APIs that packages already provide.
 
-1. **Eliminate boilerplate** on BuildContext: `context.theme`, `context.colorScheme`, `context.textTheme`
-2. **Add domain methods** to primitive types: `String.toBookId()`, `DateTime.toReadableDate()`
-3. **Bridge widgets** to theme: `context.appColors`, `context.appTextStyles`
-4. **Simplify navigation**: `context.pushRoute(...)`, `context.replaceRoute(...)`
+### What We Create Extensions For
+
+1. **Theme shortcuts** on BuildContext: `context.colorScheme`, `context.textTheme`, `context.appColors` (saves nested access)
+2. **Domain methods** on primitives: `String.toBookId()`, `DateTime.toReadableDate()`, `String.capitalize()`
+3. **Collection utilities**: `Iterable.separatedBy()`, `Iterable.groupBy()`
+
+### What We Do NOT Create Extensions For
+
+| Don't Wrap | Already Provided By |
+|-----------|-------------------|
+| `context.pushRoute()` | auto_route (built-in) |
+| `context.router` | auto_route (built-in) |
+| `context.read<T>()` / `context.watch<T>()` | flutter_bloc (built-in) |
+| `context.select<T, V>()` | flutter_bloc (built-in) |
+
+**Rule**: If a package already provides a context extension, use it directly. Don't wrap it.
 
 Extensions live in `core/extensions/` and are organized by the type they extend.

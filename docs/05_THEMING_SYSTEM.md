@@ -179,26 +179,28 @@ This factory produces a complete `ThemeData` from a palette:
 
 ---
 
-## Extension Access Pattern
+## Theme Access Pattern
 
-**File**: `lib/core/theme/theme_extensions.dart`
+**File**: `lib/core/extensions/build_context_extensions.dart`
 
-Widgets access theme values through extensions on `BuildContext`:
+Only 3 theme extensions (each saves real keystrokes on high-frequency calls):
 
-| Extension | Returns | Shortcut For |
-|-----------|---------|-------------|
-| `context.theme` | `ThemeData` | `Theme.of(context)` |
+| Extension | Returns | Replaces |
+|-----------|---------|----------|
 | `context.colorScheme` | `ColorScheme` | `Theme.of(context).colorScheme` |
 | `context.textTheme` | `TextTheme` | `Theme.of(context).textTheme` |
-| `context.appColors` | `AppColorPalette` | Current palette from ThemeBloc |
-| `context.isDarkMode` | `bool` | `Theme.of(context).brightness == Brightness.dark` |
+| `context.appColors` | `AppColorPalette` | `context.read<ThemeBloc>().state.palette` |
+
+**Not created** (not worth wrapping):
+- `context.theme` - `Theme.of(context)` is already short and clear
+- `context.isDarkMode` - rarely used; inline `Theme.of(context).brightness == Brightness.dark` when needed
 
 ### Usage Rule
 
-Widgets MUST use these extensions instead of:
-- Hardcoded `Colors.blue` → use `context.colorScheme.primary`
-- Inline `TextStyle(fontSize: 16)` → use `context.textTheme.bodyLarge`
-- `Color(0xFF...)` → use semantic color from palette
+Widgets MUST use semantic theme tokens:
+- Never hardcode `Colors.blue` → use `context.colorScheme.primary`
+- Never inline `TextStyle(fontSize: 16)` → use `context.textTheme.bodyLarge`
+- Never use `Color(0xFF...)` → use palette color via `context.appColors`
 
 ---
 

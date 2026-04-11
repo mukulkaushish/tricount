@@ -1,112 +1,149 @@
 # 14 - Error Handling
 
+## Design: Single Error Type, No Mapping
+
+Previous over-engineered pattern had `AppException` hierarchy + `Failure` sealed class + `ErrorMapper` to convert between them. That's triple handling.
+
+**Simplified**: One `sealed class AppException`. Used directly as the `Left` type in `Either<AppException, T>`. No `Failure` class. No `ErrorMapper`.
+
+---
+
 ## Error Flow
 
 ```
-Exception thrown (anywhere)
+DioHttpClient catches error
     │
     ▼
-Caught at Repository layer
+Returns Either<AppException, T> via fpdart
     │
     ▼
-Mapped to Failure (sealed class)
+Repository passes Either through (no catch, no mapping)
     │
     ▼
-Returned as Either<Failure, T> to Use Case
+Use Case passes Either through
     │
     ▼
-Passed to BLoC
+BLoC folds Either → emit Loaded or Error state
     │
     ▼
-BLoC emits Error state with Failure
-    │
-    ▼
-UI renders AppErrorPage or inline error
+UI renders based on AppException type
 ```
+
+**Key insight**: Repositories and Use Cases just pass `Either` through. No try-catch, no mapping layer. The error is typed from source to UI.
 
 ---
 
-## Exception Hierarchy
+## AppException (Sealed Class)
 
-(Defined in `lib/core/error/app_exception.dart`)
+**File**: `lib/core/error/app_exception.dart`
 
 ```
-AppException (abstract)
-│   fields: String message, String? code, StackTrace? stackTrace
-│
-├── NetworkException              # No connectivity, timeout, DNS failure
-├── ServerException               # 5xx responses
-│     field: int statusCode
-├── BadRequestException           # 400
-├── UnauthorizedException         # 401 (usually handled by interceptor)
-├── ForbiddenException            # 403
-├── NotFoundException             # 404
-├── ValidationException           # 422
-│     field: Map<String, List<String>> fieldErrors
-├── RateLimitException            # 429
-│     field: Duration? retryAfter
-├── DataMismatchException         # JSON parsing failures
-│     field: String fieldName
-├── CacheException                # Local cache read/write errors
-├── StorageException              # Drift or secure storage errors
-└── UnknownException              # Catch-all
+sealed class AppException {
+  String get message;
+  String get userMessage;  // Safe to display in UI
+}
 ```
+
+### Subtypes
+
+| Type | When | userMessage |
+|------|------|-------------|
+| `NetworkException` | No connectivity, timeout, DNS | "Please check your internet connection." |
+| `ServerException(int statusCode)` | 5xx responses | "Something went wrong. Please try again later." |
+| `BadRequestException` | 400 | "Invalid request." |
+| `UnauthorizedException` | 401 (usually interceptor handles) | "Session expired. Please log in again." |
+| `ForbiddenException` | 403 | "You don't have access to this content." |
+| `NotFoundException` | 404 | "Content not found." |
+| `ValidationException(Map<String, List<String>> fieldErrors)` | 422 | "Please check your input." |
+| `RateLimitException(Duration? retryAfter)` | 429 | "Too many requests. Please wait." |
+| `DataMismatchException(String fieldName)` | JSON parse failures | "We received unexpected data." |
+| `CacheException` | Local storage errors | "Unable to load saved data." |
+| `UnknownException` | Catch-all | "An unexpected error occurred." |
+
+### What Was Removed
+
+| Removed | Why |
+|---------|-----|
+| `Failure` sealed class | Duplicated `AppException` 1:1. `AppException` IS the failure type. |
+| `failure.dart` | Deleted. |
+| `ErrorMapper` / `error_mapper.dart` | No mapping needed when source and consumer use the same type. |
+| `AppException` → `Failure` conversion in every repository | Repositories just pass `Either` through now. Zero boilerplate. |
 
 ---
 
-## Failure Sealed Class
+## How Errors Are Created
 
-**File**: `lib/core/error/failure.dart`
+### In DioHttpClient
 
-Used as the `Left` type in `Either<Failure, T>`:
+`DioHttpClient` catches `DioException` and maps to `AppException` subtypes via a factory:
 
 ```
-Failure (sealed)
-│   fields: String message, String? userMessage
-│
-├── Failure.network(message)
-├── Failure.server(message, statusCode)
-├── Failure.auth(message)
-├── Failure.notFound(message)
-├── Failure.validation(message, fieldErrors)
-├── Failure.parsing(message, fieldName)
-├── Failure.cache(message)
-├── Failure.storage(message)
-└── Failure.unknown(message)
+static AppException fromDioError(DioException e) → AppException
 ```
 
-### Exception-to-Failure Mapping
+This is the **only place** where errors are created from network responses. The factory lives on `AppException` itself (or as a static method in `DioHttpClient`).
 
-**File**: `lib/core/error/error_mapper.dart`
+### In Drift / Local Storage
 
-| Exception | Failure |
-|-----------|---------|
-| `NetworkException` | `Failure.network()` |
-| `ServerException` | `Failure.server()` |
-| `UnauthorizedException` | `Failure.auth()` |
-| `NotFoundException` | `Failure.notFound()` |
-| `ValidationException` | `Failure.validation()` |
-| `DataMismatchException` | `Failure.parsing()` |
-| `CacheException` | `Failure.cache()` |
-| `StorageException` | `Failure.storage()` |
-| All others | `Failure.unknown()` |
+Repository catches Drift exceptions locally and wraps in `CacheException`:
 
-### User-Facing Messages
+```
+try {
+  return right(await dao.getBooks());
+} on Exception catch (e) {
+  return left(CacheException(message: e.toString()));
+}
+```
 
-**File**: `lib/core/error/error_mapper.dart`
+This is the **only** try-catch in the entire data flow. Network errors are already `Either` from `DioHttpClient`.
 
-Each `Failure` has a `userMessage` that is safe to display:
+---
 
-| Failure Type | User Message |
-|-------------|-------------|
-| `network` | "Please check your internet connection and try again." |
-| `server` | "Something went wrong on our end. Please try again later." |
-| `auth` | "Your session has expired. Please log in again." |
-| `notFound` | "The content you're looking for could not be found." |
-| `validation` | "Please check your input and try again." |
-| `parsing` | "We received unexpected data. Please try again." |
-| `cache` | "Unable to load saved data." |
-| `unknown` | "An unexpected error occurred. Please try again." |
+## BLoC Error Handling
+
+BLoCs fold the Either directly:
+
+```dart
+final result = await getBooks(page: event.page);
+result.fold(
+  (exception) => emit(LibraryError(exception: exception)),
+  (books) => emit(LibraryLoaded(books: books)),
+);
+```
+
+### Error State
+
+Every BLoC error state carries `AppException`:
+
+```dart
+final class LibraryError extends LibraryState {
+  const LibraryError({required this.exception});
+  final AppException exception;
+}
+```
+
+The UI uses `exception.userMessage` for display and `exception` type for icon/action selection.
+
+---
+
+## fpdart TaskEither (Optional Enhancement)
+
+For repository methods that are purely async + Either, fpdart's `TaskEither` can make composition cleaner:
+
+```dart
+// Without TaskEither (standard):
+Future<Either<AppException, Book>> getBook(String id) async {
+  return httpClient.request<BookModel>(...);
+}
+
+// With TaskEither (composable):
+TaskEither<AppException, Book> getBook(String id) =>
+  TaskEither(() => httpClient.request<BookModel>(...));
+```
+
+`TaskEither` is useful when chaining multiple async operations (e.g., fetch book then fetch chapters). For simple single-call repositories, plain `Future<Either>` is clearer.
+
+**Rule**: Use `TaskEither` when composing 2+ async Either operations. Use `Future<Either>` for simple single calls.
 
 ---
 
@@ -118,66 +155,31 @@ Each `Failure` has a `userMessage` that is safe to display:
 
 | Prop | Type | Required | Default |
 |------|------|----------|---------|
-| `failure` | `Failure` | Yes | - |
+| `exception` | `AppException` | Yes | - |
 | `onRetry` | `VoidCallback?` | No | null (hides retry button) |
-| `fullScreen` | `bool` | No | `true` |
 
-### Layout
+### Behavior
 
+Uses `switch` on `AppException` sealed type for exhaustive handling:
+
+| Exception Type | Icon | Retryable |
+|---------------|------|-----------|
+| `NetworkException` | `Icons.wifi_off` | Yes |
+| `ServerException` | `Icons.cloud_off` | Yes |
+| `NotFoundException` | `Icons.search_off` | No |
+| `UnauthorizedException` | `Icons.lock_outline` | No (redirect to login) |
+| Default | `Icons.error_outline` | Yes |
+
+Layout:
 ```
 Center
 └── Column
-    ├── Icon (error icon, 64x64, colorScheme.error)
-    ├── SizedBox(24)
-    ├── Text (error title, titleLarge)
-    ├── SizedBox(8)
-    ├── Text (userMessage, bodyMedium, textSecondary)
-    ├── SizedBox(24)
-    └── ElevatedButton ("Try Again") [if onRetry != null]
+    ├── Icon (64x64, colorScheme.error)
+    ├── SizedBox(AppDimensions.spacingL)
+    ├── Text(exception.userMessage, style: textTheme.bodyMedium)
+    ├── SizedBox(AppDimensions.spacingL)
+    └── AppButton("Try Again", onPressed: onRetry) [if retryable]
 ```
-
-### Failure-Specific Icons
-
-| Failure Type | Icon |
-|-------------|------|
-| `network` | `Icons.wifi_off` |
-| `server` | `Icons.cloud_off` |
-| `notFound` | `Icons.search_off` |
-| `auth` | `Icons.lock_outline` |
-| Default | `Icons.error_outline` |
-
----
-
-## Error Boundary Widget
-
-**File**: `lib/shared/widgets/error_boundary.dart` (optional)
-
-A widget that catches errors in its child tree and shows `AppErrorPage` instead of a red error screen.
-
-| Prop | Type | Purpose |
-|------|------|---------|
-| `child` | `Widget` | The widget tree to protect |
-| `onError` | `void Function(Object, StackTrace)?` | Error callback (for logging) |
-| `fallback` | `Widget Function(Object)?` | Custom fallback widget |
-
----
-
-## Repository Error Handling Pattern
-
-Every repository method follows this pattern:
-
-1. Wrap the entire body in a `try-catch`
-2. Call data source methods
-3. On success: return `Right(data)`
-4. On `AppException`: map to `Failure`, return `Left(failure)`
-5. On any other `Exception`: wrap in `UnknownException`, map to `Failure.unknown()`, return `Left(failure)`
-6. Log all errors via `AppLogger`
-
-### Either<Failure, T> Usage
-
-- Repositories return `Either<Failure, T>`
-- Use Cases pass through or compose `Either` values
-- BLoCs fold the Either: `result.fold((failure) => emit(Error(failure)), (data) => emit(Loaded(data)))`
 
 ---
 
@@ -187,14 +189,14 @@ Set up in `main.dart`:
 
 ### FlutterError.onError
 - Catches: rendering errors, layout overflows, assertion failures
-- Action: Log + report to CrashReporter
-- In debug: also shows red error screen (default Flutter behavior)
+- Logs to `AppLogger.error()`
+- Reports to `CrashReporter.recordError()`
 
 ### PlatformDispatcher.instance.onError
 - Catches: uncaught Future errors, isolate errors
-- Action: Log + report to CrashReporter
-- Returns: `true` (error handled)
+- Same handling as above
+- Returns `true` (error handled)
 
-### BLoC.observer (AppBlocObserver)
+### BLoC Observer (AppBlocObserver)
 - `onError`: Log + report to CrashReporter
-- `onTransition`: Log at verbose level (debug builds only)
+- `onTransition`: Log at verbose level (debug only)

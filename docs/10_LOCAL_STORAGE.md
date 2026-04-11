@@ -13,6 +13,17 @@
 
 ## Drift Database
 
+### Design: No Abstract Interface
+
+Drift's `AppDatabase` is used directly — no `LocalDatabase` abstract interface wrapping it.
+
+**Why**: Unlike HTTP (where we swap `DioHttpClient` for mocks), Drift already provides:
+- `.watch()` reactive streams on any query (built-in)
+- DAO pattern for organized data access (built-in)
+- In-memory database for tests (`NativeDatabase.memory()`)
+
+An abstract interface would duplicate every DAO method signature for zero benefit. DAOs **are** the interface — mock them in tests with `mocktail`.
+
 ### Database Definition
 
 **File**: `lib/core/storage/drift/app_database.dart`

@@ -70,7 +70,7 @@ The reader is the core feature of the application. It displays long-form text co
 | `totalChapters` | `int` | Total chapter count |
 | `isBookmarked` | `bool` | Current position bookmarked |
 | `progress` | `ReadingProgress?` | Saved reading position |
-| `failure` | `Failure?` | Error details |
+| `exception` | `AppException?` | Error details |
 
 ---
 

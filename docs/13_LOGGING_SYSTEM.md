@@ -52,7 +52,7 @@ Wraps the `logger` package for colorful, structured console output.
 **Output format** (development):
 ```
 ┌───────────────────────────────────────
-│ 🔵 DEBUG | DioClient
+│ 🔵 DEBUG | DioHttpClient
 │ ← 200 GET /v1/books (234ms)
 │ Response size: 12.4 KB
 └───────────────────────────────────────
@@ -64,8 +64,8 @@ Wraps the `logger` package for colorful, structured console output.
 
 | Component | What It Logs | Level |
 |-----------|-------------|-------|
-| LoggingInterceptor | HTTP requests/responses | debug |
-| LoggingInterceptor | HTTP errors | error |
+| `LogInterceptor` (Dio built-in) | HTTP requests/responses | debug |
+| `LogInterceptor` (Dio built-in) | HTTP errors | error |
 | AuthInterceptor | Token refresh attempts | info |
 | AuthInterceptor | 401 handling flow | warning |
 | RetryInterceptor | Retry attempts | warning |
