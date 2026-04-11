@@ -56,7 +56,15 @@ Add domain-specific semantic tokens to the palette only when a feature needs col
 
 **File**: `lib/core/theme/app_colors.dart`
 
-Define a small set of brand palettes (e.g. 3–5), each with a stable ID, a human display name, and a primary seed color. Each palette has both **light** and **dark** variants — the dark variant is not just "same colors on dark background": it has reduced saturation, adjusted contrast, and surface overlays.
+| Palette ID | Name | Primary | Character |
+|-----------|------|---------|-----------|
+| `blue` | Ocean Blue | `#1565C0` | Calm, professional |
+| `violet` | Royal Violet | `#7B1FA2` | Creative, premium |
+| `red` | Crimson Red | `#C62828` | Bold, energetic |
+| `orange` | Sunset Orange | `#E65100` | Warm, inviting |
+| `pink` | Rose Pink | `#AD1457` | Soft, modern |
+
+Each palette has both **light** and **dark** variants — the dark variant is not just "same colors on dark background": it has reduced saturation, adjusted contrast, and surface overlays.
 
 ### Dark Mode Adjustments Per Palette
 
@@ -303,6 +311,17 @@ Container(
 ```
 
 If the theme is missing a property, add it to `AppTheme.build` — never override at the call site.
+
+> **⚠️ Maintenance rule — read before adding any new UI component**
+>
+> Whenever a new widget type is introduced to the app (a new Material component, a newly upgraded Flutter version with a new sub-theme, or a third-party widget with its own theme extension), you MUST:
+>
+> 1. Add its corresponding sub-theme entry to `AppTheme.build` under the correct section (Foundations / Tap feedback / Top navigation / Buttons / Input & selection / Lists, grids, and content / Feedback / Icons).
+> 2. Document the sub-theme in the matching table in this file (`docs/05_THEMING_SYSTEM.md`) so the global theme table stays exhaustive.
+> 3. If the widget has platform-specific behavior (ripple, adaptive constructor, Cupertino variant), note it in the same row.
+> 4. If the widget needs a new semantic color token that cannot be expressed with existing `ColorScheme` roles, add it to `AppColorPalette` and update all predefined palettes.
+>
+> A widget used in feature code without a corresponding theme entry is a bug. Code review MUST reject PRs that inline-style a widget instead of extending the theme.
 
 ---
 
