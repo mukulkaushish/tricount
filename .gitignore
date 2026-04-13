@@ -27,11 +27,37 @@ migrate_working_dir/
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
+.packages
 .pub-cache/
 .pub/
 /build/
 /coverage/
+
+# Application lockfiles are intentionally versioned for this app.
+# Keep `pubspec.lock`, `ios/Podfile`, and `ios/Podfile.lock` committed.
+# Shared native project settings such as Xcode project/workspace files,
+# Gradle files, manifests, and versioned xcconfig files should stay committed.
+
+# Native IDE local settings and regenerated platform artifacts
+**/android/.gradle/
+**/android/captures/
+**/android/local.properties
+**/android/**/.cxx/
+**/android/**/GeneratedPluginRegistrant.java
+**/ios/**/DerivedData/
+**/ios/**/Pods/
+**/ios/**/.symlinks/
+**/ios/**/xcuserdata/
+**/ios/**/*.xccheckout
+**/ios/**/*.xcscmblueprint
+**/ios/**/*.xcuserstate
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Runner/GeneratedPluginRegistrant.*
 
 # Symbolication related
 app.*.symbols
