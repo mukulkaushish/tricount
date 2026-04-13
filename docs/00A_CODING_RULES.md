@@ -242,84 +242,33 @@ const BookCard(
 
 ---
 
-## Barrel File Rules
+## Barrel Files
 
-Every folder with 2+ public Dart files must have a barrel file named `<folder_name>.dart`.
+Every folder with 2+ public Dart files must have a barrel file named `<folder_name>.dart`. Barrel files contain ONLY `export` statements.
 
-### Structure
+**Full rules, examples, and import patterns** → [02_PROJECT_STRUCTURE.md](02_PROJECT_STRUCTURE.md#barrel-file-convention)
 
-```dart
-// lib/core/network/network.dart (BARREL)
-export 'http_client.dart';
-export 'dio_http_client.dart';
-export 'request_method.dart';
-export 'interceptors/interceptors.dart';
-```
-
-### Rules
-
-| Rule | Detail |
-|------|--------|
-| Barrel files contain ONLY `export` statements | No classes, no functions, no logic |
-| Never export generated files | `*.g.dart`, `*.gr.dart` stay out of barrels |
-| Never re-export third-party packages | Consumers import `dio`, `fpdart` themselves |
-| Cross-module imports go through barrels | `import 'package:reading_app/core/core.dart';` not individual files |
-| Within the same module, direct imports are fine | Files inside `core/network/` can import each other directly |
-| Feature barrels export domain + presentation only | `data/` layer is internal - never exported from feature barrel |
-| Top-level `core.dart` aggregates all sub-barrels | One import for all core infrastructure |
-
-### Import Examples
-
-```dart
-// WRONG - reaching into another module's internals:
-import 'package:reading_app/core/network/http_client.dart';
-import 'package:reading_app/core/error/app_exception.dart';
-
-// RIGHT - through barrel:
-import 'package:reading_app/core/core.dart';
-
-// ALSO RIGHT - sub-barrel when you only need one module:
-import 'package:reading_app/core/network/network.dart';
-
-// OK - within the same module (no barrel needed):
-import 'http_client.dart'; // inside core/network/
-```
+Quick reference:
+- Cross-module imports go through barrels: `import 'package:reading_app/core/core.dart';`
+- Within the same module, direct imports are fine
+- Never export generated files (`*.g.dart`, `*.gr.dart`)
+- Feature barrels export domain + presentation only (`data/` is internal)
 
 ---
 
-## Architectural Rules
+## Architecture Rules
 
-### Layer Boundaries (Strict)
+**Full layer rules, dependency diagram, and patterns** → [01_ARCHITECTURE_OVERVIEW.md](01_ARCHITECTURE_OVERVIEW.md)
 
-| Rule | Enforcement |
-|------|-------------|
-| Presentation never imports from `data/` | Code review + custom lint |
-| Domain never imports Flutter | Only pure Dart in domain layer |
-| Data depends on Domain (not reverse) | Interface in domain, impl in data |
-| Core has no feature imports | Shared infrastructure only |
-| Features don't import other features | Cross-feature communication via BLoC or shared service |
+Quick reference:
 
-### Decoupling Rules
-
-| Rule | Example |
-|------|---------|
-| Repositories depend on `HttpClient` interface, not `Dio` | `DioHttpClient` is only referenced in DI registration |
-| BLoCs depend on Use Cases, not Repositories | Ensures business logic is testable in isolation |
-| Widgets depend on BLoC states, not models | Widget reads `state.books`, never calls `repository.getBooks()` |
-| Analytics are fired from BLoCs, not widgets | No `AnalyticsService` imports in presentation widgets |
-
-### Naming Conventions for Architecture
-
-| Element | Suffix | Example |
-|---------|--------|---------|
-| Abstract repository | `Repository` | `LibraryRepository` |
-| Implementation | `Impl` suffix | `LibraryRepositoryImpl` |
-| Use case | `UseCase` | `GetBooksUseCase` |
-| BLoC | `Bloc` or `Cubit` | `LibraryBloc` |
-| DTO / API model | `Model` | `BookModel` |
-| Domain entity | Plain name | `Book` |
-| Page widget | `Page` | `LibraryPage` |
-| Reusable widget | Descriptive name | `BookCard` |
+| Rule | Detail |
+|------|--------|
+| Presentation → Domain + Core only | Never import `data/` |
+| Domain → pure Dart | No Flutter imports |
+| BLoCs → Use Cases → Repositories | Never skip layers |
+| Analytics from BLoCs only | Never from widgets |
+| Repositories → `HttpClient` interface | Never Dio directly |
 
 ---
 
