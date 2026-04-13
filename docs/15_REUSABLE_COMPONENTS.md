@@ -171,3 +171,29 @@ Uses `LayoutBuilder` to determine breakpoints. Falls back to `mobile` if larger 
 3. **Promote to shared** when a widget is used in 2+ features
 4. **No inline themes** - all components read from `context.colorScheme` / `context.textTheme`
 5. **No magic numbers** - use `AppDimensions` for spacing, radius, elevation
+
+---
+
+## Accessibility Requirements Per Component
+
+Every shared widget must meet these criteria (see 22_ACCESSIBILITY.md for full guidelines):
+
+| Requirement | Standard | Applies To |
+|-------------|----------|------------|
+| Minimum tap target 48x48 | Material guidelines | All interactive widgets |
+| Color contrast 4.5:1 | WCAG AA | All text on backgrounds |
+| Semantics label | VoiceOver / TalkBack | Custom interactive widgets, decorative images |
+| Font scale tolerance | System settings | All text containers — no fixed heights |
+| Live region | Screen readers | Connectivity banner, error messages |
+
+### Per-Widget Checklist
+
+| Widget | Tap Target | Semantics | Font Scale Safe |
+|--------|-----------|-----------|-----------------|
+| App Loading Page | N/A | `Semantics(label: 'Loading')` on indicator | Yes (flexible layout) |
+| App Error Page | Retry button >=48px | Error message readable by screen reader | Yes |
+| App Scaffold | Back button >=48px (AppBar default) | Automatic via AppBar | Yes |
+| Connectivity Banner | N/A (not dismissible) | `Semantics(liveRegion: true)` | Yes |
+| App Image | N/A (decorative unless tappable) | `ExcludeSemantics` for decorative, `Semantics(label:)` for meaningful | Yes |
+| Shimmer Loading | N/A | `ExcludeSemantics` (placeholder) | Yes |
+| Adaptive Layout | N/A (container) | None needed | Yes |
