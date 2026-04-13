@@ -1,161 +1,136 @@
 # AGENTS.md
 
-## Read First
+## Project Summary
 
-Before writing code in this project, read these files in order:
+This repository is a Flutter application workspace with a documented target architecture. The current codebase is still near starter-app state, so the docs should be read as a migration blueprint unless `docs/00B_PROJECT_STATUS_AND_ADOPTION.md` says a pattern is already in place.
+
+## Documentation Read Order
+
+Read these documents before making structural changes:
 
 1. `docs/00A_CODING_RULES.md`
 2. `docs/00B_PROJECT_STATUS_AND_ADOPTION.md`
-3. `CLAUDE.md`
+3. `docs/01_ARCHITECTURE_OVERVIEW.md`
+4. `docs/02_PROJECT_STRUCTURE.md`
+5. `docs/03_DEPENDENCY_MANIFEST.md`
 
-These documents define the repo's current state, target architecture, linting rules, and delivery expectations.
-
-## Important Context
-
-- Many docs in `docs/` describe the target architecture, not code that already exists.
-- Examples use `package:<app_package>/...`; in this repository, `<app_package>` resolves to `tricount`.
-- Prefer incremental adoption over architecture-only rewrites.
+The remaining docs cover specific subsystems and should be consulted when touching those areas.
 
 ## Delivery Workflow
 
-- If the user asks for screen-by-screen delivery, implement one screen only.
-- After finishing that screen, run the app, capture a screenshot, and present it.
+- If the user asks for phased screen delivery, implement one screen at a time.
+- After each screen, run the app and capture a screenshot for review.
 - Wait for explicit approval before moving to the next screen.
-- If the user asks for a plan file without a location, create it at the repository root.
+- If the user asks for a standalone plan file without naming a folder, create it at the repository root.
 
-## Flutter / Dart Rules
+## Non-Negotiable Architecture Rules
 
-Use this checklist before editing or creating Dart files:
+### Layer Boundaries
 
-- File belongs to the correct layer: `presentation`, `domain`, `data`, or `core`
-- Cross-module imports go through barrel files
-- No relative imports like `../`
-- Package imports use the current app package name
-- All parameters are `final`
-- All local variables are `final`
-- `const` constructors are used where possible
-- UI styling comes from theme/context extensions, not inline values
-- Spacing, radius, and sizing come from shared dimensions/constants
-- Logging uses `AppLogger`, never `print()`
-- Switches over sealed types are exhaustive and avoid `default`
+- `presentation` depends on `domain` and `core` only
+- `domain` stays pure Dart and does not import Flutter
+- `data` implements domain contracts and talks to external systems
+- `core` contains shared infrastructure
 
-Import examples:
+### Dependency Direction
+
+- Widgets talk to BLoCs or equivalent presentation state only
+- BLoCs depend on use cases, never repositories directly
+- Repositories depend on abstractions such as `HttpClient`, not framework clients directly
+- Infrastructure implementations such as `DioHttpClient` should stay referenced from DI, not business code
+- Analytics belongs in state/business logic, not widgets
+- Use Drift `AppDatabase` and DAOs directly rather than wrapping them in extra abstraction layers unless the repo already has a justified pattern
+
+### Networking
+
+- Standardize on `HttpClient.request<T>()`, `requestList<T>()`, and `requestEmpty()`
+- Use a `RequestMethod` enum instead of scattered verb-specific APIs
+- Return `Either<AppException, T>`
+- Keep auth refresh logic in Dio interceptors or the existing network layer
+
+### Error Handling
+
+- Use `AppException` as the primary typed error model
+- Avoid parallel `Failure` or `ErrorMapper` hierarchies unless they already exist for a specific boundary
+- Let repositories pass structured errors upward instead of converting them to generic strings
+- UI should render user-facing messages from the exception model or mapped presentation state
+
+## Coding Standards
+
+### Imports and File Structure
+
+- Keep `dart:` imports for SDK libraries
+- Use `package:<app_package>/...` imports for project files
+- Cross-feature and cross-module project imports should go through barrel files
+- Barrel files should contain `export` statements only
+
+Example:
 
 ```dart
 import 'package:<app_package>/core/core.dart';
-import 'package:<app_package>/features/auth/auth.dart';
+import 'package:<app_package>/features/home/home.dart';
 ```
 
-## New File Workflow
+In this repository, `<app_package>` resolves to `tricount`.
 
-When adding a file:
+### Dart / Flutter Style
 
-1. Pick the correct feature and layer.
-2. Place it according to `docs/02_PROJECT_STRUCTURE.md`.
-3. Export it from the appropriate barrel file.
-4. Use package imports only.
+- All parameters and local variables are `final`
+- Use `const` wherever possible
+- Prefer single quotes
+- Avoid inline themes and hardcoded colors
+- Avoid magic numbers; use shared dimensions/constants
+- Use `AppLogger` instead of `print()`
+- Keep switches on enums and sealed types exhaustive
+- Keep widget trees shallow enough to stay readable
 
-## New Feature Workflow
+### Navigation
 
-When adding a feature module:
+- Use `auto_route` APIs directly when the app has adopted `auto_route`
+- Avoid custom wrappers around `context.router`, `pushRoute`, or `maybePop` unless there is a proven need
 
-1. Create `data/`, `domain/`, and `presentation/`.
-2. Add barrel files at each public folder level.
-3. Keep the feature barrel limited to the public API, typically `domain` and `presentation`.
-4. Register dependencies in `core/di/feature_module.dart` when that module exists.
-5. Add routing in `router/app_router.dart` when the app has adopted that router structure.
+## Naming Conventions
 
-## BLoC Rules
+- Files: `snake_case.dart`
+- Classes: `PascalCase`
+- Variables and functions: `camelCase`
+- Barrel files: `<folder_name>.dart`
 
-When creating a BLoC:
+Common architecture naming:
 
-1. Create `*_bloc.dart`, `*_event.dart`, and `*_state.dart`.
-2. Let the bloc file export the event and state files when that pattern is used in the repo.
-3. Keep states immutable and `Equatable`.
-4. Prefer the standard lifecycle states: `Initial`, `Loading`, `Loaded`, `Error`.
-5. Use descriptive past-tense event names.
-6. Depend on use cases, not repositories.
-7. Register BLoCs with `registerFactory`, not singleton registration.
+- Repository contract: `AccountRepository`
+- Repository implementation: `AccountRepositoryImpl`
+- Use case: `GetAccountsUseCase`
+- BLoC: `AccountsBloc`
+- DTO/model: `AccountModel`
+- Entity: `Account`
+- Screen/page: `AccountsPage`
 
-## Model / DTO Rules
+## Documentation Maintenance
 
-When creating a DTO or model:
+When adding a new dependency to `pubspec.yaml`:
 
-1. Place it in `feature/data/models/`.
-2. Implement `JsonCodable` where that contract is used.
-3. Use `JsonParser` helpers in `fromJson`.
-4. Use `JsonParser.toJson()` for serialization and null stripping.
-5. Export it from the models barrel file.
+1. Add it to `docs/03_DEPENDENCY_MANIFEST.md` with the reason
+2. If it introduces a new pattern (state, navigation, storage), update the relevant subsystem doc
+3. If it has a theme extension or sub-theme, add entries to `AppTheme.build()` and `docs/05_THEMING_SYSTEM.md`
+4. If it replaces an existing package, update all docs that reference the old one
 
-## Repository Rules
+When adding a new widget type to the app, follow the maintenance rule in `docs/05_THEMING_SYSTEM.md`.
 
-When creating a repository:
+## Recommended Commands
 
-1. Put the abstract contract in `feature/domain/repositories/`.
-2. Put the implementation in `feature/data/repositories/`.
-3. Go through `HttpClient`, not Dio directly.
-4. Return `Either<AppException, T>`.
-5. Avoid extra error-mapping layers unless a boundary genuinely needs a specific exception wrapper.
-6. Register implementations with `registerLazySingleton`.
-
-## Networking Patterns
-
-```dart
-httpClient.request<ItemModel>(
-  '/v1/items/$id',
-  method: RequestMethod.get,
-  fromJson: ItemModel.fromJson,
-  keyPath: 'data',
-);
-
-httpClient.requestList<ItemModel>(
-  '/v1/items',
-  method: RequestMethod.get,
-  fromJson: ItemModel.fromJson,
-  keyPath: 'data',
-  queryParameters: {'page': page},
-);
-
-httpClient.requestEmpty(
-  '/v1/items/$id',
-  method: RequestMethod.delete,
-);
+```bash
+flutter pub get
+dart format .
+flutter analyze
+flutter test
+dart run build_runner build --delete-conflicting-outputs
 ```
 
-## Testing Rules
+## State Management Guidelines
 
-- Use `mocktail` for mocking
-- Mock at architectural boundaries
-- Use `bloc_test` for BLoC tests
-- Cover `Initial`, `Loading`, `Loaded`, and `Error` states
-- Keep JSON fixtures in `test/fixtures/`
-
-## Review Checklist
-
-### Blockers
-
-- Layer boundary violations
-- Dio used outside `DioHttpClient`
-- Missing barrel exports for new public files
-- Relative imports across modules
-- Inline themes or hardcoded colors
-- `print()` statements
-- Non-final parameters or locals
-- Non-exhaustive sealed-class switches
-- Custom navigation wrappers where built-in `auto_route` APIs should be used
-- BLoCs depending on repositories instead of use cases
-- `Failure` / `ErrorMapper` patterns where `AppException` should be used directly
-
-### Change Requests
-
-- Missing `const` where possible
-- Deep widget nesting in a single `build()`
-- Magic numbers instead of shared dimensions
-- Analytics fired from widgets instead of state logic
-- Missing tests for new BLoCs, use cases, or repositories
-
-### Suggestions
-
-- Prefer tear-offs where they improve readability
-- Combine obvious cascades
-- Extract overly long files into smaller focused units
+- Use `flutter_bloc` for app-wide state management patterns
+- Prefer BLoC for event-driven or multi-step flows
+- Prefer Cubit for smaller, direct state transitions when that keeps the feature simpler
+- Keep state objects immutable
+- Favor a predictable lifecycle such as `Initial`, `Loading`, `Loaded`, and `Error`
