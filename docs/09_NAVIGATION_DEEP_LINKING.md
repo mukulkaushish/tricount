@@ -1,5 +1,7 @@
 # 09 - Navigation & Deep Linking (auto_route)
 
+> Route names, deep-link schemes, and example paths in this document are illustrative. Replace them with the real navigation model for your app.
+
 ## Overview
 
 Navigation uses `auto_route` exclusively. auto_route provides:

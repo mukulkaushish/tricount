@@ -1,5 +1,7 @@
 # 04 - App Bootstrap & main.dart
 
+> Environment names, URLs, and module names in this document are examples of the pattern, not fixed values for this repository.
+
 ## Initialization Sequence
 
 The app starts through a strict, ordered bootstrap sequence. This ensures all services are available before any widget renders.

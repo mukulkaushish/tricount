@@ -45,7 +45,7 @@ This replaces `flutter_lints`. Key rules it enables beyond the defaults:
 | `prefer_const_constructors` | Use `const` wherever possible |
 | `prefer_const_declarations` | Declare constants as `const` |
 | `prefer_single_quotes` | Single quotes for strings |
-| `always_use_package_imports` | `package:reading_app/...` not relative `../` |
+| `always_use_package_imports` | `package:<app_package>/...` not relative `../` |
 | `avoid_dynamic_calls` | No calling methods on `dynamic` |
 | `lines_longer_than_80_chars` | Line length limit (warning) |
 | `prefer_final_locals` | Local variables should be `final` |
@@ -93,7 +93,7 @@ Order imports in this sequence (separated by blank lines):
 1. `dart:` libraries
 2. `package:flutter/` imports
 3. `package:` third-party imports
-4. `package:reading_app/` project imports
+4. `package:<app_package>/` project imports
 
 Within each group, sort alphabetically. `very_good_analysis` enforces this via `directives_ordering`.
 
@@ -210,7 +210,7 @@ Column(children: [
 import '../../../core/network/http_client.dart';
 
 // RIGHT:
-import 'package:reading_app/core/network/http_client.dart';
+import 'package:<app_package>/core/network/http_client.dart';
 ```
 
 `very_good_analysis` enforces `always_use_package_imports`.
@@ -249,7 +249,7 @@ Every folder with 2+ public Dart files must have a barrel file named `<folder_na
 **Full rules, examples, and import patterns** → [02_PROJECT_STRUCTURE.md](02_PROJECT_STRUCTURE.md#barrel-file-convention)
 
 Quick reference:
-- Cross-module imports go through barrels: `import 'package:reading_app/core/core.dart';`
+- Cross-module imports go through barrels: `import 'package:<app_package>/core/core.dart';`
 - Within the same module, direct imports are fine
 - Never export generated files (`*.g.dart`, `*.gr.dart`)
 - Feature barrels export domain + presentation only (`data/` is internal)

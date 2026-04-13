@@ -49,7 +49,7 @@ output-localization-file: app_localizations.dart
 ```json
 {
   "@@locale": "en",
-  "appTitle": "Tricount",
+  "appTitle": "<app_name>",
   "@appTitle": {
     "description": "The application title"
   },
@@ -138,7 +138,7 @@ MaterialApp.router(
 
 ```dart
 // Import:
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'l10n/app_localizations.dart';
 
 // Access:
 Text(AppLocalizations.of(context)!.loginTitle)
@@ -159,6 +159,8 @@ extension LocalizationX on BuildContext {
 
 // Usage: context.l10n.loginTitle
 ```
+
+Use your real app name in ARB values. If you keep docs generic elsewhere, replace `<app_name>` with the product name for the current repository.
 
 ---
 

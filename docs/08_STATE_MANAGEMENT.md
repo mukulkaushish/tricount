@@ -1,5 +1,7 @@
 # 08 - State Management (flutter_bloc)
 
+> Feature names and event examples in this document illustrate the pattern. Use the same structure with names that fit the real product domain.
+
 ## Philosophy
 
 - **BLoC** (full event-driven) for complex features with multiple event sources

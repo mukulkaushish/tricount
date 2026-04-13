@@ -1,134 +1,161 @@
-# AGENTS.md - Agent-Specific Instructions
+# AGENTS.md
 
-## For All Agents
+## Read First
 
-Before writing any code in this project, you MUST read and follow:
-1. `docs/00A_CODING_RULES.md` - Lint rules, barrel files, style rules
-2. `CLAUDE.md` - Architecture summary and key rules
+Before writing code in this project, read these files in order:
+
+1. `docs/00A_CODING_RULES.md`
+2. `docs/00B_PROJECT_STATUS_AND_ADOPTION.md`
+3. `CLAUDE.md`
+
+These documents define the repo's current state, target architecture, linting rules, and delivery expectations.
+
+## Important Context
+
+- Many docs in `docs/` describe the target architecture, not code that already exists.
+- Examples use `package:<app_package>/...`; in this repository, `<app_package>` resolves to `tricount`.
+- Prefer incremental adoption over architecture-only rewrites.
 
 ## Delivery Workflow
 
-- When the user requests screen-by-screen delivery, implement exactly one
-  screen at a time.
-- After finishing a screen, run the app, capture a screenshot, and present it
-  before moving to the next screen.
-- Do not implement the next screen until the user explicitly approves the
-  current screen.
-- If a plan file is requested without a location, prefer creating it at the
-  repository root instead of inside `/`.
+- If the user asks for screen-by-screen delivery, implement one screen only.
+- After finishing that screen, run the app, capture a screenshot, and present it.
+- Wait for explicit approval before moving to the next screen.
+- If the user asks for a plan file without a location, create it at the repository root.
 
-## Flutter Code Agent
+## Flutter / Dart Rules
 
-When generating or modifying Flutter/Dart code:
+Use this checklist before editing or creating Dart files:
 
-### Mandatory Checks Before Writing Code
-- [ ] File is in the correct layer (presentation/domain/data/core)
-- [ ] Imports go through barrel files for cross-module access
-- [ ] No relative imports (`../`) - use `package:reading_app/...`
-- [ ] All parameters are `final`
-- [ ] All local variables are `final`
-- [ ] `const` constructors used where possible
-- [ ] No inline themes - use `context.colorScheme`, `context.textTheme`
-- [ ] No magic numbers - use `AppDimensions`
-- [ ] No `print()` - use `AppLogger`
-- [ ] Switches on sealed classes are exhaustive (no `default`)
+- File belongs to the correct layer: `presentation`, `domain`, `data`, or `core`
+- Cross-module imports go through barrel files
+- No relative imports like `../`
+- Package imports use the current app package name
+- All parameters are `final`
+- All local variables are `final`
+- `const` constructors are used where possible
+- UI styling comes from theme/context extensions, not inline values
+- Spacing, radius, and sizing come from shared dimensions/constants
+- Logging uses `AppLogger`, never `print()`
+- Switches over sealed types are exhaustive and avoid `default`
 
-### When Creating a New File
-1. Determine which layer and feature it belongs to
-2. Place it in the correct folder per `docs/02_PROJECT_STRUCTURE.md`
-3. Add it to the appropriate barrel file
-4. Use package imports only
+Import examples:
 
-### When Creating a New Feature Module
-1. Create the full folder structure: `data/`, `domain/`, `presentation/` with sub-folders
-2. Create barrel files at every level
-3. Feature barrel (`feature_name.dart`) exports domain + presentation only
-4. Register dependencies in `core/di/feature_module.dart`
-5. Add route in `router/app_router.dart`
-
-### When Creating a BLoC
-1. Three files: `*_bloc.dart`, `*_event.dart`, `*_state.dart`
-2. BLoC file also acts as barrel (exports event and state)
-3. States extend `Equatable` with four variants: Initial, Loading, Loaded, Error
-4. Events extend `Equatable` with descriptive past-tense names
-5. BLoC depends on Use Cases only (never repositories)
-6. Register as `registerFactory` in GetIt (not singleton)
-
-### When Creating a Model/DTO
-1. Place in `feature/data/models/`
-2. Implement `JsonCodable`
-3. Use `JsonParser` methods in `fromJson` - never raw `json['key']`
-4. Use `JsonParser.toJson()` in `toJson()` for null stripping
-5. Add to the models barrel file
-
-### When Creating a Repository
-1. Abstract interface in `feature/domain/repositories/`
-2. Implementation in `feature/data/repositories/`
-3. Implementation calls `HttpClient` methods with `RequestMethod` enum
-4. No try-catch needed — `Either` from `HttpClient` handles errors (only exception: Drift `CacheException` wrapping)
-5. Returns `Either<AppException, T>` — no `Failure` class, no error mapping
-6. Register as `registerLazySingleton<AbstractRepo>(() => ImplRepo(...))` in GetIt
-
-### Networking Calls
 ```dart
-// Single object - use request<T>:
-httpClient.request<BookModel>(
-  '/v1/books/$id',
-  method: RequestMethod.get,
-  fromJson: BookModel.fromJson,
-  keyPath: 'data',
-)
-
-// List - use requestList<T>:
-httpClient.requestList<BookModel>(
-  '/v1/books',
-  method: RequestMethod.get,
-  fromJson: BookModel.fromJson,
-  keyPath: 'data',
-  queryParameters: {'page': page},
-)
-
-// No response body - use requestEmpty:
-httpClient.requestEmpty(
-  '/v1/user/bookmarks/$id',
-  method: RequestMethod.delete,
-)
+import 'package:<app_package>/core/core.dart';
+import 'package:<app_package>/features/auth/auth.dart';
 ```
 
-### Testing
-- Use `mocktail` for mocking (no code generation)
-- Mock at the boundary: Use Cases for BLoC tests, Repositories for Use Case tests, HttpClient for Repository tests
-- Use `bloc_test` package for BLoC testing
-- Test all four state variants: Initial, Loading, Loaded, Error
-- JSON fixtures go in `test/fixtures/`
+## New File Workflow
 
-## Code Review Agent
+When adding a file:
 
-When reviewing code in this project, check for:
+1. Pick the correct feature and layer.
+2. Place it according to `docs/02_PROJECT_STRUCTURE.md`.
+3. Export it from the appropriate barrel file.
+4. Use package imports only.
 
-### Critical (Block PR)
-- Layer boundary violations (presentation importing data, domain importing Flutter)
-- Direct Dio usage outside `DioHttpClient`
-- Inline themes or hardcoded colors
-- Missing barrel file exports for new files
+## New Feature Workflow
+
+When adding a feature module:
+
+1. Create `data/`, `domain/`, and `presentation/`.
+2. Add barrel files at each public folder level.
+3. Keep the feature barrel limited to the public API, typically `domain` and `presentation`.
+4. Register dependencies in `core/di/feature_module.dart` when that module exists.
+5. Add routing in `router/app_router.dart` when the app has adopted that router structure.
+
+## BLoC Rules
+
+When creating a BLoC:
+
+1. Create `*_bloc.dart`, `*_event.dart`, and `*_state.dart`.
+2. Let the bloc file export the event and state files when that pattern is used in the repo.
+3. Keep states immutable and `Equatable`.
+4. Prefer the standard lifecycle states: `Initial`, `Loading`, `Loaded`, `Error`.
+5. Use descriptive past-tense event names.
+6. Depend on use cases, not repositories.
+7. Register BLoCs with `registerFactory`, not singleton registration.
+
+## Model / DTO Rules
+
+When creating a DTO or model:
+
+1. Place it in `feature/data/models/`.
+2. Implement `JsonCodable` where that contract is used.
+3. Use `JsonParser` helpers in `fromJson`.
+4. Use `JsonParser.toJson()` for serialization and null stripping.
+5. Export it from the models barrel file.
+
+## Repository Rules
+
+When creating a repository:
+
+1. Put the abstract contract in `feature/domain/repositories/`.
+2. Put the implementation in `feature/data/repositories/`.
+3. Go through `HttpClient`, not Dio directly.
+4. Return `Either<AppException, T>`.
+5. Avoid extra error-mapping layers unless a boundary genuinely needs a specific exception wrapper.
+6. Register implementations with `registerLazySingleton`.
+
+## Networking Patterns
+
+```dart
+httpClient.request<ItemModel>(
+  '/v1/items/$id',
+  method: RequestMethod.get,
+  fromJson: ItemModel.fromJson,
+  keyPath: 'data',
+);
+
+httpClient.requestList<ItemModel>(
+  '/v1/items',
+  method: RequestMethod.get,
+  fromJson: ItemModel.fromJson,
+  keyPath: 'data',
+  queryParameters: {'page': page},
+);
+
+httpClient.requestEmpty(
+  '/v1/items/$id',
+  method: RequestMethod.delete,
+);
+```
+
+## Testing Rules
+
+- Use `mocktail` for mocking
+- Mock at architectural boundaries
+- Use `bloc_test` for BLoC tests
+- Cover `Initial`, `Loading`, `Loaded`, and `Error` states
+- Keep JSON fixtures in `test/fixtures/`
+
+## Review Checklist
+
+### Blockers
+
+- Layer boundary violations
+- Dio used outside `DioHttpClient`
+- Missing barrel exports for new public files
 - Relative imports across modules
+- Inline themes or hardcoded colors
 - `print()` statements
-- Non-exhaustive switches on sealed types
-- Non-final parameters or local variables
-- Custom navigation extensions (use auto_route's built-in API)
-- Wrapping `context.read/watch/select` (flutter_bloc provides them)
-- Using `Failure` class or `ErrorMapper` (use `AppException` directly)
-- Abstract `LocalDatabase` interface wrapping Drift (use DAOs directly)
+- Non-final parameters or locals
+- Non-exhaustive sealed-class switches
+- Custom navigation wrappers where built-in `auto_route` APIs should be used
+- BLoCs depending on repositories instead of use cases
+- `Failure` / `ErrorMapper` patterns where `AppException` should be used directly
 
-### Warning (Request Change)
-- Missing `const` on constructors that could be const
-- Widget nesting deeper than 3 levels in one `build()`
-- BLoC directly calling a repository (should use Use Case)
-- Analytics fired from a widget (should be in BLoC)
-- Magic numbers not in `AppDimensions`
-- Missing tests for new BLoC/UseCase/Repository
+### Change Requests
 
-### Info (Suggest)
-- Opportunities to use tear-offs instead of lambdas
-- Cascade invocations that could be combined
-- Files that could be extracted to reduce file length
+- Missing `const` where possible
+- Deep widget nesting in a single `build()`
+- Magic numbers instead of shared dimensions
+- Analytics fired from widgets instead of state logic
+- Missing tests for new BLoCs, use cases, or repositories
+
+### Suggestions
+
+- Prefer tear-offs where they improve readability
+- Combine obvious cascades
+- Extract overly long files into smaller focused units

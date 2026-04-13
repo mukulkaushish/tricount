@@ -1,5 +1,7 @@
 # 14 - Error Handling
 
+> The code and event names used in examples are illustrative. Apply the same error-handling flow to your own features and entities.
+
 ## Design: Single Error Type, No Mapping
 
 Previous over-engineered pattern had `AppException` hierarchy + `Failure` sealed class + `ErrorMapper` to convert between them. That's triple handling.

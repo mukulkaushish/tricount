@@ -1,5 +1,7 @@
 # 07 - JSON Parsing & Codable System
 
+> Example DTOs and payloads in this document are illustrative. Replace them with the fields and models that match your domain.
+
 ## Overview
 
 The app uses a single `JsonParser` mixin that serves as the complete codable system — providing both deserialization (type-safe field extraction) and serialization (null-stripping `toJson`). Inspired by Swift's Codable protocol. No code generation needed.

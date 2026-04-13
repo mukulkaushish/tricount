@@ -1,5 +1,7 @@
 # 17 - Testing Strategy
 
+> This is the recommended testing strategy for the target architecture. Adopt it incrementally as the codebase grows.
+
 ## Test Pyramid
 
 ```
@@ -115,9 +117,9 @@ pumpApp(tester, widget)
 **File**: `test/helpers/mock_generators.dart`
 
 Shared mock factories:
-- `mockBook()` → returns a `Book` entity with defaults
-- `mockChapter()` → returns a `Chapter` entity
-- `mockException()` → returns a `ServerException()` (AppException subtype)
+- `mockEntity()` → returns a representative domain entity with defaults
+- `mockCollection()` → returns a representative list payload
+- `mockException()` → returns an `AppException` subtype
 
 ---
 
@@ -125,19 +127,17 @@ Shared mock factories:
 
 **Directory**: `test/integration/`
 
-### Reading Flow Test
+### Primary User Flow Test
 
-End-to-end test of the core reading journey:
+End-to-end test of the app's most important user journey:
 
-1. App launches → Splash screen appears
-2. Auth check → redirects to Library (with mock auth)
-3. Library loads → books displayed
-4. Tap a book → Book Detail page
-5. Tap "Read" → Reader page opens
-6. Reader loads chapter content
-7. Scroll → reading progress saved
-8. Tap bookmark → bookmark created
-9. Navigate back → library shows progress indicator
+1. App launches
+2. Auth check completes
+3. Home or list screen loads
+4. User opens a detail or editing flow
+5. User performs the core action
+6. App persists or syncs the change
+7. Updated state is visible after navigation or reload
 
 ### Offline Flow Test
 
@@ -215,15 +215,15 @@ JSON files containing sample API responses:
 
 | File | Contents |
 |------|----------|
-| `book_response.json` | Single book JSON object |
-| `books_list_response.json` | Paginated list of books |
-| `chapter_response.json` | Chapter content JSON |
+| `item_response.json` | Single domain object response |
+| `items_list_response.json` | Paginated list response |
+| `detail_response.json` | Detail payload response |
 | `auth_response.json` | Login response with tokens |
 | `error_response.json` | Standard error response |
 
 Loaded in tests via:
 ```dart
-final json = jsonDecode(File('test/fixtures/book_response.json').readAsStringSync());
+final json = jsonDecode(File('test/fixtures/item_response.json').readAsStringSync());
 ```
 
 ---

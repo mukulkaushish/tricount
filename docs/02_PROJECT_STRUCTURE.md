@@ -1,5 +1,7 @@
 # 02 - Project Structure
 
+> The directory tree below uses illustrative feature and entity names. Adapt the structure to your product domain rather than copying the sample names literally.
+
 ## Barrel File Convention
 
 Every folder that contains 2+ public Dart files **must** have a barrel file. Barrel files:
@@ -12,7 +14,7 @@ Every folder that contains 2+ public Dart files **must** have a barrel file. Bar
 
 ### Why Barrel Files
 
-1. **Single import per module**: `import 'package:reading_app/core/core.dart';` instead of 5 separate imports
+1. **Single import per module**: `import 'package:<app_package>/core/core.dart';` instead of 5 separate imports
 2. **Controlled public API**: Only what's exported in the barrel is public
 3. **Refactoring safety**: Move/rename internal files without breaking imports across modules
 4. **Enforced by lint**: `always_use_package_imports` + barrel convention = clean dependency graph
@@ -378,12 +380,12 @@ export 'presentation/presentation.dart';
 
 ```dart
 // WRONG - importing individual files across modules:
-import 'package:reading_app/core/network/http_client.dart';
-import 'package:reading_app/core/error/app_exception.dart';
-import 'package:reading_app/core/extensions/string_extensions.dart';
+import 'package:<app_package>/core/network/http_client.dart';
+import 'package:<app_package>/core/error/app_exception.dart';
+import 'package:<app_package>/core/extensions/string_extensions.dart';
 
 // RIGHT - import through barrel:
-import 'package:reading_app/core/core.dart';
+import 'package:<app_package>/core/core.dart';
 ```
 
 ---

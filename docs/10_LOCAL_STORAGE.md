@@ -1,5 +1,7 @@
 # 10 - Local Storage
 
+> Table names, DAO examples, and cached entities in this document are samples that demonstrate the storage pattern.
+
 ## Storage Strategy Overview
 
 | Storage Type | Technology | Purpose |

@@ -1,246 +1,133 @@
 # 03 - Dependency Manifest
 
-## Guiding Principle: Fewer Packages = Smaller App
+## Purpose
 
-Every dependency adds binary size, maintenance burden, and potential breakage. Before adding a package, ask: "Can I do this in < 50 lines of Dart?" If yes, skip the package.
+This document describes the recommended dependency set for the target architecture. It does not claim that every package listed here is already present in `pubspec.yaml`.
 
----
+Before adding anything, compare this document with:
 
-## Production Dependencies
+- `pubspec.yaml`
+- `docs/00B_PROJECT_STATUS_AND_ADOPTION.md`
 
-### Core Framework
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `flutter` | SDK | Framework |
-| `flutter_localizations` | SDK | Internationalization support |
+## Dependency Strategy
 
-### State Management
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `flutter_bloc` | ^9.0.0 | BLoC/Cubit state management |
-| `equatable` | ^2.0.7 | Value equality for events/states without boilerplate |
+- Add packages deliberately, not preemptively.
+- Prefer stable packages with strong maintenance history and clear documentation.
+- Use caret constraints for packages you actively adopt.
+- Verify actual version choices against the current Flutter and Dart SDK before editing `pubspec.yaml`.
+- Run `flutter pub outdated` before large dependency updates.
 
-### Navigation
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `auto_route` | ^9.0.0 | Declarative routing with deep linking |
+## Recommended Production Dependencies
 
-### Networking
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `dio` | ^5.7.0 | HTTP client with interceptor support |
-| `connectivity_plus` | ^6.1.0 | Network connectivity detection |
+| Area | Package | Why |
+|------|---------|-----|
+| State management | `flutter_bloc` | Predictable event/state flow for medium and large features |
+| Equality | `equatable` | Lightweight value equality for states and events |
+| Navigation | `auto_route` | Typed routes, guards, and nested routing when the app needs them |
+| Networking | `dio` | Mature interceptor model and flexible request handling |
+| Connectivity | `connectivity_plus` | Network-awareness signals for resilience features |
+| Local database | `drift` | Type-safe local persistence with migrations and DAOs |
+| SQLite support | `sqlite3_flutter_libs` | SQLite binaries for mobile targets when Drift is adopted |
+| Paths | `path_provider`, `path` | Database and file-path management |
+| Secure storage | `flutter_secure_storage` | Sensitive key-value storage |
+| Simple preferences | `shared_preferences` | Non-sensitive local preferences |
+| Dependency injection | `get_it` | Small, explicit DI for non-widget layers |
+| Functional error handling | `fpdart` | Typed `Either` support for async/data layers |
+| Localization | `intl` | Formatting and localization support |
+| Logging | `logger` | Structured local logging during development |
+| Images | `cached_network_image` | Disk-backed image loading for remote media |
+| SVG | `flutter_svg` | Vector rendering for icons and illustrations |
 
-### Local Storage
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `drift` | ^2.22.0 | Type-safe SQLite ORM |
-| `sqlite3_flutter_libs` | ^0.5.0 | SQLite binaries for mobile |
-| `path_provider` | ^2.1.0 | File system paths for DB location |
-| `path` | ^1.9.0 | Path manipulation utilities |
-| `flutter_secure_storage` | ^9.2.0 | Encrypted key-value storage (tokens, secrets) |
-| `shared_preferences` | ^2.3.0 | Simple key-value prefs (non-sensitive settings) |
+### Optional Production Dependencies
 
-### Dependency Injection
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `get_it` | ^8.0.0 | Service locator for DI |
+Add only when the product actually needs them:
 
-### Functional Programming
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `fpdart` | ^1.1.0 | `Either` type for typed error handling (lighter than dartz, actively maintained) |
+| Area | Package | When To Add |
+|------|---------|-------------|
+| Crash reporting | `sentry_flutter` | Release monitoring and crash diagnostics |
+| Product analytics | provider-specific SDKs | Once event tracking requirements are defined |
+| Remote config / feature flags | provider-specific SDKs | Only when server-driven behavior is required |
 
-### Localization
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `intl` | any | Date/number/currency formatting for l10n (version managed by Flutter SDK) |
+## Recommended Dev Dependencies
 
-### Logging
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `logger` | ^2.5.0 | Pretty console logging |
+| Area | Package | Why |
+|------|---------|-----|
+| Analysis | `very_good_analysis` | Strong Flutter lint baseline |
+| Code generation | `build_runner` | Required by adopted code generators |
+| BLoC testing | `bloc_test` | State-sequence testing helpers |
+| Mocking | `mocktail` | No-codegen mocks and easy interaction verification |
+| Drift generation | `drift_dev` | Drift code generation support |
+| Route generation | `auto_route_generator` | Route code generation support |
+| Integration testing | `integration_test` | End-to-end and profiling flows |
 
-### UI
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `cached_network_image` | ^3.4.0 | Image loading with disk cache |
-| `flutter_svg` | ^2.0.0 | SVG rendering for icons/illustrations |
+## Packages To Avoid By Default
 
-### Analytics (all optional - behind interface, enable as needed)
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `sentry_flutter` | ^8.12.0 | Crash reporting & performance monitoring |
+These are not universally bad; they are just not default choices for this architecture:
 
----
+| Package / Pattern | Why It Is Not Default |
+|------------------|-----------------------|
+| `dartz` | Heavier functional layer when `fpdart` is enough |
+| `injectable` | Extra code generation for DI that can stay explicit with `get_it` |
+| `mockito` | Code generation overhead when `mocktail` is sufficient |
+| `google_fonts` | Runtime dependency that is often unnecessary when fonts can be bundled |
+| extra navigation wrappers | Adds indirection on top of typed route APIs |
 
-## Dev Dependencies
+## Example `pubspec.yaml` Shape
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `flutter_test` | SDK | Widget & unit test framework |
-| `very_good_analysis` | ^10.2.0 | Strictest Flutter lint set (replaces flutter_lints) |
-| `build_runner` | ^2.4.0 | Code generation orchestrator |
-| `bloc_test` | ^9.1.0 | BLoC-specific testing utilities |
-| `mocktail` | ^1.0.0 | Mocking without code generation |
-| `drift_dev` | ^2.22.0 | Drift code generation |
-| `auto_route_generator` | ^9.0.0 | Route code generation |
-| `integration_test` | SDK | End-to-end testing on device |
-
----
-
-## pubspec.yaml Skeleton
+Use your real package name and current verified versions.
 
 ```yaml
-name: reading_app
-description: A world-class reading application
+name: <app_package>
+description: A Flutter application
 publish_to: 'none'
-version: 1.0.0+1
 
 environment:
-  sdk: ^3.11.4
+  sdk: ^3.0.0
 
 dependencies:
   flutter:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-
-  # State Management
-  flutter_bloc: ^9.0.0
-  equatable: ^2.0.7
-
-  # Navigation
-  auto_route: ^9.0.0
-
-  # Networking
-  dio: ^5.7.0
-  connectivity_plus: ^6.1.0
-
-  # Local Storage
-  drift: ^2.22.0
-  sqlite3_flutter_libs: ^0.5.0
-  path_provider: ^2.1.0
-  path: ^1.9.0
-  flutter_secure_storage: ^9.2.0
-  shared_preferences: ^2.3.0
-
-  # DI
-  get_it: ^8.0.0
-
-  # Functional
-  fpdart: ^1.1.0
-
-  # Localization
-  intl: any
-
-  # Logging
-  logger: ^2.5.0
-
-  # UI
-  cached_network_image: ^3.4.0
-  flutter_svg: ^2.0.0
-
-  # Analytics (enable as needed)
-  # sentry_flutter: ^8.12.0
+  flutter_bloc: ^<verified_version>
+  equatable: ^<verified_version>
+  auto_route: ^<verified_version>
+  dio: ^<verified_version>
+  connectivity_plus: ^<verified_version>
+  drift: ^<verified_version>
+  sqlite3_flutter_libs: ^<verified_version>
+  path_provider: ^<verified_version>
+  path: ^<verified_version>
+  flutter_secure_storage: ^<verified_version>
+  shared_preferences: ^<verified_version>
+  get_it: ^<verified_version>
+  fpdart: ^<verified_version>
+  intl: ^<verified_version>
+  logger: ^<verified_version>
+  cached_network_image: ^<verified_version>
+  flutter_svg: ^<verified_version>
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  very_good_analysis: ^10.2.0
-  build_runner: ^2.4.0
-  bloc_test: ^9.1.0
-  mocktail: ^1.0.0
-  drift_dev: ^2.22.0
-  auto_route_generator: ^9.0.0
+  very_good_analysis: ^<verified_version>
+  build_runner: ^<verified_version>
+  bloc_test: ^<verified_version>
+  mocktail: ^<verified_version>
+  drift_dev: ^<verified_version>
+  auto_route_generator: ^<verified_version>
   integration_test:
     sdk: flutter
-
-flutter:
-  generate: true  # Required for l10n code generation (gen-l10n)
-  uses-material-design: true
-  assets:
-    - assets/images/
-    - assets/icons/
-    - assets/fonts/
-  fonts:
-    - family: Montserrat
-      fonts:
-        - asset: assets/fonts/Montserrat-Regular.ttf
-        - asset: assets/fonts/Montserrat-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/Montserrat-SemiBold.ttf
-          weight: 600
-        - asset: assets/fonts/Montserrat-Bold.ttf
-          weight: 700
 ```
 
----
+In this repository, `<app_package>` resolves to `tricount`.
 
-## What Was Removed & Why
+## Adoption Checklist
 
-| Removed Package | Reason |
-|----------------|--------|
-| `dartz` | Replaced by `fpdart` - smaller, actively maintained, better Dart 3 support |
-| `injectable` + `injectable_generator` | Over-engineering for manual GetIt. Writing `sl.registerLazySingleton(...)` directly is 1 line per service. Annotation-based DI adds code gen overhead for zero gain at this scale. |
-| `mockito` | Replaced by `mocktail` - no code generation needed, same API, faster test iteration |
-| `shimmer` | A shimmer effect is ~30 lines of custom `AnimationController` + `ShaderMask`. No package needed. |
-| `google_fonts` | Bundle fonts in `assets/fonts/` instead. Eliminates runtime HTTP fetch, works offline, zero latency on first render, and reduces app startup time. |
-| `mixpanel_flutter` | Not needed at launch. Add when product analytics is actually integrated. |
-| `firebase_analytics` | Not needed at launch. Add when Firebase is actually integrated. |
-| `custom_lint` | Not needed. `very_good_analysis` is strict enough. |
-| `bloc` (explicit pin) | Transitive via `flutter_bloc`. No need to pin separately. |
+Before adding a dependency:
 
----
-
-## Dependency Count Comparison
-
-| | Before | After |
-|---|--------|-------|
-| Production deps | 22 | 15 |
-| Dev deps | 10 | 7 |
-| Code generators | 3 (`auto_route`, `drift`, `injectable`) | 2 (`auto_route`, `drift`) |
-| **Total** | **32** | **22** |
-
----
-
-## Dependency Justification Matrix
-
-| Requirement | Chosen Package | Alternatives Considered | Why This One |
-|-------------|---------------|------------------------|--------------|
-| HTTP Client | Dio | http, chopper | Interceptor chain, cancel tokens, multipart, mature |
-| State Mgmt | flutter_bloc | Riverpod, Provider, GetX | Event-driven, testable, large community, scales well |
-| Routing | auto_route | go_router, Navigator 2.0 | Deep linking, guards, code gen, nested nav |
-| Local DB | Drift | sqflite, Hive, Isar | Type-safe, reactive, migrations, DAO pattern |
-| DI | GetIt (manual) | Injectable, Riverpod, Provider | Framework-agnostic, works in non-widget code, zero code gen |
-| Secure Storage | flutter_secure_storage | - | iOS Keychain + Android EncryptedSharedPrefs |
-| Error Handling | fpdart (Either) | dartz, Result type, exceptions only | Lighter, maintained, Dart 3 native, functional composition |
-| Logging | logger | logging, print | Pretty formatting, log levels, zero config |
-| Mocking | mocktail | mockito | No code gen, same power, faster iteration |
-| Shimmer | Custom widget | shimmer package | 30 lines vs. a dependency |
-| Fonts | Bundled assets | google_fonts | Offline, no latency, smaller runtime footprint |
-
----
-
-## Version Pinning Policy
-
-- **Major version**: Pin with caret (`^9.0.0`) - allows minor/patch updates
-- **Generated code packages**: Pin generator and runtime to same major version
-- **Flutter SDK**: Pin to minimum supported version
-- **Run `flutter pub outdated` monthly** to check for security patches
-- **Never use `any` version constraint** in production
-
----
-
-## Adding a New Dependency Checklist
-
-Before adding any package, verify:
-
-1. Can this be done in < 50 lines without a package?
-2. Is the package actively maintained? (last publish < 6 months)
-3. pub.dev score > 120?
-4. Does it add native dependencies? (increases build complexity)
-5. What's the transitive dependency count? (`flutter pub deps --style=compact`)
-6. Is there a lighter alternative?
-
-If answers to 1 or 6 are "yes", skip the package.
+1. Confirm the feature actually needs it.
+2. Check whether Flutter SDK support or an existing package already covers the use case.
+3. Verify the latest compatible version.
+4. Add a short reason in the PR description or changelog.
+5. Add tests or validation for the behavior the dependency enables.

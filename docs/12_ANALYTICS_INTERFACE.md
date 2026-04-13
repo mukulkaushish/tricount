@@ -1,5 +1,7 @@
 # 12 - Analytics Interface
 
+> Event names and payload fields below are examples. Keep the structure, but rename events to match the product you are actually shipping.
+
 ## Design Goals
 
 1. **Decouple analytics from features** - no feature code imports Sentry/Mixpanel/Firebase directly

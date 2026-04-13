@@ -1,8 +1,8 @@
-# 19 - Reading Feature Specification
+# 19 - Example Feature Specification
 
 ## Overview
 
-The reader is the core feature of the application. It displays long-form text content with user controls for font size, night mode, bookmarking, and progress tracking.
+This document shows what a detailed feature specification can look like. The example below uses a content-heavy feature to demonstrate API contracts, BLoC responsibilities, UI states, and data flows. Adapt the structure to your real product domain instead of copying the example literally.
 
 ---
 

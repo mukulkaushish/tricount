@@ -1,5 +1,7 @@
 # 11 - Connectivity & Resilience
 
+> Offline examples use a sample content domain to show the pattern. Adapt the same resilience rules to your actual feature set.
+
 ## Connectivity Service
 
 ### Design: Thin Typed Wrapper
