@@ -82,16 +82,121 @@ safe-area handling, and page-level slots.
 | Text input | `TextField(decoration: InputDecoration(labelText: 'Email'))` | Styled by `inputDecorationTheme` |
 | Password input | `TextField(obscureText: true, decoration: ...)` | Framework handles toggle |
 
-For loading state on a button, handle inline — it's ~5 lines, not worth a wrapper:
+For loading state on a button, handle inline — it's ~5 lines, not worth a wrapper. Use `CircularProgressIndicator.adaptive()` so iOS renders `CupertinoActivityIndicator` and Android renders the Material spinner. Lock the button size so layout does not shift:
 
 ```dart
 FilledButton(
   onPressed: isLoading ? null : onSubmit,
   child: isLoading
-    ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
+    ? const SizedBox.square(
+        dimension: 20,
+        child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+      )
     : const Text('Save'),
 )
 ```
+
+---
+
+## Auth Form
+
+**File**: `lib/features/auth/presentation/widgets/auth_form.dart`
+
+Behavioral composition widget for the login credential form. Justified as a shared widget because it bundles validation logic, focus chain management, autofill context, and keyboard handling — not just visual styling.
+
+| Prop | Type | Purpose |
+|------|------|---------|
+| `onLoginPressed` | `void Function(String email, String password)` | Called on valid submit |
+| `onForgotPasswordPressed` | `void Function(String email)` | Called when "Forgot Password?" is tapped |
+| `isLoading` | `bool` | Disables fields and swaps button label to adaptive spinner |
+
+### Adaptive behaviors built into this widget
+
+- **`AutofillGroup`** wraps both fields — triggers iOS Keychain / Android Autofill
+- **`TextInputAction.next`** on email → moves focus to password field via `FocusNode`
+- **`TextInputAction.done`** on password → submits if valid, else shows inline error
+- **`HapticFeedback.lightImpact()`** fired before `onLoginPressed` is called
+- **`HapticFeedback.heavyImpact()`** + shake animation on validation failure
+- **`keyboardType: TextInputType.emailAddress`** on email field
+- **`keyboardType: TextInputType.visiblePassword`** on password field
+- **`textCapitalization: TextCapitalization.none`** on both fields
+- Calls `TextInput.finishAutofillContext()` after successful login signal
+
+### Accessibility
+
+| Requirement | Implementation |
+|---|---|
+| Email field semantics | `Semantics(label: 'Email address', textField: true)` |
+| Password field semantics | `Semantics(label: 'Password', obscured: true, textField: true)` |
+| Error message live region | `Semantics(liveRegion: true)` on error text below field |
+| Show/hide password toggle | `Semantics(label: 'Show password' / 'Hide password', button: true)` |
+| Login button tap target | Min `48×52dp` — enforced by `filledButtonTheme.minimumSize` |
+
+---
+
+## KeyboardDismisser
+
+**File**: `lib/shared/widgets/keyboard_dismisser.dart`
+
+A behavioral wrapper that dismisses the software keyboard when the user performs a gesture. Vendored directly into the project (no external package dependency).
+
+Justified as a shared widget because it provides a reusable behavioral contract used across every form screen — not visual styling.
+
+### Usage
+
+Wrap a `Scaffold` (or the entire `MaterialApp` for global coverage):
+
+```dart
+// Per-screen (recommended for most cases)
+KeyboardDismisser(
+  gestures: const [
+    GestureType.onTap,
+    GestureType.onPanUpdateDownDirection,
+    GestureType.onPanUpdateUpDirection,
+  ],
+  child: Scaffold(...),
+)
+
+// Global — wrapping MaterialApp dismisses keyboard on every screen
+KeyboardDismisser(
+  gestures: const [
+    GestureType.onTap,
+    GestureType.onPanUpdateDownDirection,
+  ],
+  child: MaterialApp.router(...),
+)
+```
+
+### Recommended gesture sets by screen type
+
+| Screen type | Recommended gestures | Reason |
+|---|---|---|
+| **Login / Register** (scrollable form) | `onTap`, `onPanUpdateDownDirection`, `onPanUpdateUpDirection` | Dismiss on tap outside + scroll in either direction |
+| **Chat / feed** (vertical scroll dominant) | `onTap`, `onPanUpdateDownDirection` | Only dismiss on downward swipe to avoid fighting upward scrolling |
+| **Horizontal pager** | `onTap` only | Pan gestures conflict with horizontal page swipe |
+| **Search** | `onTap`, `onPanUpdateDownDirection` | Standard search-dismiss pattern (pull down to dismiss) |
+| **Global / MaterialApp level** | `onTap`, `onPanUpdateDownDirection` | Conservative default — covers most cases without gesture conflicts |
+
+### Important interaction notes
+
+- Gestures **absorbed by child widgets** (buttons, text fields, list tiles) do **not** bubble up — tapping a button will not dismiss the keyboard, only taps on inert areas will.
+- Do **not** combine `onPanUpdate*` gestures with `onScaleUpdate` — the `GestureDetector` underneath will throw an assertion.
+- Do **not** combine `onHorizontalDrag*` with `onVerticalDrag*` simultaneously.
+- On **navigation** (route push/pop), Flutter automatically dismisses the keyboard — `KeyboardDismisser` is not needed for that case.
+
+### Props
+
+| Prop | Type | Default | Purpose |
+|------|------|---------|---------|
+| `gestures` | `List<GestureType>` | `[GestureType.onTap]` | Which gestures trigger dismissal |
+| `behavior` | `HitTestBehavior?` | `null` | Hit test behavior of internal `GestureDetector` |
+| `dragStartBehavior` | `DragStartBehavior` | `.start` | When a drag formally begins |
+| `excludeFromSemantics` | `bool` | `false` | Exclude gesture detector from semantics tree |
+| `child` | `Widget?` | `null` | Wrapped widget |
+
+### Accessibility
+
+The `GestureDetector` inside does not affect screen reader navigation — `excludeFromSemantics` is `false` by default so the widget tree remains accessible. The unfocus action itself does not require an accessible label since the keyboard dismissal is a secondary affordance, not a primary action.
 
 ---
 
