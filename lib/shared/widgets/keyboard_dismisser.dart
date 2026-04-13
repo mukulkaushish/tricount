@@ -147,7 +147,7 @@ enum GestureType {
 
 /// A widget that dismisses the keyboard when the user performs a gesture.
 ///
-/// Wrap any page (typically its [Scaffold]) with this widget to get automatic
+/// Wrap any page (typically its Scaffold) with this widget to get automatic
 /// keyboard dismissal. The default gesture is [GestureType.onTap].
 ///
 /// For form-heavy screens the recommended set is:
@@ -162,7 +162,7 @@ enum GestureType {
 /// )
 /// ```
 ///
-/// Wrapping at the [MaterialApp] level applies the behaviour globally — every
+/// Wrapping at the MaterialApp level applies the behaviour globally — every
 /// page will dismiss the keyboard on the specified gestures without per-screen
 /// boilerplate.
 ///
@@ -200,7 +200,7 @@ class KeyboardDismisser extends StatelessWidget {
   final Widget? child;
 
   @override
-  Widget build(final BuildContext context) => GestureDetector(
+  Widget build(BuildContext context) => GestureDetector(
         excludeFromSemantics: excludeFromSemantics,
         dragStartBehavior: dragStartBehavior,
         behavior: behavior,
@@ -318,12 +318,12 @@ class KeyboardDismisser extends StatelessWidget {
         child: child,
       );
 
-  void _unfocus(final BuildContext context) =>
+  void _unfocus(BuildContext context) =>
       WidgetsBinding.instance.focusManager.primaryFocus?.unfocus();
 
   void _unfocusWithDetails(
-    final BuildContext context,
-    final DragUpdateDetails details,
+    BuildContext context,
+    DragUpdateDetails details,
   ) {
     final dy = details.delta.dy;
     final dx = details.delta.dx;
