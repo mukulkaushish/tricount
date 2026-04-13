@@ -51,6 +51,11 @@ Every dependency adds binary size, maintenance burden, and potential breakage. B
 |---------|---------|---------|
 | `fpdart` | ^1.1.0 | `Either` type for typed error handling (lighter than dartz, actively maintained) |
 
+### Localization
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `intl` | any | Date/number/currency formatting for l10n (version managed by Flutter SDK) |
+
 ### Logging
 | Package | Version | Purpose |
 |---------|---------|---------|
@@ -80,6 +85,7 @@ Every dependency adds binary size, maintenance burden, and potential breakage. B
 | `mocktail` | ^1.0.0 | Mocking without code generation |
 | `drift_dev` | ^2.22.0 | Drift code generation |
 | `auto_route_generator` | ^9.0.0 | Route code generation |
+| `integration_test` | SDK | End-to-end testing on device |
 
 ---
 
@@ -125,6 +131,9 @@ dependencies:
   # Functional
   fpdart: ^1.1.0
 
+  # Localization
+  intl: any
+
   # Logging
   logger: ^2.5.0
 
@@ -144,8 +153,11 @@ dev_dependencies:
   mocktail: ^1.0.0
   drift_dev: ^2.22.0
   auto_route_generator: ^9.0.0
+  integration_test:
+    sdk: flutter
 
 flutter:
+  generate: true  # Required for l10n code generation (gen-l10n)
   uses-material-design: true
   assets:
     - assets/images/
