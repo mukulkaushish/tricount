@@ -9,6 +9,7 @@
 5. **Centralized typography** - one source of truth for all text styles
 6. **Hot-swappable** - theme changes apply instantly without restart
 7. **Platform-native feel** - Material ripples on Android, Cupertino highlights on iOS; adaptive widgets chosen at build time, not runtime branching inside every widget
+8. **Minimal platform code** - prefer Flutter's automatic platform adaptations and adaptive constructors before writing custom iOS/Android code
 
 ---
 
@@ -158,13 +159,17 @@ On `ThemeRestored` event (called at app start), these values are read and applie
 
 **Method**: `static ThemeData build({required AppColorPalette palette, required Brightness brightness, required double fontScale, required TargetPlatform platform})`
 
-**API note**: Use the normalized `*ThemeData` suffix classes when defining component themes in `ThemeData` (e.g., `AppBarThemeData`, `CardThemeData`, `DialogThemeData`, `TabBarThemeData`, `InputDecorationThemeData`). Do not use the widget-name form (`AppBarTheme`, `CardTheme`, etc.) as these refer to the `Theme` wrapper widgets, not the data classes.
+**API notes**:
+- Use the normalized `*ThemeData` suffix classes when defining component themes in `ThemeData` (e.g., `AppBarThemeData`, `CardThemeData`, `DialogThemeData`, `TabBarThemeData`, `InputDecorationThemeData`). Do not use the widget-name form (`AppBarTheme`, `CardTheme`, etc.) as these refer to the `Theme` wrapper widgets, not the data classes.
+- Use `WidgetStateProperty` (not the deprecated `MaterialStateProperty`) for state-resolved properties.
+- Use `Color.withValues(alpha: 0.12)` instead of `Color.withOpacity(0.12)` (deprecated in Flutter 3.27+). The `.withOpacity()` shorthand appears throughout this doc for readability — replace with `.withValues(alpha:)` in actual code.
 
 **The one rule**: every visual property for every component lives in this factory. Feature code never sets `color:`, `padding:`, `shape:`, `textStyle:`, `elevation:`, `borderRadius:`, or any inline styling on a widget. If a widget renders wrong, **fix the theme**, not the call site.
 
 - No custom wrapper widgets (`AppButton`, `AppTextField`, `AppSegmentedControl`, etc.). Use the framework widgets directly; the global theme does the work.
 - Platform differences (ripple, transitions, cupertino variants) are baked into `ThemeData` at build time via `platform` — widgets never branch on `Platform.isIOS`.
 - For per-instance platform swaps the framework handles natively, use the `.adaptive` constructors (`Switch.adaptive`, `Slider.adaptive`, `CircularProgressIndicator.adaptive`, `RefreshIndicator.adaptive`, `Checkbox.adaptive`, `Radio.adaptive`, `AlertDialog.adaptive`, `Icons.adaptive.*`, `showAdaptiveDialog`).
+- Before adding a custom platform fork, check Flutter's automatic platform adaptations and built-in adaptive APIs first.
 
 ### Global theme table
 
@@ -234,7 +239,7 @@ These map directly to Android's `Switch`, `CheckBox`, `RadioButton`, `Spinner`, 
 | Widget | Sub-theme | Notes |
 |--------|-----------|-------|
 | `TextField` / `TextFormField` | `inputDecorationTheme` | `filled: true`, `fillColor: surface`, `border: OutlineInputBorder(12)`, `focusedBorder` with `primary`, `errorBorder` with `error`, `contentPadding: symmetric(16, 14)`, `labelStyle: bodyMedium`, `hintStyle: bodyMedium.copyWith(color: hint)`. Cursor: `primary`. Selection handle: platform default (Flutter handles this automatically). |
-| `Switch` / `Switch.adaptive` | `switchTheme` | `thumbColor`/`trackColor` MaterialStateProperty resolved to palette `primary`/`primary.withOpacity(0.5)`. `.adaptive` becomes `CupertinoSwitch` on iOS — still picks up palette via `activeColor` in the theme. |
+| `Switch` / `Switch.adaptive` | `switchTheme` | `thumbColor`/`trackColor` WidgetStateProperty resolved to palette `primary`/`primary.withOpacity(0.5)`. `.adaptive` becomes `CupertinoSwitch` on iOS — still picks up palette via `activeColor` in the theme. |
 | `Checkbox` / `Checkbox.adaptive` | `checkboxTheme` | `fillColor: primary when selected`, `checkColor: onPrimary`, `shape: RoundedRectangleBorder(4)`, `side: BorderSide(color: onSurface.withOpacity(0.6))`. iOS renders the filled-circle check via `.adaptive`. |
 | `Radio` / `Radio.adaptive` | `radioTheme` | `fillColor: primary selected / onSurface unselected`. |
 | `Slider` / `Slider.adaptive` (SeekBar) | `sliderTheme` | `activeTrackColor: primary`, `inactiveTrackColor: primary.withOpacity(0.24)`, `thumbColor: primary`, `overlayColor: primary.withOpacity(0.12)`, `trackHeight: 4`, `valueIndicatorColor: primary`, `valueIndicatorTextStyle: labelMedium`. On iOS `.adaptive` renders `CupertinoSlider`, which inherits the active color. |

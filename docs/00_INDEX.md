@@ -39,6 +39,7 @@
 | 20 | [Security](20_SECURITY.md) | Sensitive storage, transport security, and defensive defaults |
 | 21 | [Localization](21_LOCALIZATION.md) | Localization setup, ARB workflow, and formatting guidance |
 | 22 | [Accessibility](22_ACCESSIBILITY.md) | Semantics, contrast, touch targets, and assistive-tech support |
+| 23 | [Environments & Flavors](23_ENVIRONMENTS_AND_FLAVORS.md) | Minimal environment strategy first, native flavors only when packaging needs differ |
 | 24 | [Performance & Release Gates](24_PERFORMANCE_AND_RELEASE_GATES.md) | Performance profiling, quality checks, and release readiness |
 
 ## How To Use These Docs

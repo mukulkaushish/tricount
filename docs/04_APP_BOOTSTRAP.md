@@ -26,7 +26,9 @@ main.dart
         ├── 5. Set up global error handlers
         │     ├── FlutterError.onError → CrashReporter
         │     └── PlatformDispatcher.onError → CrashReporter
-        └── 6. runApp(ReadingApp())
+        ├── 6. Set Bloc.observer = AppBlocObserver()
+        ├── 7. Register AppLifecycleObserver
+        └── 8. runApp(App())
 ```
 
 ---
@@ -42,7 +44,7 @@ main.dart
 - Calls `await bootstrap()` which sets up all DI
 - Sets `FlutterError.onError` to report to analytics
 - Sets `PlatformDispatcher.instance.onError` for async errors
-- Calls `runApp()` with the root `ReadingApp` widget
+- Calls `runApp()` with the root `App` widget
 
 **Must NOT contain**: Business logic, DI setup, theme definitions, or route configuration.
 
@@ -66,6 +68,8 @@ main.dart
 6. **Connectivity** - start monitoring network state
 7. **Analytics** - Sentry/Mixpanel/Firebase SDK init
 8. **Feature Dependencies** - repositories, use cases, BLoCs
+9. **BLoC Observer** - `Bloc.observer = AppBlocObserver()` for global state logging/error reporting
+10. **App Lifecycle Observer** - `WidgetsBinding.instance.addObserver(AppLifecycleObserver())` for resume/pause handling
 
 **Error Strategy**: If any init step fails, log the error and throw. The app should not start in a partially initialized state.
 
@@ -79,9 +83,9 @@ Three environments are supported:
 
 | Environment | Base URL | Logging | Analytics |
 |-------------|----------|---------|-----------|
-| `development` | `https://dev-api.readingapp.com/v1` | Verbose | NoOp |
-| `staging` | `https://staging-api.readingapp.com/v1` | Debug | Sentry only |
-| `production` | `https://api.readingapp.com/v1` | Error only | All providers |
+| `development` | `https://dev-api.<domain>/v1` | Verbose | NoOp |
+| `staging` | `https://staging-api.<domain>/v1` | Debug | Sentry only |
+| `production` | `https://api.<domain>/v1` | Error only | All providers |
 
 **Selection**: Via `--dart-define=ENV=production` at build time.
 
@@ -123,7 +127,7 @@ Each module is a separate file with a `void register()` function:
 
 ---
 
-## app.dart (ReadingApp) Specification
+## app.dart Specification
 
 **File**: `lib/app.dart`
 
@@ -149,7 +153,7 @@ MultiBlocProvider
 - `MaterialApp.router` is used (not `MaterialApp`) because auto_route provides the router config
 - Theme is built from `ThemeState`, never hardcoded
 - `ConnectivityBanner` wraps the entire app as a `builder` overlay
-- No inline `ThemeData` construction - always delegate to `AppTheme.fromPalette()`
+- No inline `ThemeData` construction - always delegate to `AppTheme.build()`
 - Locale and localization delegates are configured here
 
 ---

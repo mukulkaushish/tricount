@@ -106,6 +106,17 @@ Common architecture naming:
 - Entity: `Account`
 - Screen/page: `AccountsPage`
 
+## Documentation Maintenance
+
+When adding a new dependency to `pubspec.yaml`:
+
+1. Add it to `docs/03_DEPENDENCY_MANIFEST.md` with the reason
+2. If it introduces a new pattern (state, navigation, storage), update the relevant subsystem doc
+3. If it has a theme extension or sub-theme, add entries to `AppTheme.build()` and `docs/05_THEMING_SYSTEM.md`
+4. If it replaces an existing package, update all docs that reference the old one
+
+When adding a new widget type to the app, follow the maintenance rule in `docs/05_THEMING_SYSTEM.md`.
+
 ## Recommended Commands
 
 ```bash

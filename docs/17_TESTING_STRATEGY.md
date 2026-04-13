@@ -203,7 +203,7 @@ For responsive layout testing:
 | Tablet layout | 800 x 1024 | Two-column layout |
 | Desktop layout | 1400 x 900 | Three-column layout |
 
-Use `tester.binding.window.physicalSizeTestValue` to set screen dimensions in widget tests.
+Use `tester.view.physicalSize` and `tester.view.devicePixelRatio` to set screen dimensions in widget tests. Remember to call `addTearDown(tester.view.reset)` to clean up after the test.
 
 ---
 

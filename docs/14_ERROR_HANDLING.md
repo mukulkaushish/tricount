@@ -63,7 +63,7 @@ sealed class AppException {
 | `StorageException` | Drift / secure storage errors | "Unable to access storage." |
 | `UnknownException` | Catch-all | "An unexpected error occurred." |
 
-> **Note**: The complete hierarchy is documented in [07_JSON_PARSING_CODABLE.md](07_JSON_PARSING_CODABLE.md#appexception-hierarchy). Both listings must stay in sync.
+> `DataMismatchException` is the JSON-specific subtype — see [07_JSON_PARSING_CODABLE.md](07_JSON_PARSING_CODABLE.md#datamismatchexception) for parse-failure context.
 
 ### What Was Removed
 
@@ -131,7 +131,22 @@ The UI uses `exception.userMessage` for display and `exception` type for icon/ac
 
 ---
 
-## fpdart TaskEither (Optional Enhancement)
+## fpdart Either API Reference
+
+`Either<AppException, T>` is the standard return type across the data layer. fpdart provides these built-in methods — do not re-implement them:
+
+| Method | Purpose | Use In |
+|--------|---------|--------|
+| `fold(onLeft, onRight)` | Pattern match both sides | BLoCs — map to states |
+| `map(fn)` | Transform the Right value | Repository — convert DTO to entity |
+| `flatMap(fn)` | Chain operations that return Either | Use cases — compose steps |
+| `mapLeft(fn)` | Transform the Left value | Rare — remap exception types |
+| `getOrElse(defaultFn)` | Extract Right or compute default | UI — provide fallback |
+| `match(onLeft, onRight)` | Alias for `fold` | Same as fold |
+| `isLeft()` / `isRight()` | Check which side | Guard clauses |
+| `toOption()` | Discard error, keep `Option<T>` | When error details aren't needed |
+
+### TaskEither (Optional Enhancement)
 
 For repository methods that are purely async + Either, fpdart's `TaskEither` can make composition cleaner:
 
@@ -190,18 +205,112 @@ Center
 
 ## Global Error Handlers
 
-Set up in `main.dart`:
+Set up in `main.dart` and `bootstrap.dart` -> [04_APP_BOOTSTRAP.md](04_APP_BOOTSTRAP.md#global-error-handling-setup)
 
-### FlutterError.onError
-- Catches: rendering errors, layout overflows, assertion failures
-- Logs to `AppLogger.error()`
-- Reports to `CrashReporter.recordError()`
+| Handler | Catches |
+|---------|---------|
+| `FlutterError.onError` | Rendering errors, layout overflows, assertion failures |
+| `PlatformDispatcher.instance.onError` | Uncaught Future errors, isolate errors |
+| `AppBlocObserver.onError` | BLoC/Cubit errors |
 
-### PlatformDispatcher.instance.onError
-- Catches: uncaught Future errors, isolate errors
-- Same handling as above
-- Returns `true` (error handled)
+All three log to `AppLogger.error()` and report to `CrashReporter.recordError()`.
 
-### BLoC Observer (AppBlocObserver)
-- `onError`: Log + report to CrashReporter
-- `onTransition`: Log at verbose level (debug only)
+BLoC observer hooks -> [08_STATE_MANAGEMENT.md](08_STATE_MANAGEMENT.md#bloc-observer)
+
+---
+
+## Production Crash Prevention
+
+These are the patterns that prevent crashes and race conditions developers commonly miss during development but hit in production.
+
+### SafeStateMixin — Async Callbacks After Dispose
+
+**File**: `lib/shared/mixins/safe_state_mixin.dart`
+
+When an async operation completes after a `StatefulWidget` is unmounted, calling `setState` crashes the app. `SafeStateMixin` guards against this:
+
+```dart
+mixin SafeStateMixin<T extends StatefulWidget> on State<T> {
+  void safeSetState(VoidCallback fn) {
+    if (mounted) setState(fn);
+  }
+}
+```
+
+**When to use**: Any `StatefulWidget` that launches async work (timers, animations, manual futures). Not needed when using BLoC — `BlocBuilder` handles this automatically.
+
+**Rule**: Prefer BLoC/Cubit over `StatefulWidget` + `setState`. Use `SafeStateMixin` only for the rare cases where ephemeral state requires async work (e.g., animation controllers with async triggers).
+
+### App Lifecycle Handling
+
+**File**: `lib/app.dart` or a dedicated `AppLifecycleObserver`
+
+Use `WidgetsBindingObserver` for app lifecycle events:
+
+| Lifecycle State | Action |
+|----------------|--------|
+| `resumed` | Refresh stale data, sync pending changes, re-check auth token |
+| `paused` | Save reading progress, flush pending analytics |
+| `detached` | Cancel non-critical network requests |
+| `inactive` | No action (transient — app switcher, phone call overlay) |
+
+```dart
+class AppLifecycleObserver with WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // Trigger data refresh, sync queue processing
+      case AppLifecycleState.paused:
+        // Save progress, flush analytics
+      case AppLifecycleState.detached:
+        // Cancel non-critical requests
+      case _:
+        break;
+    }
+  }
+}
+```
+
+Register in `bootstrap()` via `WidgetsBinding.instance.addObserver(observer)`.
+
+### Race Conditions — Prevention Checklist
+
+| Scenario | Prevention | Implemented In |
+|----------|-----------|----------------|
+| Concurrent token refresh | `QueuedInterceptorsWrapper` serializes requests | `AuthInterceptor` (Doc 06) |
+| Double-tap on submit | `droppable()` transformer on write events | BLoC event handler (Doc 08) |
+| Search-as-you-type floods | `restartable()` transformer cancels previous | BLoC event handler (Doc 08) |
+| Stale callback after dispose | `SafeStateMixin` checks `mounted` | Stateful widgets |
+| Orphaned network request | `CancelToken.cancel()` in BLoC `close()` | BLoC disposal (Doc 08) |
+| Concurrent Drift writes | Drift's `transaction()` for atomic operations | Repository layer (Doc 10) |
+| Multiple BLoCs refreshing same data | Shared use case pattern | BLoC-to-BLoC (Doc 08) |
+| Deep link during cold start | `AuthGuard` + `AutoRedirectGuard` with deferred nav | Route guard (Doc 09) |
+
+### Concurrent Drift Writes
+
+When multiple sources write to the same table (e.g., sync queue + user action), wrap in a transaction:
+
+```dart
+Future<void> syncAndUpdate(List<Bookmark> remote) async {
+  await database.transaction(() async {
+    await bookmarkDao.deleteAll();
+    await bookmarkDao.insertAll(remote);
+  });
+}
+```
+
+Drift serializes transactions automatically — concurrent transactions queue safely. No manual locking needed.
+
+### Process Death (Android)
+
+Android may kill the app process while it's in the background. When the user returns:
+
+| What Survives | What Doesn't |
+|--------------|-------------|
+| Drift database | In-memory BLoC state |
+| SharedPreferences | Active network requests |
+| flutter_secure_storage | Stream subscriptions |
+| Navigation stack (auto_route restores) | Ephemeral widget state |
+
+**Strategy**: Persist critical state (reading progress, form drafts) to Drift or SharedPreferences immediately — don't rely on BLoC state surviving background. On `resumed`, re-hydrate BLoCs from local storage before fetching remote.

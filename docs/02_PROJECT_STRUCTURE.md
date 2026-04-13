@@ -70,6 +70,8 @@ lib/
 │   │   ├── datetime_extensions.dart       # toReadableDate, timeAgo
 │   │   ├── num_extensions.dart            # toDuration, toFileSize
 │   │   └── iterable_extensions.dart       # separatedBy, groupBy
+│   │   # Start with only the extensions that remove repeated friction.
+│   │   # Add more only after the same pattern appears in multiple places.
 │   │
 │   ├── json/
 │   │   ├── json.dart                      # BARREL
@@ -323,7 +325,7 @@ lib/
 │   │   ├── connectivity_banner.dart
 │   │   ├── app_image.dart                 # Behavioral: cached loading + shimmer + error states
 │   │   ├── shimmer_loading.dart           # Custom, no package
-│   │   └── adaptive_layout.dart
+│   │   └── adaptive_layout.dart           # Optional: add only if breakpoints repeat enough to justify it
 │   └── mixins/
 │       ├── mixins.dart                    # BARREL
 │       └── safe_state_mixin.dart

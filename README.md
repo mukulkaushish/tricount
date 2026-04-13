@@ -43,4 +43,5 @@ flutter test
 1. Align `pubspec.yaml` with the dependency strategy in [docs/03_DEPENDENCY_MANIFEST.md](docs/03_DEPENDENCY_MANIFEST.md).
 2. Create the initial feature/core folder structure from [docs/02_PROJECT_STRUCTURE.md](docs/02_PROJECT_STRUCTURE.md).
 3. Add CI workflow files in `.github/workflows/` using [docs/18_CI_CD_PIPELINE.md](docs/18_CI_CD_PIPELINE.md).
-4. Add performance and release checks from [docs/24_PERFORMANCE_AND_RELEASE_GATES.md](docs/24_PERFORMANCE_AND_RELEASE_GATES.md).
+4. Add the environment/flavor strategy from [docs/23_ENVIRONMENTS_AND_FLAVORS.md](docs/23_ENVIRONMENTS_AND_FLAVORS.md) only as far as the app actually needs it.
+5. Add performance and release checks from [docs/24_PERFORMANCE_AND_RELEASE_GATES.md](docs/24_PERFORMANCE_AND_RELEASE_GATES.md).

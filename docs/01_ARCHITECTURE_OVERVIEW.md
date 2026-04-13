@@ -20,7 +20,7 @@ This application follows **Clean Architecture** with **feature-first organizatio
 - Use cases encapsulate one business operation
 
 ### Open/Closed (O)
-- The theming system is open for new color palettes (add a new `AppColorPalette`) but closed for modification (the `ThemeBuilder` contract never changes)
+- The theming system is open for new color palettes (add a new `AppColorPalette`) but closed for modification (the `AppTheme.build()` contract never changes)
 - Interceptors are stackable - add new ones without modifying `DioHttpClient`
 - Analytics adapters plug in without changing the `AnalyticsService` interface
 
@@ -31,7 +31,7 @@ This application follows **Clean Architecture** with **feature-first organizatio
 
 ### Interface Segregation (I)
 - `AnalyticsService` is split: `EventTracker`, `CrashReporter`, `UserIdentifier`
-- `AuthService` is split: `TokenProvider`, `SessionManager`, `AuthStateNotifier`
+- Auth concerns are split: `TokenProvider` (token CRUD), `AuthBloc` (session state)
 - Consumers depend only on the slice they need
 
 ### Dependency Inversion (D)
@@ -70,11 +70,11 @@ This application follows **Clean Architecture** with **feature-first organizatio
 
 ### Strategy Pattern
 - **Purpose**: Interchangeable algorithms for caching, retry policies, theme generation
-- **Where**: `core/network/strategies/`, `core/theme/`
+- **Where**: `core/network/interceptors/`, `core/theme/`
 
 ### Factory Pattern
 - **Purpose**: Create complex objects (interceptors, theme data, database instances)
-- **Where**: `core/di/`, `core/theme/theme_factory.dart`
+- **Where**: `core/di/`, `core/theme/app_theme.dart`
 
 ---
 
@@ -140,7 +140,7 @@ feature_name/
 
 ## Cross-Cutting Concerns
 
-These live in `core/` and are injected via GetIt:
+These live in `core/` and are injected via GetIt. Feature-scoped BLoCs are provided per-route using auto_route's `WrappedRoute` mixin -> [09_NAVIGATION_DEEP_LINKING.md](09_NAVIGATION_DEEP_LINKING.md#per-route-di-with-wrappedroute)
 
 | Concern | Interface | Default Implementation |
 |---------|-----------|----------------------|
@@ -165,6 +165,11 @@ Extensions are used **only** when they add real value. Do not wrap APIs that pac
 2. **Domain methods** on primitives: `String.toBookId()`, `DateTime.toReadableDate()`, `String.capitalize()`
 3. **Collection utilities**: `Iterable.separatedBy()`, `Iterable.groupBy()`
 
+Extensions should stay:
+- **read-only** when possible
+- **thin** convenience helpers, not hidden business logic
+- **local to repeated pain points**, not speculative abstractions
+
 ### What We Do NOT Create Extensions For
 
 | Don't Wrap | Already Provided By |
@@ -175,5 +180,7 @@ Extensions are used **only** when they add real value. Do not wrap APIs that pac
 | `context.select<T, V>()` | flutter_bloc (built-in) |
 
 **Rule**: If a package already provides a context extension, use it directly. Don't wrap it.
+
+**Rule**: If an extension starts mutating state, triggering navigation, dispatching analytics, or hiding a package API, it is probably the wrong abstraction.
 
 Extensions live in `core/extensions/` and are organized by the type they extend.

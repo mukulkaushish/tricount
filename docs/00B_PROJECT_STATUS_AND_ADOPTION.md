@@ -58,8 +58,9 @@ If a doc describes a file that does not yet exist, treat it as a planned structu
 ### Phase 4: Quality Gates
 
 1. Add GitHub Actions workflows from `18`.
-2. Add performance and release checks from `24`.
-3. Add release automation only after the app can produce meaningful artifacts.
+2. Add environment and flavor strategy from `23`, starting with Dart-side config before native setup.
+3. Add performance and release checks from `24`.
+4. Add release automation only after the app can produce meaningful artifacts.
 
 ## Rules For Contributors
 

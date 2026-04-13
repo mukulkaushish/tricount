@@ -111,7 +111,7 @@ output-localization-file: app_localizations.dart
 2. Translate all keys from the template file
 3. Add the `Locale` to `supportedLocales` in `app.dart`
 4. Run `flutter gen-l10n` to regenerate
-5. For iOS: add the language in Xcode under Runner > Info > Localizations
+5. For iOS: add the language in Xcode under Runner > Info > Localizations when that locale is actually being shipped
 
 ---
 

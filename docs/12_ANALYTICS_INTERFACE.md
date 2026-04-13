@@ -130,7 +130,7 @@ Each adapter implements `AnalyticsService` and wraps a specific SDK:
 |------------------------|--------------------|
 | `initialize()` | `Firebase.initializeApp()` |
 | `trackEvent(event)` | `FirebaseAnalytics.logEvent()` |
-| `trackScreen(name)` | `FirebaseAnalytics.setCurrentScreen()` |
+| `trackScreen(name)` | `FirebaseAnalytics.logEvent(name: 'screen_view', parameters: {'screen_name': name})` |
 | `recordError(error)` | `FirebaseCrashlytics.recordError()` |
 | `identifyUser(id)` | `FirebaseAnalytics.setUserId()` |
 

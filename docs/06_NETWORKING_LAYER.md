@@ -55,7 +55,7 @@ Extension getter `name` returns the uppercase string for Dio's `Options(method:)
 
 **File**: `lib/core/network/http_client.dart`
 
-Abstract class defining the full HTTP contract. Three methods only.
+Abstract class defining the full HTTP contract. Three core methods plus optional parameters for Dio built-in features.
 
 ### `request<T>` - Single Object
 
@@ -67,12 +67,13 @@ Abstract class defining the full HTTP contract. Three methods only.
 | `queryParameters` | `Map<String, dynamic>?` | No | URL query params |
 | `body` | `dynamic` | No | Request body (POST/PUT/PATCH) |
 | `keyPath` | `String?` | No | Dot-notation path to extract nested data |
+| `cancelToken` | `CancelToken?` | No | Dio `CancelToken` for request cancellation |
 
 **Returns**: `Future<Either<AppException, T>>`
 
 ### `requestList<T>` - List Response
 
-Same parameters as `request<T>`. Differences:
+Same parameters as `request<T>` (including `cancelToken`). Differences:
 - `fromJson` is applied to each item in the extracted list
 - Empty/null response returns `right(<T>[])` (not an error)
 - **Returns**: `Future<Either<AppException, List<T>>>`
@@ -85,6 +86,7 @@ Same parameters as `request<T>`. Differences:
 | `method` | `RequestMethod` | Yes | HTTP verb |
 | `queryParameters` | `Map<String, dynamic>?` | No | URL query params |
 | `body` | `dynamic` | No | Request body |
+| `cancelToken` | `CancelToken?` | No | Dio `CancelToken` for request cancellation |
 
 **Returns**: `Future<Either<AppException, EmptyResponse>>`
 
@@ -386,3 +388,40 @@ Each call is one statement. No manual JSON extraction, no try-catch, no status c
 | Interceptors | Test each interceptor in isolation with mock `RequestInterceptorHandler` |
 
 The interface boundary means **repository tests never touch Dio** - they only test that the repository calls the right method with the right parameters and maps the `Either` correctly.
+
+---
+
+## Dio Built-in Features Reference
+
+These are Dio features used internally by `DioHttpClient` or available for advanced use. Do not re-implement them.
+
+| Feature | Dio API | Used For |
+|---------|---------|----------|
+| Request cancellation | `CancelToken` | Cancel in-flight requests (e.g., search-as-you-type, page disposal) |
+| File upload | `FormData` + `MultipartFile` | Multipart uploads when needed |
+| Download progress | `onReceiveProgress` callback | Large file downloads with progress |
+| Upload progress | `onSendProgress` callback | File upload progress tracking |
+| Per-request config | `Options(extra: {...})` | Pass metadata to interceptors (e.g., skip-auth flag) |
+| Response transformer | `Transformer` | Custom response transformation (rarely needed) |
+| Mock adapter | `HttpClientAdapter` | Replace HTTP transport in tests |
+
+### CancelToken Usage
+
+Pass a `CancelToken` through `HttpClient` methods to cancel requests when a screen is disposed or a new search replaces the previous one:
+
+```dart
+final cancelToken = CancelToken();
+
+// In BLoC or repository:
+httpClient.requestList<BookModel>(
+  '/v1/books',
+  method: RequestMethod.get,
+  fromJson: BookModel.fromJson,
+  cancelToken: cancelToken,
+);
+
+// On dispose or new search:
+cancelToken.cancel('Operation cancelled');
+```
+
+Cancelled requests return `Left(NetworkException)` with `DioExceptionType.cancel`. The `RetryInterceptor` does NOT retry cancelled requests.

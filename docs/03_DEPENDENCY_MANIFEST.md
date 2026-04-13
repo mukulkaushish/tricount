@@ -12,6 +12,7 @@ Before adding anything, compare this document with:
 ## Dependency Strategy
 
 - Add packages deliberately, not preemptively.
+- Prefer Flutter SDK capabilities, adaptive widgets, and theming hooks before adding a package or native layer.
 - Prefer stable packages with strong maintenance history and clear documentation.
 - Use caret constraints for packages you actively adopt.
 - Verify actual version choices against the current Flutter and Dart SDK before editing `pubspec.yaml`.
@@ -22,6 +23,7 @@ Before adding anything, compare this document with:
 | Area | Package | Why |
 |------|---------|-----|
 | State management | `flutter_bloc` | Predictable event/state flow for medium and large features |
+| Event transformers | `bloc_concurrency` | `droppable()`, `restartable()`, `sequential()` for BLoC event control |
 | Equality | `equatable` | Lightweight value equality for states and events |
 | Navigation | `auto_route` | Typed routes, guards, and nested routing when the app needs them |
 | Networking | `dio` | Mature interceptor model and flexible request handling |
@@ -90,6 +92,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   flutter_bloc: ^<verified_version>
+  bloc_concurrency: ^<verified_version>
   equatable: ^<verified_version>
   auto_route: ^<verified_version>
   dio: ^<verified_version>
@@ -131,3 +134,10 @@ Before adding a dependency:
 3. Verify the latest compatible version.
 4. Add a short reason in the PR description or changelog.
 5. Add tests or validation for the behavior the dependency enables.
+
+After adding a dependency:
+
+6. Add it to the table above with area and reason.
+7. Add it to the example `pubspec.yaml` shape.
+8. Update the relevant subsystem doc (e.g., new networking package -> Doc 06, new state package -> Doc 08).
+9. If the package provides theme extensions, update `AppTheme.build()` and Doc 05.
