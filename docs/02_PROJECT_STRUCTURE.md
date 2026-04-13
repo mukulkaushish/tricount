@@ -29,6 +29,15 @@ Every folder that contains 2+ public Dart files **must** have a barrel file. Bar
 | Never import a file that lives behind another barrel directly | Always go through the barrel |
 | Barrel files contain ONLY `export` statements | No classes, no functions, no logic |
 
+## Placement Rule Of Thumb
+
+- `core/` = cross-cutting infrastructure and technical contracts
+- `shared/` = reusable presentation-only widgets and UI helpers
+- `features/` = feature-specific `data/`, `domain/`, and `presentation/`
+
+Do not use `shared/` as a catch-all for networking, repository, or domain
+types.
+
 ---
 
 ## Complete Directory Tree
@@ -87,6 +96,7 @@ lib/
 │   │
 │   ├── network/
 │   │   ├── network.dart                   # BARREL
+│   │   ├── empty_response.dart            # Const sentinel for type-safe no-body responses
 │   │   ├── http_client.dart               # Abstract interface: request<T>, requestList<T>, requestEmpty
 │   │   ├── dio_http_client.dart           # Dio implementation of HttpClient
 │   │   ├── request_method.dart            # RequestMethod enum + extension
@@ -312,11 +322,8 @@ lib/
 │               ├── font_size_slider.dart
 │               └── night_mode_toggle.dart
 │
-├── shared/
+├── shared/                                # Reusable presentation-only building blocks
 │   ├── shared.dart                        # BARREL
-│   ├── models/
-│   │   ├── models.dart                    # BARREL
-│   │   └── empty_response.dart            # Const sentinel for void API responses
 │   ├── widgets/
 │   │   ├── widgets.dart                   # BARREL
 │   │   ├── app_loading_page.dart
@@ -363,6 +370,7 @@ export 'theme/theme.dart';
 ### Sub-module barrel: `lib/core/network/network.dart`
 
 ```dart
+export 'empty_response.dart';
 export 'http_client.dart';
 export 'dio_http_client.dart';
 export 'request_method.dart';

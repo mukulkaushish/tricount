@@ -89,7 +89,7 @@ This application follows **Clean Architecture** with **feature-first organizatio
 │              DOMAIN                      │
 │  Entities, Use Cases, Repository         │
 │  Interfaces, Value Objects               │
-│  Depends on: Nothing (pure Dart)         │
+│  Depends on: Pure Dart + pure-Dart Core  │
 ├─────────────────────────────────────────┤
 │               DATA                       │
 │  Repository Impls, DTOs, Data Sources,   │
@@ -110,7 +110,7 @@ This application follows **Clean Architecture** with **feature-first organizatio
 | Layer | Can Import | Cannot Import |
 |-------|-----------|---------------|
 | Presentation | Domain, Core | Data |
-| Domain | Core (only error types & extensions) | Presentation, Data |
+| Domain | Core (pure-Dart only: `AppException`, value helpers, non-Flutter extensions) | Presentation, Data, Flutter |
 | Data | Domain, Core | Presentation |
 | Core | Dart/Flutter SDK, pub packages | Domain, Data, Presentation |
 
@@ -135,6 +135,19 @@ feature_name/
     ├── pages/              # Full-screen page widgets
     └── widgets/            # Feature-specific widgets
 ```
+
+---
+
+## Shared Presentation Primitives
+
+`shared/` is not a fifth architecture layer and not a general-purpose
+"miscellaneous" folder. It exists for reusable presentation-only building
+blocks that are shared across features.
+
+- Put app-wide reusable widgets in `shared/widgets/`
+- Put UI lifecycle helpers in `shared/mixins/`
+- Keep infrastructure in `core/`
+- Keep repositories, use cases, DTOs, and networking types out of `shared/`
 
 ---
 

@@ -44,7 +44,8 @@ Scaffold
 
 **File**: `lib/shared/widgets/app_scaffold.dart`
 
-A base scaffold that includes the connectivity banner and standardized app bar.
+A base scaffold that standardizes common page chrome such as the app bar,
+safe-area handling, and page-level slots.
 
 | Prop | Type | Default | Purpose |
 |------|------|---------|---------|
@@ -58,7 +59,8 @@ A base scaffold that includes the connectivity banner and standardized app bar.
 ### Behavior
 - Applies consistent `AppBar` styling from theme
 - Handles safe area insets
-- Does NOT include connectivity banner (that's at `MaterialApp` level)
+- Does NOT include the connectivity banner; that lives once at the
+  `MaterialApp` level via `ConnectivityBanner`
 
 ---
 

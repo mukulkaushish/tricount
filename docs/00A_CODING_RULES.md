@@ -205,15 +205,19 @@ Column(children: [
 
 ### 8. Package Imports Only
 
-```
+```dart
 // WRONG:
 import '../../../core/network/http_client.dart';
 
 // RIGHT:
-import 'package:<app_package>/core/network/http_client.dart';
+import 'package:<app_package>/core/core.dart';
 ```
 
 `very_good_analysis` enforces `always_use_package_imports`.
+
+When a folder exposes a barrel file, import the barrel instead of a leaf
+file from other modules. For example, use `core/core.dart` rather than
+`core/network/http_client.dart`.
 
 ### 9. Final Parameters
 

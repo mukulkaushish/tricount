@@ -186,9 +186,15 @@ Uses `switch` on `AppException` sealed type for exhaustive handling:
 |---------------|------|-----------|
 | `NetworkException` | `Icons.wifi_off` | Yes |
 | `ServerException` | `Icons.cloud_off` | Yes |
+| `BadRequestException` / `ValidationException` | `Icons.error_outline` | No |
+| `UnauthorizedException` / `ForbiddenException` | `Icons.lock_outline` | No (redirect or access flow) |
 | `NotFoundException` | `Icons.search_off` | No |
-| `UnauthorizedException` | `Icons.lock_outline` | No (redirect to login) |
-| Default | `Icons.error_outline` | Yes |
+| `RateLimitException` | `Icons.schedule` | Yes |
+| `DataMismatchException` / `CacheException` / `StorageException` / `UnknownException` | `Icons.error_outline` | Yes |
+
+Handle every subtype explicitly in the `switch`. If multiple subtypes share
+the same icon/action, group them with pattern alternation rather than using a
+`default` branch.
 
 Layout:
 ```

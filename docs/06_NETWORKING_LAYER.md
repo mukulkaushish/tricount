@@ -94,9 +94,11 @@ No `fromJson` needed. Only validates status code is 2xx.
 
 ### EmptyResponse
 
-**File**: `lib/shared/models/empty_response.dart`
+**File**: `lib/core/network/empty_response.dart`
 
 A `const` sentinel class with no fields. Type-safe "void" for `Either`.
+This lives in `core/network/` because it is part of the `HttpClient`
+contract, not a shared presentation model.
 
 ---
 
