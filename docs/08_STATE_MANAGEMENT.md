@@ -272,7 +272,7 @@ Set globally via `Bloc.observer = AppBlocObserver()` in `bootstrap.dart`.
 ## Error Handling in BLoCs
 
 1. Use Cases return `Either<AppException, T>` (from fpdart)
-2. BLoC maps `Left(failure)` -> emit `Error` state
+2. BLoC maps `Left(exception)` -> emit `Error` state
 3. BLoC maps `Right(data)` -> emit `Loaded` state
 4. Unexpected exceptions in BLoC are caught by `onError` -> reported to analytics
 

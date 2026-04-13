@@ -84,7 +84,7 @@ description: A Flutter application
 publish_to: 'none'
 
 environment:
-  sdk: ^3.0.0
+  sdk: ^3.11.4
 
 dependencies:
   flutter:

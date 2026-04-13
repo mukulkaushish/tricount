@@ -59,9 +59,9 @@ The remaining docs cover specific subsystems and should be consulted when touchi
 
 ### Imports and File Structure
 
-- Use package imports only
-- Use the current package name from `pubspec.yaml` for project imports
-- Cross-feature imports should go through barrel files
+- Keep `dart:` imports for SDK libraries
+- Use `package:<app_package>/...` imports for project files
+- Cross-feature and cross-module project imports should go through barrel files
 - Barrel files should contain `export` statements only
 
 Example:
