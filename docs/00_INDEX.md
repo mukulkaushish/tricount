@@ -32,6 +32,8 @@
 | 18 | [CI/CD Pipeline](18_CI_CD_PIPELINE.md) | GitHub Actions workflows, automated testing, deployment |
 | 19 | [Reading Feature Spec](19_READING_FEATURE_SPEC.md) | Content API integration, reader UI, text controls, bookmarks |
 | 20 | [Security](20_SECURITY.md) | Secure token storage, certificate pinning, data encryption |
+| 21 | [Localization](21_LOCALIZATION.md) | ARB files, gen-l10n setup, pluralization, date/currency formatting |
+| 22 | [Accessibility](22_ACCESSIBILITY.md) | Semantics, contrast ratios, tap targets, screen reader testing |
 
 ---
 

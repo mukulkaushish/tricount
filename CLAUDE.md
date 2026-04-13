@@ -11,7 +11,7 @@ Full template documentation lives in `docs/`. Read order:
 2. `docs/01_ARCHITECTURE_OVERVIEW.md` - SOLID, patterns, layer rules
 3. `docs/02_PROJECT_STRUCTURE.md` - Complete file tree with barrel files
 4. `docs/03_DEPENDENCY_MANIFEST.md` - All packages with justifications
-5. Remaining docs (04-20) cover specific subsystems
+5. Remaining docs (04-22) cover specific subsystems
 
 ## Delivery Workflow
 
