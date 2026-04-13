@@ -8,6 +8,7 @@ All reusable widgets live in `lib/shared/widgets/` and follow these rules:
 2. **Theme-aware** - use `context.colorScheme` and `context.textTheme`, never hardcoded values
 3. **Configurable** - expose meaningful props, not implementation details
 4. **Accessible** - include semantics, adequate touch targets (48x48 minimum)
+5. **No styling wrappers** - do not create wrapper widgets whose sole purpose is visual styling (see 05_THEMING_SYSTEM.md). Use framework widgets (`FilledButton`, `TextField`, `Switch.adaptive`, etc.) directly — the global theme handles styling. Shared widgets are justified only when they add **behavioral composition** (e.g., loading states, cached image fallbacks, shimmer placeholders)
 
 ---
 
@@ -43,7 +44,8 @@ Scaffold
 
 **File**: `lib/shared/widgets/app_scaffold.dart`
 
-A base scaffold that includes the connectivity banner and standardized app bar.
+A base scaffold that standardizes common page chrome such as the app bar,
+safe-area handling, and page-level slots.
 
 | Prop | Type | Default | Purpose |
 |------|------|---------|---------|
@@ -57,7 +59,8 @@ A base scaffold that includes the connectivity banner and standardized app bar.
 ### Behavior
 - Applies consistent `AppBar` styling from theme
 - Handles safe area insets
-- Does NOT include connectivity banner (that's at `MaterialApp` level)
+- Does NOT include the connectivity banner; that lives once at the
+  `MaterialApp` level via `ConnectivityBanner`
 
 ---
 
@@ -67,48 +70,28 @@ A base scaffold that includes the connectivity banner and standardized app bar.
 
 ---
 
-## App Button
+## Buttons, Text Fields, and Other Themed Widgets
 
-**File**: `lib/shared/widgets/app_button.dart`
+**Do not create** `AppButton`, `AppTextField`, or similar styling wrappers. Use framework widgets directly:
 
-| Prop | Type | Default | Purpose |
-|------|------|---------|---------|
-| `label` | `String` | required | Button text |
-| `onPressed` | `VoidCallback?` | `null` | Tap handler (null = disabled) |
-| `variant` | `ButtonVariant` | `.primary` | primary, secondary, text |
-| `isLoading` | `bool` | `false` | Shows spinner, disables tap |
-| `icon` | `IconData?` | `null` | Leading icon |
-| `isExpanded` | `bool` | `false` | Full width |
+| Need | Use | Why |
+|------|-----|-----|
+| Primary CTA | `FilledButton(onPressed: ..., child: Text('Save'))` | Styled by `filledButtonTheme` |
+| Secondary action | `OutlinedButton(onPressed: ..., child: Text('Cancel'))` | Styled by `outlinedButtonTheme` |
+| Text action | `TextButton(onPressed: ..., child: Text('Skip'))` | Styled by `textButtonTheme` |
+| Text input | `TextField(decoration: InputDecoration(labelText: 'Email'))` | Styled by `inputDecorationTheme` |
+| Password input | `TextField(obscureText: true, decoration: ...)` | Framework handles toggle |
 
-### Variants
-- **Primary**: `ElevatedButton` with `colorScheme.primary` background
-- **Secondary**: `OutlinedButton` with `colorScheme.primary` border
-- **Text**: `TextButton` with `colorScheme.primary` text
+For loading state on a button, handle inline — it's ~5 lines, not worth a wrapper:
 
-### Loading State
-When `isLoading` is true:
-- Replace label with `SizedBox(16x16, CircularProgressIndicator(strokeWidth: 2))`
-- Disable tap (ignore `onPressed`)
-- Maintain button dimensions (no layout shift)
-
----
-
-## App Text Field
-
-**File**: `lib/shared/widgets/app_text_field.dart`
-
-| Prop | Type | Default | Purpose |
-|------|------|---------|---------|
-| `label` | `String` | required | Field label |
-| `hint` | `String?` | `null` | Placeholder text |
-| `controller` | `TextEditingController?` | `null` | External controller |
-| `errorText` | `String?` | `null` | Error message below field |
-| `obscureText` | `bool` | `false` | Password field |
-| `keyboardType` | `TextInputType` | `.text` | Keyboard type |
-| `onChanged` | `ValueChanged<String>?` | `null` | Change callback |
-| `prefixIcon` | `IconData?` | `null` | Leading icon |
-
-Uses `InputDecoration` from the global theme - no inline styling.
+```dart
+FilledButton(
+  onPressed: isLoading ? null : onSubmit,
+  child: isLoading
+    ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
+    : const Text('Save'),
+)
+```
 
 ---
 
@@ -190,3 +173,29 @@ Uses `LayoutBuilder` to determine breakpoints. Falls back to `mobile` if larger 
 3. **Promote to shared** when a widget is used in 2+ features
 4. **No inline themes** - all components read from `context.colorScheme` / `context.textTheme`
 5. **No magic numbers** - use `AppDimensions` for spacing, radius, elevation
+
+---
+
+## Accessibility Requirements Per Component
+
+Every shared widget must meet these criteria (see 22_ACCESSIBILITY.md for full guidelines):
+
+| Requirement | Standard | Applies To |
+|-------------|----------|------------|
+| Minimum tap target 48x48 | Material guidelines | All interactive widgets |
+| Color contrast 4.5:1 | WCAG AA | All text on backgrounds |
+| Semantics label | VoiceOver / TalkBack | Custom interactive widgets, decorative images |
+| Font scale tolerance | System settings | All text containers — no fixed heights |
+| Live region | Screen readers | Connectivity banner, error messages |
+
+### Per-Widget Checklist
+
+| Widget | Tap Target | Semantics | Font Scale Safe |
+|--------|-----------|-----------|-----------------|
+| App Loading Page | N/A | `Semantics(label: 'Loading')` on indicator | Yes (flexible layout) |
+| App Error Page | Retry button >=48px | Error message readable by screen reader | Yes |
+| App Scaffold | Back button >=48px (AppBar default) | Automatic via AppBar | Yes |
+| Connectivity Banner | N/A (not dismissible) | `Semantics(liveRegion: true)` | Yes |
+| App Image | N/A (decorative unless tappable) | `ExcludeSemantics` for decorative, `Semantics(label:)` for meaningful | Yes |
+| Shimmer Loading | N/A | `ExcludeSemantics` (placeholder) | Yes |
+| Adaptive Layout | N/A (container) | None needed | Yes |

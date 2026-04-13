@@ -1,5 +1,7 @@
 # 10 - Local Storage
 
+> Table names, DAO examples, and cached entities in this document are samples that demonstrate the storage pattern.
+
 ## Storage Strategy Overview
 
 | Storage Type | Technology | Purpose |
@@ -19,10 +21,31 @@ Drift's `AppDatabase` is used directly — no `LocalDatabase` abstract interface
 
 **Why**: Unlike HTTP (where we swap `DioHttpClient` for mocks), Drift already provides:
 - `.watch()` reactive streams on any query (built-in)
-- DAO pattern for organized data access (built-in)
+- DAO pattern via `@DriftAccessor` annotation (built-in)
 - In-memory database for tests (`NativeDatabase.memory()`)
+- Transactions via `transaction(() async { ... })` (built-in)
+- `UpdateCompanion` for partial row updates (built-in)
+- `SchemaVerifier` for migration testing (built-in)
 
 An abstract interface would duplicate every DAO method signature for zero benefit. DAOs **are** the interface — mock them in tests with `mocktail`.
+
+### Drift Annotations
+
+| Annotation | Purpose |
+|-----------|---------|
+| `@DriftDatabase(tables: [...], daos: [...])` | Declares the database class with its tables and DAOs |
+| `@DriftAccessor(tables: [...])` | Declares a DAO class scoped to specific tables |
+
+### Drift Built-in Patterns
+
+| Feature | API | Use For |
+|---------|-----|---------|
+| Reactive queries | `dao.watchBooks()` returns `Stream<List<Book>>` | Auto-updating UI when cache changes |
+| Transactions | `database.transaction(() async { ... })` | Atomic multi-table writes |
+| Partial updates | `UpdateCompanion({field: Value(newVal)})` | Update specific columns without full row |
+| Batch inserts | `database.batch((b) => b.insertAll(...))` | Efficient bulk writes |
+| Custom SQL | `customSelect(sql, variables: [...])` | Complex queries beyond the expression API |
+| Migration testing | `SchemaVerifier(database)` | Verify schema migrations in unit tests |
 
 ### Database Definition
 
@@ -139,20 +162,9 @@ An abstract interface would duplicate every DAO method signature for zero benefi
 | `deleteAll()` | `Future<void>` | Clear all (logout) |
 | `containsKey(String key)` | `Future<bool>` | Check existence |
 
-### Stored Keys
+### Stored Keys, Platform Security & Token Lifecycle
 
-| Key Constant | Value | Content |
-|-------------|-------|---------|
-| `StorageKeys.accessToken` | `"access_token"` | JWT access token |
-| `StorageKeys.refreshToken` | `"refresh_token"` | JWT refresh token |
-| `StorageKeys.tokenExpiry` | `"token_expiry"` | ISO 8601 expiry time |
-
-### Platform Security
-
-| Platform | Backing Store | Encryption |
-|----------|--------------|------------|
-| iOS | Keychain | Hardware-backed (Secure Enclave when available) |
-| Android | EncryptedSharedPreferences | AES-256 with Android Keystore master key |
+Token storage keys, platform encryption details, and the full token lifecycle -> [20_SECURITY.md](20_SECURITY.md#secure-token-management)
 
 ---
 
@@ -184,6 +196,28 @@ Drift supports schema migrations:
 - Add new columns as nullable or with defaults
 - Test migrations with `SchemaVerifier` in tests
 - Keep migration code in `app_database.dart` `migration` getter
+
+---
+
+## Concurrency & Transactions
+
+Drift serializes database operations automatically — concurrent reads and writes are safe. Use explicit transactions when multiple writes must be atomic:
+
+```dart
+// Atomic: either all succeed or all roll back
+await database.transaction(() async {
+  await bookmarkDao.deleteByBookId(bookId);
+  await bookmarkDao.insertAll(newBookmarks);
+  await progressDao.saveProgress(updatedProgress);
+});
+```
+
+| Scenario | Pattern |
+|----------|---------|
+| Sync queue flush (delete old + insert new) | `transaction()` |
+| Single row insert/update | No transaction needed |
+| Batch insert (100+ rows) | `batch((b) => b.insertAll(...))` for performance |
+| Read-then-write | `transaction()` to prevent stale reads |
 
 ---
 

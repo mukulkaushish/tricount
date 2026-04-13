@@ -1,12 +1,14 @@
 # 07 - JSON Parsing & Codable System
 
+> Example DTOs and payloads in this document are illustrative. Replace them with the fields and models that match your domain.
+
 ## Overview
 
-The app uses a custom JSON parsing system inspired by Swift's Codable protocol. This eliminates code generation dependencies for serialization while providing type safety and clear error messages.
+The app uses a single `JsonParser` mixin that serves as the complete codable system — providing both deserialization (type-safe field extraction) and serialization (null-stripping `toJson`). Inspired by Swift's Codable protocol. No code generation needed.
 
-Two key components:
-1. **JsonCodable** - interface that all DTOs implement
-2. **JsonParser** - mixin with static helpers for type-safe field extraction
+Two components:
+1. **`JsonCodable`** - interface that all DTOs implement (`fromJson` factory + `toJson` method)
+2. **`JsonParser`** - mixin with static helpers used inside `fromJson`/`toJson` implementations
 
 ---
 
@@ -48,6 +50,8 @@ This mixin (provided in full by the user) provides type-safe parsing with clear 
 
 ### Available Methods
 
+All methods are `static` — called as `JsonParser.parseString(json, key)`.
+
 #### Primitive Types
 
 | Method | Returns | Behavior |
@@ -58,55 +62,45 @@ This mixin (provided in full by the user) provides type-safe parsing with clear 
 | `parseIntOptional(json, key)` | `int?` | Returns null if missing/wrong |
 | `parseDouble(json, key)` | `double` | Handles double, int, string parsing |
 | `parseDoubleOptional(json, key)` | `double?` | Returns null if missing/wrong |
-| `parseBool(json, key)` | `bool` | Handles bool, string ("true"/"false"/"1"/"0"), int |
+| `parseBool(json, key)` | `bool` | Handles bool, string ("true"/"false"/"1"/"0"), int (0/non-zero) |
 | `parseBoolOptional(json, key)` | `bool?` | Returns null if missing/wrong |
 
-#### Date/Time
+#### Typed List Parsing
 
 | Method | Returns | Behavior |
 |--------|---------|----------|
-| `parseDateTime(json, key)` | `DateTime` | Handles ISO 8601 strings, millisecond timestamps |
-| `parseDateTimeOptional(json, key)` | `DateTime?` | Returns null if missing/wrong |
-
-#### Collections
-
-| Method | Returns | Behavior |
-|--------|---------|----------|
-| `parseStringList(json, key)` | `List<String>` | Filters non-strings silently |
+| `parseStringList(json, key)` | `List<String>` | Throws on null items, converts non-strings via `.toString()` |
 | `parseStringListOptional(json, key)` | `List<String>?` | Returns null if missing |
-| `parseList<T>(json, key, fromJson)` | `List<T>` | Parses list of objects using factory |
-| `parseObject<T>(json, key, fromJson)` | `T` | Parses nested object using factory |
+| `parseIntList(json, key)` | `List<int>` | Handles int, double (if whole), string items |
+| `parseIntListOptional(json, key)` | `List<int>?` | Returns null if missing |
+| `parseDoubleList(json, key)` | `List<double>` | Handles double, int, string items |
+| `parseDoubleListOptional(json, key)` | `List<double>?` | Returns null if missing |
+| `parseBoolList(json, key)` | `List<bool>` | Handles bool, string, int items |
+| `parseBoolListOptional(json, key)` | `List<bool>?` | Returns null if missing |
 
-#### Serialization
+#### Object & Generic List Parsing
 
 | Method | Returns | Behavior |
 |--------|---------|----------|
-| `toJson(fields)` | `Map<String, dynamic>` | Strips null values, serializes nested objects |
-| `validateRequiredFields(json, fields)` | `void` | Throws if any required field is missing |
+| `parseList<T>(json, key, fromJson)` | `List<T>` | Parses list of objects using factory |
+| `parseListOptional<T>(json, key, fromJson)` | `List<T>?` | Returns null if missing |
+| `parseObject<T>(json, key, fromJson)` | `T` | Parses nested object using factory |
+| `parseObjectOptional<T>(json, key, fromJson)` | `T?` | Returns null if missing |
+
+#### Serialization & Utilities
+
+| Method | Returns | Behavior |
+|--------|---------|----------|
+| `toJson(fields)` | `Map<String, dynamic>` | Strips null values, serializes nested objects recursively |
+| `validateRequiredFields(json, fields)` | `void` | Throws if any required field is missing/null |
+| `hasKey(json, key)` | `bool` | Check if key exists in map |
+| `getKeys(json)` | `Set<String>` | Returns all keys in the map |
 
 ---
 
-## AppException Hierarchy
+## DataMismatchException
 
-**File**: `lib/core/error/app_exception.dart`
-
-```
-AppException (abstract base)
-├── NetworkException           # Connectivity / timeout issues
-├── ServerException            # 5xx responses
-├── BadRequestException        # 400
-├── UnauthorizedException      # 401
-├── ForbiddenException         # 403
-├── NotFoundException          # 404
-├── ValidationException        # 422 with field errors
-├── RateLimitException         # 429
-├── DataMismatchException      # JSON parsing type mismatches
-├── CacheException             # Local storage read/write failures
-├── StorageException           # Drift / secure storage errors
-└── UnknownException           # Catch-all
-```
-
-### DataMismatchException
+> Full `AppException` hierarchy is defined in [14_ERROR_HANDLING.md](14_ERROR_HANDLING.md). `DataMismatchException` is the JSON-specific subtype relevant here.
 
 Used by `JsonParser` when a field is missing, null (when required), or the wrong type.
 
@@ -185,9 +179,41 @@ For models with complex validation, use `validateRequiredFields` before parsing:
 | `page_count` | `pageCount` | `int` | Yes | `parseInt` |
 | `rating` | `rating` | `double?` | No | `parseDoubleOptional` |
 | `categories` | `categories` | `List<String>` | Yes | `parseStringList` |
-| `published_at` | `publishedAt` | `DateTime` | Yes | `parseDateTime` |
 | `is_premium` | `isPremium` | `bool` | Yes | `parseBool` |
-| `chapters` | `chapters` | `List<ChapterModel>` | No | `parseList` with `ChapterModel.fromJson` |
+| `chapters` | `chapters` | `List<ChapterModel>?` | No | `parseListOptional` with `ChapterModel.fromJson` |
+
+---
+
+## Background Parsing for Large Payloads
+
+When a JSON response contains 500+ items (e.g., paginated list responses with large pages, batch sync payloads), parsing on the main isolate can cause frame drops (>16ms).
+
+### When to Use Background Parsing
+
+| Payload Size | Strategy |
+|-------------|----------|
+| < 100 items | Parse inline (main isolate) |
+| 100-500 items | Parse inline, monitor with DevTools |
+| 500+ items | Use `compute()` to parse in background isolate |
+
+### Implementation
+
+The parsing function must be **top-level** or **static** (isolates cannot capture closures):
+
+```dart
+// Top-level function — required for compute()
+List<BookModel> parseBooks(String responseBody) {
+  final parsed = (jsonDecode(responseBody) as List<Object?>)
+      .cast<Map<String, Object?>>();
+  return parsed.map(BookModel.fromJson).toList();
+}
+
+// In repository:
+final response = await httpClient.requestRaw('/v1/books');
+final books = await compute(parseBooks, response.body);
+```
+
+**Rule**: Only use `compute()` when profiling confirms jank. The isolate spawn overhead (~2ms) makes it wasteful for small payloads.
 
 ---
 

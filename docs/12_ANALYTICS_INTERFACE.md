@@ -1,5 +1,7 @@
 # 12 - Analytics Interface
 
+> Event names and payload fields below are examples. Keep the structure, but rename events to match the product you are actually shipping.
+
 ## Design Goals
 
 1. **Decouple analytics from features** - no feature code imports Sentry/Mixpanel/Firebase directly
@@ -128,7 +130,7 @@ Each adapter implements `AnalyticsService` and wraps a specific SDK:
 |------------------------|--------------------|
 | `initialize()` | `Firebase.initializeApp()` |
 | `trackEvent(event)` | `FirebaseAnalytics.logEvent()` |
-| `trackScreen(name)` | `FirebaseAnalytics.setCurrentScreen()` |
+| `trackScreen(name)` | `FirebaseAnalytics.logEvent(name: 'screen_view', parameters: {'screen_name': name})` |
 | `recordError(error)` | `FirebaseCrashlytics.recordError()` |
 | `identifyUser(id)` | `FirebaseAnalytics.setUserId()` |
 
@@ -171,11 +173,6 @@ Analytics events are NOT fired from widgets. They are fired from:
 2. **Route observer** - auto_route's `AutoRouteObserver` for screen tracking
 3. **Global error handlers** - `FlutterError.onError`, `PlatformDispatcher.onError`
 
-### AutoRouteObserver for Screen Tracking
+### Screen Tracking via AutoRouteObserver
 
-A custom `AnalyticsRouteObserver` extends `AutoRouteObserver`:
-- `didPush` → `trackScreen(route.name)`
-- `didPop` → optional: track screen exit
-- `didReplace` → `trackScreen(newRoute.name)`
-
-Registered in `MaterialApp.router`'s `navigatorObservers`.
+Implementation details → [09_NAVIGATION_DEEP_LINKING.md](09_NAVIGATION_DEEP_LINKING.md#screen-tracking-with-autorouteobserver)

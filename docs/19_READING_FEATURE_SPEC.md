@@ -1,8 +1,45 @@
-# 19 - Reading Feature Specification
+# 19 - Example Feature Specification
 
 ## Overview
 
-The reader is the core feature of the application. It displays long-form text content with user controls for font size, night mode, bookmarking, and progress tracking.
+This document shows what a detailed feature specification can look like. The example below uses a content-heavy feature to demonstrate API contracts, BLoC responsibilities, UI states, and data flows. Adapt the structure to your real product domain instead of copying the example literally.
+
+---
+
+## Feature Spec Template (Copy This)
+
+When creating a new feature, document it using this structure. Each section maps to the architecture layers:
+
+### 1. API Contract
+- List endpoints with method, path, purpose, and response shape
+- Define pagination, filtering, and sorting parameters
+- List required headers
+
+### 2. Data Layer
+- **Models**: List JSON keys, field types, required/optional, `JsonParser` method
+- **Repository**: Define methods with `Future<Either<AppException, T>>` signatures
+- **Data sources**: Remote (API) and local (Drift DAO) with cache strategy
+
+### 3. Domain Layer
+- **Entities**: Pure Dart, immutable domain objects
+- **Use Cases**: One per business operation, receives repository via constructor
+- **Repository interface**: Abstract class in `domain/repositories/`
+
+### 4. Presentation Layer
+- **BLoC/Cubit**: Events table, state definition, transformer choices
+- **Page**: Widget tree sketch, which `BlocBuilder`/`BlocSelector` wraps what
+- **WrappedRoute**: What providers the page injects via `wrappedRoute()`
+
+### 5. User Flows
+- Step-by-step flow for the feature's primary action
+- Offline behavior and retry strategy
+- Deep link entry points (if applicable)
+
+---
+
+## Example: Content Reader Feature
+
+The example below applies the template to a reading/content feature.
 
 ---
 
@@ -44,6 +81,37 @@ The reader is the core feature of the application. It displays long-form text co
 ---
 
 ## Reader Page Specification
+
+### Route Setup (WrappedRoute)
+
+> This is an illustrative target-architecture example for the point where the
+> app adopts `auto_route`. The current repository does not yet include that
+> package, so treat this snippet as planned structure rather than current code.
+
+`ReaderPage` implements `AutoRouteWrapper` to inject its scoped BLoC:
+
+```dart
+@RoutePage()
+class ReaderPage extends StatelessWidget implements AutoRouteWrapper {
+  final String bookId;
+  final int chapterIndex;
+
+  const ReaderPage({
+    super.key,
+    @PathParam('bookId') required this.bookId,
+    @PathParam('chapterIndex') required this.chapterIndex,
+  });
+
+  @override
+  Widget wrappedRoute(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<ReaderBloc>()
+        ..add(ReaderChapterRequested(bookId: bookId, chapterIndex: chapterIndex)),
+      child: this,
+    );
+  }
+}
+```
 
 ### ReaderBloc
 

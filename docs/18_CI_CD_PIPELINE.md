@@ -1,187 +1,132 @@
 # 18 - CI/CD Pipeline
 
-## Overview
+## Purpose
 
-GitHub Actions is the primary CI/CD platform. Three workflows handle the full lifecycle:
+This document describes the recommended CI/CD setup for the target architecture. The repository does not currently include these workflows; add them as the codebase matures.
+
+## Minimum First Step
+
+Before introducing release automation, add a simple CI workflow in `.github/workflows/ci.yml` that:
+
+- checks out the code
+- installs Flutter
+- runs `flutter pub get`
+- runs `dart format --set-exit-if-changed .`
+- runs `flutter analyze`
+- runs `flutter test`
+
+This is the first workflow the repository should adopt.
+
+## Recommended Workflow Set
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| `ci.yml` | Push to any branch, PR to main | Lint, test, build verification |
-| `release.yml` | Tag `v*` pushed | Build release artifacts, deploy |
-| `nightly.yml` | Cron (daily 2am UTC) | Full test suite + coverage report |
+| `ci.yml` | Push and pull request | Formatting, analysis, tests, and build verification |
+| `release.yml` | Version tag or manual dispatch | Release builds and optional store deployment |
+| `nightly.yml` | Scheduled run | Longer-running checks, outdated dependencies, optional profiling |
 
----
+## CI Workflow Guidance
 
-## CI Workflow (`ci.yml`)
-
-### Trigger
+### Recommended Triggers
 
 ```yaml
 on:
   push:
-    branches: [main, develop, 'feature/**']
+    branches: [main]
   pull_request:
     branches: [main]
 ```
 
-### Jobs
+Expand branch patterns only when the team needs them.
 
-#### 1. Analyze
+### Recommended Jobs
 
-| Step | Command | Purpose |
-|------|---------|---------|
-| Checkout | `actions/checkout@v4` | Get code |
-| Setup Flutter | `subosito/flutter-action@v2` | Install Flutter SDK |
-| Get dependencies | `flutter pub get` | Install packages |
-| Run code gen | `dart run build_runner build --delete-conflicting-outputs` | Generate code |
-| Analyze | `flutter analyze` | Static analysis |
-| Format check | `dart format --set-exit-if-changed .` | Formatting |
+1. `format-and-analyze`
+2. `test`
+3. `build-android`
+4. `build-ios` when macOS runners are justified
 
-#### 2. Test
+### Recommended Checks
 
-| Step | Command | Purpose |
-|------|---------|---------|
-| Checkout | `actions/checkout@v4` | Get code |
-| Setup Flutter | `subosito/flutter-action@v2` | Install Flutter SDK |
-| Get dependencies | `flutter pub get` | Install packages |
-| Run code gen | `dart run build_runner build --delete-conflicting-outputs` | Generate code |
-| Run tests | `flutter test --coverage` | Run all tests |
-| Check coverage | Custom step: parse lcov, fail if < 80% | Coverage gate |
-| Upload coverage | `codecov/codecov-action@v4` | Coverage report |
+- formatting
+- static analysis
+- unit and widget tests
+- integration tests once they exist
+- at least one release-mode or release-like build verification job before shipping
 
-#### 3. Build (Android)
+## Workflow Hygiene
 
-| Step | Command | Purpose |
-|------|---------|---------|
-| Checkout | `actions/checkout@v4` | Get code |
-| Setup Java | `actions/setup-java@v4` (JDK 17) | Android build |
-| Setup Flutter | `subosito/flutter-action@v2` | Install Flutter SDK |
-| Get dependencies | `flutter pub get` | Install packages |
-| Run code gen | `dart run build_runner build --delete-conflicting-outputs` | Generate code |
-| Build APK | `flutter build apk --release --dart-define=ENV=staging` | Verify build |
+### Concurrency
 
-#### 4. Build (iOS)
+Use workflow or job concurrency so stale runs are cancelled when a branch receives new commits. This keeps feedback fast and prevents wasting CI minutes on obsolete runs.
 
-| Step | Command | Purpose |
-|------|---------|---------|
-| Runs on | `macos-latest` | macOS required for iOS |
-| Checkout | `actions/checkout@v4` | Get code |
-| Setup Flutter | `subosito/flutter-action@v2` | Install Flutter SDK |
-| Get dependencies | `flutter pub get` | Install packages |
-| Run code gen | `dart run build_runner build --delete-conflicting-outputs` | Generate code |
-| Build iOS | `flutter build ios --release --no-codesign --dart-define=ENV=staging` | Verify build |
+### Dependency Caching
 
----
+Use GitHub Actions dependency caching where it meaningfully reduces setup time, but keep cache keys scoped and predictable.
 
-## Release Workflow (`release.yml`)
+### Artifact Handling
 
-### Trigger
+- upload coverage or test reports when they help review
+- upload release artifacts only from trusted branches, tags, or protected environments
+- keep retention conservative to avoid unnecessary storage growth
+
+## Suggested CI Shape
 
 ```yaml
+name: CI
+
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 ```
 
-### Jobs
+Then define jobs for checkout, Flutter setup, dependency install, analysis, tests, and build verification.
 
-#### 1. Build Android Release
+## Release Workflow Guidance
 
-| Step | Details |
-|------|---------|
-| Decode keystore | Secrets: `ANDROID_KEYSTORE_BASE64`, `KEY_ALIAS`, `KEY_PASSWORD`, `STORE_PASSWORD` |
-| Build AAB | `flutter build appbundle --release --dart-define=ENV=production` |
-| Upload artifact | `actions/upload-artifact@v4` |
+Add `release.yml` only after:
 
-#### 2. Build iOS Release
+- the app produces meaningful release artifacts
+- signing strategy is documented
+- secrets management is ready
+- rollback expectations are clear
 
-| Step | Details |
-|------|---------|
-| Setup certificates | Using `fastlane match` or manual provisioning profiles from secrets |
-| Build IPA | `flutter build ipa --release --dart-define=ENV=production` |
-| Upload artifact | `actions/upload-artifact@v4` |
+Recommended release checks:
 
-#### 3. Deploy (optional)
+- tagged version matches `pubspec.yaml`
+- release build succeeds
+- required secrets are present
+- optional deployment steps are limited to protected environments
 
-| Target | Tool | Trigger |
-|--------|------|---------|
-| Google Play (internal) | `r0adkll/upload-google-play@v1` | Automatic on tag |
-| TestFlight | `apple-actions/upload-testflight-build@v1` | Automatic on tag |
-| Firebase App Distribution | `wzieba/Firebase-Distribution-Github-Action@v1` | Manual workflow_dispatch |
+## Nightly Workflow Guidance
 
----
+Use a scheduled workflow for:
 
-## Nightly Workflow (`nightly.yml`)
+- full test suite runs that are too expensive for every PR
+- `flutter pub outdated`
+- release smoke builds
+- optional performance or benchmark runs once the app has stable critical paths
 
-### Trigger
+## Branch Protection Recommendations
 
-```yaml
-on:
-  schedule:
-    - cron: '0 2 * * *'  # 2 AM UTC daily
-```
+- require pull requests for `main`
+- require passing CI checks
+- require at least one review when the team size justifies it
+- dismiss stale approvals on new pushes for important branches
 
-### Jobs
+## Local Parity
 
-1. Full test suite with coverage
-2. `flutter pub outdated` → annotate PR if packages need updates
-3. `dart analyze` with strict mode
-4. Build both platforms
-5. Report results to Slack/email (optional)
+Document local equivalents for CI checks in `README.md` or a future `Makefile` / `scripts/` directory:
 
----
+- `format`
+- `analyze`
+- `test`
+- `build`
 
-## Secrets Required
-
-| Secret | Used By | Purpose |
-|--------|---------|---------|
-| `ANDROID_KEYSTORE_BASE64` | Release | Signing keystore |
-| `KEY_ALIAS` | Release | Keystore key alias |
-| `KEY_PASSWORD` | Release | Key password |
-| `STORE_PASSWORD` | Release | Keystore password |
-| `APPLE_CERTIFICATE_BASE64` | Release | iOS signing certificate |
-| `APPLE_PROVISIONING_PROFILE` | Release | iOS provisioning profile |
-| `CODECOV_TOKEN` | CI | Coverage upload |
-| `SENTRY_DSN` | Build | Sentry crash reporting |
-| `SENTRY_AUTH_TOKEN` | Release | Sentry source maps upload |
-
----
-
-## Branch Protection Rules (GitHub)
-
-| Rule | Setting |
-|------|---------|
-| Require PR reviews | 1 reviewer minimum |
-| Require status checks | `analyze`, `test`, `build-android` must pass |
-| Require up-to-date branches | PR branch must be up to date with main |
-| Dismiss stale reviews | On new push to PR |
-| Restrict force push | On `main` branch |
-
----
-
-## Version Strategy
-
-| Format | Example | Where |
-|--------|---------|-------|
-| Semantic versioning | `1.2.3` | `pubspec.yaml` version field |
-| Build number | `+45` | Auto-incremented by CI (run number) |
-| Git tag | `v1.2.3` | Triggers release workflow |
-
-CI overrides build number: `flutter build --build-number=${{ github.run_number }}`
-
----
-
-## Local Development Scripts
-
-These scripts should exist in a `Makefile` or `scripts/` directory:
-
-| Command | Purpose |
-|---------|---------|
-| `make gen` | Run `build_runner build` |
-| `make gen-watch` | Run `build_runner watch` |
-| `make test` | Run all tests |
-| `make test-coverage` | Run tests with coverage report |
-| `make analyze` | Run `flutter analyze` |
-| `make format` | Run `dart format .` |
-| `make clean` | `flutter clean && flutter pub get` |
-| `make ci` | Run full CI check locally (analyze + format + test) |
+Local parity reduces “works on my machine” drift and makes CI failures easier to reproduce.

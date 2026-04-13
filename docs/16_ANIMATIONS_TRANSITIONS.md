@@ -18,19 +18,21 @@
 
 | Platform | Transition | Duration | Curve |
 |----------|-----------|----------|-------|
-| Android | Shared Axis (horizontal) | 300ms | `Curves.easeInOut` |
-| iOS | Cupertino slide | 350ms | iOS default |
+| Android | Zoom (`ZoomPageTransitionsBuilder`) | 300ms | Material default |
+| iOS | Cupertino slide (`CupertinoPageTransitionsBuilder`) | 350ms | iOS default |
 
 Configured in `AppTheme.build()` via `pageTransitionsTheme`.
 
 ### Route-Specific Overrides
 
-| Route | Transition | Duration | Reason |
-|-------|-----------|----------|--------|
-| Reader page | Fade | 250ms | Immersive content entry |
-| Modal bottom sheet | Slide up | 300ms | Platform convention |
-| Settings sub-pages | Fade through | 200ms | Lightweight navigation |
-| Tab switch | None (instant) | 0ms | Tabs should feel instant |
+Use auto_route's `CustomRoute` with built-in `TransitionsBuilders` -> [09_NAVIGATION_DEEP_LINKING.md](09_NAVIGATION_DEEP_LINKING.md#built-in-transitionsbuilders-library)
+
+| Route | TransitionsBuilder | Duration | Reason |
+|-------|-------------------|----------|--------|
+| Reader page | `TransitionsBuilders.fadeIn` | 250ms | Immersive content entry |
+| Modal bottom sheet | `TransitionsBuilders.slideBottom` | 300ms | Platform convention |
+| Settings sub-pages | `TransitionsBuilders.fadeIn` | 200ms | Lightweight navigation |
+| Tab switch | `TransitionsBuilders.noTransition` | 0ms | Tabs should feel instant |
 
 ---
 
@@ -95,9 +97,7 @@ Set in `AppTheme.build()`:
 ```
 pageTransitionsTheme: PageTransitionsTheme(
   builders: {
-    TargetPlatform.android: SharedAxisPageTransitionsBuilder(
-      transitionType: SharedAxisTransitionType.horizontal,
-    ),
+    TargetPlatform.android: ZoomPageTransitionsBuilder(),
     TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
   },
 )

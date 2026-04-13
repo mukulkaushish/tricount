@@ -27,21 +27,7 @@
 
 ### Token Refresh Flow
 
-```
-Request → 401 Response
-    │
-    ▼
-AuthInterceptor locks queue
-    │
-    ▼
-Read refresh token from SecureStore
-    │
-    ├── Refresh token exists → POST /v1/auth/refresh
-    │   ├── Success → save new tokens, retry original request
-    │   └── Refresh fails → clear tokens, emit SessionExpired, redirect to login
-    │
-    └── No refresh token → clear tokens, redirect to login
-```
+Handled by `AuthInterceptor` (extends `QueuedInterceptorsWrapper`) → [06_NETWORKING_LAYER.md](06_NETWORKING_LAYER.md#authinterceptor-extends-queuedinterceptorswrapper)
 
 ### Token Lifecycle
 
@@ -71,7 +57,44 @@ Read refresh token from SecureStore
 | EncryptedSharedPreferences | AES-256 | Hardware-backed encryption |
 | `android:allowBackup` | `false` | Prevent backup of secure data |
 | `android:usesCleartextTraffic` | `false` | Enforce HTTPS |
-| Network security config | Pin to production domain | Certificate pinning |
+| Network security config | Disable cleartext + configure trust anchors | HTTPS enforcement / trust policy |
+
+#### HTTPS Enforcement (network_security_config.xml)
+
+**File**: `android/app/src/main/res/xml/network_security_config.xml`
+
+This XML example disables cleartext traffic and configures trust anchors via
+`base-config` and `debug-overrides`. It enforces HTTPS and does **not**
+implement certificate or public-key pinning by itself.
+
+The current repository does not yet include this file or the corresponding
+`AndroidManifest.xml` wiring below, so treat this as a target-state Android
+configuration example.
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <base-config cleartextTrafficPermitted="false">
+    <trust-anchors>
+      <certificates src="system" />
+    </trust-anchors>
+  </base-config>
+  <!-- Debug-only exception for local development -->
+  <debug-overrides>
+    <trust-anchors>
+      <certificates src="user" />
+    </trust-anchors>
+  </debug-overrides>
+</network-security-config>
+```
+
+Reference in `AndroidManifest.xml`:
+```xml
+<application
+  android:networkSecurityConfig="@xml/network_security_config"
+  android:usesCleartextTraffic="false"
+  ...>
+```
 
 ---
 

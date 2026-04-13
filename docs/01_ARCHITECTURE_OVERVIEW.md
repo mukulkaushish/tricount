@@ -20,7 +20,7 @@ This application follows **Clean Architecture** with **feature-first organizatio
 - Use cases encapsulate one business operation
 
 ### Open/Closed (O)
-- The theming system is open for new color palettes (add a new `AppColorPalette`) but closed for modification (the `ThemeBuilder` contract never changes)
+- The theming system is open for new color palettes (add a new `AppColorPalette`) but closed for modification (the `AppTheme.build()` contract never changes)
 - Interceptors are stackable - add new ones without modifying `DioHttpClient`
 - Analytics adapters plug in without changing the `AnalyticsService` interface
 
@@ -31,7 +31,7 @@ This application follows **Clean Architecture** with **feature-first organizatio
 
 ### Interface Segregation (I)
 - `AnalyticsService` is split: `EventTracker`, `CrashReporter`, `UserIdentifier`
-- `AuthService` is split: `TokenProvider`, `SessionManager`, `AuthStateNotifier`
+- Auth concerns are split: `TokenProvider` (token CRUD), `AuthBloc` (session state)
 - Consumers depend only on the slice they need
 
 ### Dependency Inversion (D)
@@ -70,11 +70,11 @@ This application follows **Clean Architecture** with **feature-first organizatio
 
 ### Strategy Pattern
 - **Purpose**: Interchangeable algorithms for caching, retry policies, theme generation
-- **Where**: `core/network/strategies/`, `core/theme/`
+- **Where**: `core/network/interceptors/`, `core/theme/`
 
 ### Factory Pattern
 - **Purpose**: Create complex objects (interceptors, theme data, database instances)
-- **Where**: `core/di/`, `core/theme/theme_factory.dart`
+- **Where**: `core/di/`, `core/theme/app_theme.dart`
 
 ---
 
@@ -89,7 +89,7 @@ This application follows **Clean Architecture** with **feature-first organizatio
 │              DOMAIN                      │
 │  Entities, Use Cases, Repository         │
 │  Interfaces, Value Objects               │
-│  Depends on: Nothing (pure Dart)         │
+│  Depends on: Pure Dart + pure-Dart Core  │
 ├─────────────────────────────────────────┤
 │               DATA                       │
 │  Repository Impls, DTOs, Data Sources,   │
@@ -110,7 +110,7 @@ This application follows **Clean Architecture** with **feature-first organizatio
 | Layer | Can Import | Cannot Import |
 |-------|-----------|---------------|
 | Presentation | Domain, Core | Data |
-| Domain | Core (only error types & extensions) | Presentation, Data |
+| Domain | Core (pure-Dart only: `AppException`, value helpers, non-Flutter extensions) | Presentation, Data, Flutter |
 | Data | Domain, Core | Presentation |
 | Core | Dart/Flutter SDK, pub packages | Domain, Data, Presentation |
 
@@ -138,20 +138,33 @@ feature_name/
 
 ---
 
+## Shared Presentation Primitives
+
+`shared/` is not a fifth architecture layer and not a general-purpose
+"miscellaneous" folder. It exists for reusable presentation-only building
+blocks that are shared across features.
+
+- Put app-wide reusable widgets in `shared/widgets/`
+- Put UI lifecycle helpers in `shared/mixins/`
+- Keep infrastructure in `core/`
+- Keep repositories, use cases, DTOs, and networking types out of `shared/`
+
+---
+
 ## Cross-Cutting Concerns
 
-These live in `core/` and are injected via GetIt:
+These live in `core/` and are injected via GetIt. Feature-scoped BLoCs are provided per-route using auto_route's `WrappedRoute` mixin -> [09_NAVIGATION_DEEP_LINKING.md](09_NAVIGATION_DEEP_LINKING.md#per-route-di-with-wrappedroute)
 
 | Concern | Interface | Default Implementation |
 |---------|-----------|----------------------|
-| HTTP Client | `HttpClient` | `DioHttpClient` |
+| HTTP Client | `HttpClient` (abstract) | `DioHttpClient` |
 | Local DB | `AppDatabase` (Drift) + DAOs | `BookDao`, `ReadingDao` |
-| Secure Storage | `SecureStore` | `FlutterSecureStorageAdapter` |
-| Analytics | `AnalyticsService` | `CompositeAnalyticsService` |
-| Logging | `AppLogger` | `PrettyAppLogger` (dev), `ProductionAppLogger` (prod) |
-| Connectivity | `ConnectivityService` | `ConnectivityPlusAdapter` |
-| Theme | `ThemeManager` | `BlocThemeManager` |
-| Token Management | `TokenProvider` | `SecureTokenProvider` |
+| Secure Storage | `SecureStore` (abstract) | `FlutterSecureStorageAdapter` |
+| Analytics | `AnalyticsService` (abstract) | `CompositeAnalyticsService` |
+| Logging | `AppLogger` (abstract) | `PrettyAppLogger` (dev), `ProductionAppLogger` (prod) |
+| Connectivity | `ConnectivityService` (concrete) | Wraps `connectivity_plus` directly — no abstract interface |
+| Theme | `ThemeBloc` | Manages palette, mode, font scale via BLoC events |
+| Token Management | `TokenProvider` (abstract) | `SecureTokenProvider` (wraps `SecureStore`) |
 
 ---
 
@@ -165,6 +178,11 @@ Extensions are used **only** when they add real value. Do not wrap APIs that pac
 2. **Domain methods** on primitives: `String.toBookId()`, `DateTime.toReadableDate()`, `String.capitalize()`
 3. **Collection utilities**: `Iterable.separatedBy()`, `Iterable.groupBy()`
 
+Extensions should stay:
+- **read-only** when possible
+- **thin** convenience helpers, not hidden business logic
+- **local to repeated pain points**, not speculative abstractions
+
 ### What We Do NOT Create Extensions For
 
 | Don't Wrap | Already Provided By |
@@ -175,5 +193,7 @@ Extensions are used **only** when they add real value. Do not wrap APIs that pac
 | `context.select<T, V>()` | flutter_bloc (built-in) |
 
 **Rule**: If a package already provides a context extension, use it directly. Don't wrap it.
+
+**Rule**: If an extension starts mutating state, triggering navigation, dispatching analytics, or hiding a package API, it is probably the wrong abstraction.
 
 Extensions live in `core/extensions/` and are organized by the type they extend.

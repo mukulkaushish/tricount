@@ -1,5 +1,7 @@
 # 02 - Project Structure
 
+> The directory tree below uses illustrative feature and entity names. Adapt the structure to your product domain rather than copying the sample names literally.
+
 ## Barrel File Convention
 
 Every folder that contains 2+ public Dart files **must** have a barrel file. Barrel files:
@@ -12,7 +14,7 @@ Every folder that contains 2+ public Dart files **must** have a barrel file. Bar
 
 ### Why Barrel Files
 
-1. **Single import per module**: `import 'package:reading_app/core/core.dart';` instead of 5 separate imports
+1. **Single import per module**: `import 'package:<app_package>/core/core.dart';` instead of 5 separate imports
 2. **Controlled public API**: Only what's exported in the barrel is public
 3. **Refactoring safety**: Move/rename internal files without breaking imports across modules
 4. **Enforced by lint**: `always_use_package_imports` + barrel convention = clean dependency graph
@@ -26,6 +28,15 @@ Every folder that contains 2+ public Dart files **must** have a barrel file. Bar
 | Feature barrels export only the public surface | Domain entities + repository interfaces, NOT implementation details |
 | Never import a file that lives behind another barrel directly | Always go through the barrel |
 | Barrel files contain ONLY `export` statements | No classes, no functions, no logic |
+
+## Placement Rule Of Thumb
+
+- `core/` = cross-cutting infrastructure and technical contracts
+- `shared/` = reusable presentation-only widgets and UI helpers
+- `features/` = feature-specific `data/`, `domain/`, and `presentation/`
+
+Do not use `shared/` as a catch-all for networking, repository, or domain
+types.
 
 ---
 
@@ -68,6 +79,8 @@ lib/
 │   │   ├── datetime_extensions.dart       # toReadableDate, timeAgo
 │   │   ├── num_extensions.dart            # toDuration, toFileSize
 │   │   └── iterable_extensions.dart       # separatedBy, groupBy
+│   │   # Start with only the extensions that remove repeated friction.
+│   │   # Add more only after the same pattern appears in multiple places.
 │   │
 │   ├── json/
 │   │   ├── json.dart                      # BARREL
@@ -83,6 +96,7 @@ lib/
 │   │
 │   ├── network/
 │   │   ├── network.dart                   # BARREL
+│   │   ├── empty_response.dart            # Const sentinel for type-safe no-body responses
 │   │   ├── http_client.dart               # Abstract interface: request<T>, requestList<T>, requestEmpty
 │   │   ├── dio_http_client.dart           # Dio implementation of HttpClient
 │   │   ├── request_method.dart            # RequestMethod enum + extension
@@ -297,10 +311,9 @@ lib/
 │       │       └── update_font_size_usecase.dart
 │       └── presentation/
 │           ├── presentation.dart          # BARREL
-│           ├── bloc/
-│           │   ├── settings_bloc.dart     # Also barrel
-│           │   ├── settings_event.dart
-│           │   └── settings_state.dart
+│           ├── cubit/
+│           │   ├── settings_cubit.dart    # Also barrel - exports state
+│           │   └── settings_state.dart    # Cubit has no events (direct methods)
 │           ├── pages/
 │           │   └── settings_page.dart
 │           └── widgets/
@@ -309,22 +322,17 @@ lib/
 │               ├── font_size_slider.dart
 │               └── night_mode_toggle.dart
 │
-├── shared/
+├── shared/                                # Reusable presentation-only building blocks
 │   ├── shared.dart                        # BARREL
-│   ├── models/
-│   │   ├── models.dart                    # BARREL
-│   │   └── empty_response.dart            # Const sentinel for void API responses
 │   ├── widgets/
 │   │   ├── widgets.dart                   # BARREL
 │   │   ├── app_loading_page.dart
 │   │   ├── app_error_page.dart
 │   │   ├── app_scaffold.dart
 │   │   ├── connectivity_banner.dart
-│   │   ├── app_button.dart
-│   │   ├── app_text_field.dart
-│   │   ├── app_image.dart
+│   │   ├── app_image.dart                 # Behavioral: cached loading + shimmer + error states
 │   │   ├── shimmer_loading.dart           # Custom, no package
-│   │   └── adaptive_layout.dart
+│   │   └── adaptive_layout.dart           # Optional: add only if breakpoints repeat enough to justify it
 │   └── mixins/
 │       ├── mixins.dart                    # BARREL
 │       └── safe_state_mixin.dart
@@ -362,6 +370,7 @@ export 'theme/theme.dart';
 ### Sub-module barrel: `lib/core/network/network.dart`
 
 ```dart
+export 'empty_response.dart';
 export 'http_client.dart';
 export 'dio_http_client.dart';
 export 'request_method.dart';
@@ -381,12 +390,12 @@ export 'presentation/presentation.dart';
 
 ```dart
 // WRONG - importing individual files across modules:
-import 'package:reading_app/core/network/http_client.dart';
-import 'package:reading_app/core/error/app_exception.dart';
-import 'package:reading_app/core/extensions/string_extensions.dart';
+import 'package:<app_package>/core/network/http_client.dart';
+import 'package:<app_package>/core/error/app_exception.dart';
+import 'package:<app_package>/core/extensions/string_extensions.dart';
 
 // RIGHT - import through barrel:
-import 'package:reading_app/core/core.dart';
+import 'package:<app_package>/core/core.dart';
 ```
 
 ---
@@ -424,18 +433,22 @@ test/
 │   │   │   └── get_books_usecase_test.dart
 │   │   └── presentation/
 │   │       └── library_bloc_test.dart
-│   └── reader/
-│       ├── data/
-│       │   └── reader_repository_impl_test.dart
-│       ├── domain/
-│       │   └── get_chapter_content_usecase_test.dart
+│   ├── reader/
+│   │   ├── data/
+│   │   │   └── reader_repository_impl_test.dart
+│   │   ├── domain/
+│   │   │   └── get_chapter_content_usecase_test.dart
+│   │   └── presentation/
+│   │       └── reader_bloc_test.dart
+│   └── settings/
 │       └── presentation/
-│           └── reader_bloc_test.dart
+│           └── settings_cubit_test.dart
 │
 ├── shared/
 │   └── widgets/
 │       ├── app_loading_page_test.dart
 │       ├── app_error_page_test.dart
+│       ├── app_image_test.dart
 │       └── connectivity_banner_test.dart
 │
 ├── fixtures/

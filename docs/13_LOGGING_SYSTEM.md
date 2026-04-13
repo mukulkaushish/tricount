@@ -93,15 +93,13 @@ This ensures crash reports in Sentry/Firebase have full context breadcrumbs.
 
 ## Sensitive Data Policy
 
-**Never log**:
-- Auth tokens (mask as `Bearer ***`)
-- Passwords (redact entirely)
-- Personal user data (email, name)
-- Full request bodies containing sensitive fields
+Full policy with masking rules -> [20_SECURITY.md](20_SECURITY.md#sensitive-data-policy)
 
-**Always log**:
-- HTTP method and URL path
-- Response status codes
-- Error messages and types
-- Timing information
-- Cache hit/miss status
+Quick reference:
+
+| Never Log | Always Log |
+|-----------|-----------|
+| Auth tokens (mask as `Bearer ***`) | HTTP method and URL path |
+| Passwords (redact entirely) | Response status codes |
+| Personal user data (email, name) | Error messages and types |
+| Full request bodies with sensitive fields | Timing and cache hit/miss |

@@ -1,131 +1,136 @@
-# CLAUDE.md - Project Instructions for Claude Code
+# CLAUDE.md
 
-## Project Overview
+## Project Summary
 
-Flutter reading application following Clean Architecture with feature-first organization. Built with flutter_bloc, auto_route, Dio, Drift, and fpdart.
+This repository is a Flutter application workspace with a documented target architecture. The current codebase is still near starter-app state, so the docs should be read as a migration blueprint unless `docs/00B_PROJECT_STATUS_AND_ADOPTION.md` says a pattern is already in place.
 
-## Documentation
+## Documentation Read Order
 
-Full template documentation lives in `docs/`. Read order:
-1. `docs/00A_CODING_RULES.md` - Lint rules, coding standards, barrel file convention
-2. `docs/01_ARCHITECTURE_OVERVIEW.md` - SOLID, patterns, layer rules
-3. `docs/02_PROJECT_STRUCTURE.md` - Complete file tree with barrel files
-4. `docs/03_DEPENDENCY_MANIFEST.md` - All packages with justifications
-5. Remaining docs (04-20) cover specific subsystems
+Read these documents before making structural changes:
 
-## Key Architectural Rules
+1. `docs/00A_CODING_RULES.md`
+2. `docs/00B_PROJECT_STATUS_AND_ADOPTION.md`
+3. `docs/01_ARCHITECTURE_OVERVIEW.md`
+4. `docs/02_PROJECT_STRUCTURE.md`
+5. `docs/03_DEPENDENCY_MANIFEST.md`
 
-### Layers (strict boundaries)
-- **Presentation** (widgets, pages, BLoCs) → depends on Domain + Core only
-- **Domain** (entities, use cases, repository interfaces) → pure Dart, no Flutter imports
-- **Data** (repository impls, DTOs, data sources) → implements Domain interfaces
-- **Core** (network, theme, DI, extensions, error) → shared infrastructure
+The remaining docs cover specific subsystems and should be consulted when touching those areas.
 
-### Decoupling
-- Repositories depend on `HttpClient` interface, never Dio directly
-- BLoCs depend on Use Cases, never Repositories
-- Widgets depend on BLoC states, never call repositories
-- Analytics fired from BLoCs, never widgets
-- `DioHttpClient` implements `HttpClient` - only referenced in DI registration
-- No abstract `LocalDatabase` interface — use Drift `AppDatabase` + DAOs directly
-- No abstract `ConnectivityService` interface — one concrete class wrapping connectivity_plus
+## Delivery Workflow
+
+- If the user asks for phased screen delivery, implement one screen at a time.
+- After each screen, run the app and capture a screenshot for review.
+- Wait for explicit approval before moving to the next screen.
+- If the user asks for a standalone plan file without naming a folder, create it at the repository root.
+
+## Non-Negotiable Architecture Rules
+
+### Layer Boundaries
+
+- `presentation` depends on `domain` and `core` only
+- `domain` stays pure Dart and does not import Flutter
+- `data` implements domain contracts and talks to external systems
+- `core` contains shared infrastructure
+
+### Dependency Direction
+
+- Widgets talk to BLoCs or equivalent presentation state only
+- BLoCs depend on use cases, never repositories directly
+- Repositories depend on abstractions such as `HttpClient`, not framework clients directly
+- Infrastructure implementations such as `DioHttpClient` should stay referenced from DI, not business code
+- Analytics belongs in state/business logic, not widgets
+- Use Drift `AppDatabase` and DAOs directly rather than wrapping them in extra abstraction layers unless the repo already has a justified pattern
 
 ### Networking
-- `HttpClient` (abstract) with 3 methods: `request<T>`, `requestList<T>`, `requestEmpty`
-- `DioHttpClient` (implementation) - handles HTML detection, keyPath extraction, error mapping
-- All methods return `Either<AppException, T>` via fpdart
-- `RequestMethod` enum instead of per-verb methods
-- `AuthInterceptor` extends `QueuedInterceptorsWrapper` (Dio built-in) for safe token refresh
-- HTTP logging via Dio's built-in `LogInterceptor` (no custom logging interceptor)
+
+- Standardize on `HttpClient.request<T>()`, `requestList<T>()`, and `requestEmpty()`
+- Use a `RequestMethod` enum instead of scattered verb-specific APIs
+- Return `Either<AppException, T>`
+- Keep auth refresh logic in Dio interceptors or the existing network layer
 
 ### Error Handling
-- Single `sealed class AppException` — used directly as `Either` Left type
-- No `Failure` class, no `ErrorMapper` — repositories pass `Either` through unchanged
-- `AppException.fromDioError()` factory maps Dio errors to typed exceptions
-- BLoCs fold `Either` → emit `Loaded` or `Error(exception: AppException)`
-- UI uses `exception.userMessage` for display, sealed type for icon/action
 
-### JSON Parsing
-- `JsonParser` mixin for type-safe field extraction
-- `JsonCodable` interface for all DTOs
-- `DataMismatchException` for parse failures with field names
+- Use `AppException` as the primary typed error model
+- Avoid parallel `Failure` or `ErrorMapper` hierarchies unless they already exist for a specific boundary
+- Let repositories pass structured errors upward instead of converting them to generic strings
+- UI should render user-facing messages from the exception model or mapped presentation state
 
 ## Coding Standards
 
-### Linting
-- Uses `very_good_analysis: ^10.2.0` (strictest Flutter lint set)
-- Zero warnings policy - `flutter analyze` must pass clean
-- Generated files excluded: `*.g.dart`, `*.gr.dart`, `*.freezed.dart`
+### Imports and File Structure
 
-### Barrel Files
-- Every folder with 2+ public files has a barrel (`<folder_name>.dart`)
-- Cross-module imports always go through barrels
-- `core/core.dart` is the top-level barrel for all core infrastructure
-- Feature barrels export domain + presentation only (data is internal)
-- Barrel files contain ONLY `export` statements
+- Keep `dart:` imports for SDK libraries
+- Use `package:<app_package>/...` imports for project files
+- Cross-feature and cross-module project imports should go through barrel files
+- Barrel files should contain `export` statements only
 
-### Navigation
-- `auto_route` handles all navigation — no custom navigation extensions
-- Use built-in: `context.router`, `context.pushRoute()`, `context.maybePop()`
-- `AutoTabsScaffold` for tab navigation, `AutoRouteGuard` with `redirectUntil` for auth
-- `DeepLinkBuilder` for deep link validation
-- `AutoRouteObserver` for screen tracking / analytics
+Example:
 
-### Style
-- `final` for all parameters and local variables
-- `const` constructors wherever possible
-- Single quotes for strings
-- Package imports only (`package:reading_app/...`), no relative `../`
-- Trailing commas on multi-line arguments
-- No inline themes - use `context.colorScheme`, `context.textTheme`, `context.appColors` (only 3 extensions)
-- No magic numbers - use `AppDimensions`
-- No `print()` - use `AppLogger`
-- Exhaustive switches on sealed classes/enums (no `default`)
-- Max 3 levels of widget nesting per `build()` method
-- Do NOT wrap `context.read<T>()` / `context.watch<T>()` — flutter_bloc provides them
-
-### File Naming
-- Files: `snake_case.dart`
-- Classes: `PascalCase`
-- Variables/functions: `camelCase`
-- Constants: `camelCase` (not SCREAMING_CASE)
-- Barrel files: `<folder_name>.dart`
-
-### Architecture Naming
-- Abstract repository: `LibraryRepository`
-- Implementation: `LibraryRepositoryImpl`
-- Use case: `GetBooksUseCase`
-- BLoC: `LibraryBloc`
-- DTO: `BookModel`
-- Entity: `Book`
-- Page: `LibraryPage`
-
-## Dependencies (Minimal)
-
-Core: `flutter_bloc`, `auto_route`, `dio`, `fpdart`, `drift`, `get_it`, `flutter_secure_storage`, `connectivity_plus`, `logger`, `cached_network_image`, `flutter_svg`
-
-Testing: `very_good_analysis`, `bloc_test`, `mocktail`, `drift_dev`, `auto_route_generator`, `build_runner`
-
-No `dartz` (use fpdart), no `injectable` (manual GetIt), no `mockito` (use mocktail), no `shimmer` (custom widget), no `google_fonts` (bundled fonts).
-
-## Commands
-
-```bash
-# Code generation
-dart run build_runner build --delete-conflicting-outputs
-
-# Full CI check
-dart format . && flutter analyze && flutter test
-
-# Tests with coverage
-flutter test --coverage
+```dart
+import 'package:<app_package>/core/core.dart';
+import 'package:<app_package>/features/home/home.dart';
 ```
 
-## State Management Pattern
+In this repository, `<app_package>` resolves to `tricount`.
 
-- `flutter_bloc` for all state management
-- BLoC for complex features (auth, library, reader) - event-driven
-- Cubit for simple features (settings) - direct methods
-- States: `Initial`, `Loading`, `Loaded`, `Error` - always exhaustive
-- Events extend `Equatable`, use past-tense naming
-- Error states carry the original event for retry
+### Dart / Flutter Style
+
+- All parameters and local variables are `final`
+- Use `const` wherever possible
+- Prefer single quotes
+- Avoid inline themes and hardcoded colors
+- Avoid magic numbers; use shared dimensions/constants
+- Use `AppLogger` instead of `print()`
+- Keep switches on enums and sealed types exhaustive
+- Keep widget trees shallow enough to stay readable
+
+### Navigation
+
+- Use `auto_route` APIs directly when the app has adopted `auto_route`
+- Avoid custom wrappers around `context.router`, `pushRoute`, or `maybePop` unless there is a proven need
+
+## Naming Conventions
+
+- Files: `snake_case.dart`
+- Classes: `PascalCase`
+- Variables and functions: `camelCase`
+- Barrel files: `<folder_name>.dart`
+
+Common architecture naming:
+
+- Repository contract: `AccountRepository`
+- Repository implementation: `AccountRepositoryImpl`
+- Use case: `GetAccountsUseCase`
+- BLoC: `AccountsBloc`
+- DTO/model: `AccountModel`
+- Entity: `Account`
+- Screen/page: `AccountsPage`
+
+## Documentation Maintenance
+
+When adding a new dependency to `pubspec.yaml`:
+
+1. Add it to `docs/03_DEPENDENCY_MANIFEST.md` with the reason
+2. If it introduces a new pattern (state, navigation, storage), update the relevant subsystem doc
+3. If it has a theme extension or sub-theme, add entries to `AppTheme.build()` and `docs/05_THEMING_SYSTEM.md`
+4. If it replaces an existing package, update all docs that reference the old one
+
+When adding a new widget type to the app, follow the maintenance rule in `docs/05_THEMING_SYSTEM.md`.
+
+## Recommended Commands
+
+```bash
+flutter pub get
+dart format .
+flutter analyze
+flutter test
+dart run build_runner build --delete-conflicting-outputs
+```
+
+## State Management Guidelines
+
+- Use `flutter_bloc` for app-wide state management patterns
+- Prefer BLoC for event-driven or multi-step flows
+- Prefer Cubit for smaller, direct state transitions when that keeps the feature simpler
+- Keep state objects immutable
+- Favor a predictable lifecycle such as `Initial`, `Loading`, `Loaded`, and `Error`

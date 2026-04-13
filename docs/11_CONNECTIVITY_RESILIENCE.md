@@ -1,5 +1,7 @@
 # 11 - Connectivity & Resilience
 
+> Offline examples use a sample content domain to show the pattern. Adapt the same resilience rules to your actual feature set.
+
 ## Connectivity Service
 
 ### Design: Thin Typed Wrapper
@@ -132,15 +134,7 @@ For write operations (progress, bookmarks) made while offline:
 
 ### Network Request Retry
 
-(See also: 06_NETWORKING_LAYER.md - RetryInterceptor)
-
-| Scenario | Retry? | Strategy |
-|----------|--------|----------|
-| 5xx server error | Yes | Exponential backoff, max 3 |
-| Timeout | Yes | Exponential backoff, max 3 |
-| No connectivity | Wait | Pause until online, then retry once |
-| 4xx client error | No | Immediate failure |
-| SSL error | No | Immediate failure |
+Handled by `RetryInterceptor` in the networking layer → [06_NETWORKING_LAYER.md](06_NETWORKING_LAYER.md#retryinterceptor)
 
 ### BLoC-Level Retry
 
