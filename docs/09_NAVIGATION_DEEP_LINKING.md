@@ -261,7 +261,15 @@ Register in `navigatorObservers`. The builder returns **fresh instances** (requi
 For pages that need to react to being shown/hidden (e.g., pause video, refresh data):
 
 ```dart
-class ReaderPage extends StatefulWidget with AutoRouteAwareStateMixin {
+class ReaderPage extends StatefulWidget {
+  const ReaderPage({super.key});
+
+  @override
+  State<ReaderPage> createState() => _ReaderPageState();
+}
+
+class _ReaderPageState extends State<ReaderPage>
+    with AutoRouteAwareStateMixin<ReaderPage> {
   @override
   void didChangeTabRoute(TabPageRoute previousRoute) {
     // Tab became active again — refresh if stale

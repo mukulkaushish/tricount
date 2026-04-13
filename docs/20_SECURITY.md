@@ -57,11 +57,19 @@ Handled by `AuthInterceptor` (extends `QueuedInterceptorsWrapper`) → [06_NETWO
 | EncryptedSharedPreferences | AES-256 | Hardware-backed encryption |
 | `android:allowBackup` | `false` | Prevent backup of secure data |
 | `android:usesCleartextTraffic` | `false` | Enforce HTTPS |
-| Network security config | Pin to production domain | Certificate pinning |
+| Network security config | Disable cleartext + configure trust anchors | HTTPS enforcement / trust policy |
 
 #### HTTPS Enforcement (network_security_config.xml)
 
 **File**: `android/app/src/main/res/xml/network_security_config.xml`
+
+This XML example disables cleartext traffic and configures trust anchors via
+`base-config` and `debug-overrides`. It enforces HTTPS and does **not**
+implement certificate or public-key pinning by itself.
+
+The current repository does not yet include this file or the corresponding
+`AndroidManifest.xml` wiring below, so treat this as a target-state Android
+configuration example.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>

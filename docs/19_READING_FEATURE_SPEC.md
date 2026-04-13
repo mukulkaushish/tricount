@@ -84,6 +84,10 @@ The example below applies the template to a reading/content feature.
 
 ### Route Setup (WrappedRoute)
 
+> This is an illustrative target-architecture example for the point where the
+> app adopts `auto_route`. The current repository does not yet include that
+> package, so treat this snippet as planned structure rather than current code.
+
 `ReaderPage` implements `AutoRouteWrapper` to inject its scoped BLoC:
 
 ```dart
