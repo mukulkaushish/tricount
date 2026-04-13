@@ -171,11 +171,6 @@ Analytics events are NOT fired from widgets. They are fired from:
 2. **Route observer** - auto_route's `AutoRouteObserver` for screen tracking
 3. **Global error handlers** - `FlutterError.onError`, `PlatformDispatcher.onError`
 
-### AutoRouteObserver for Screen Tracking
+### Screen Tracking via AutoRouteObserver
 
-A custom `AnalyticsRouteObserver` extends `AutoRouteObserver`:
-- `didPush` → `trackScreen(route.name)`
-- `didPop` → optional: track screen exit
-- `didReplace` → `trackScreen(newRoute.name)`
-
-Registered in `MaterialApp.router`'s `navigatorObservers`.
+Implementation details → [09_NAVIGATION_DEEP_LINKING.md](09_NAVIGATION_DEEP_LINKING.md#screen-tracking-with-autorouteobserver)
