@@ -152,18 +152,15 @@ flutter:
     - assets/icons/
     - assets/fonts/
   fonts:
-    - family: Merriweather
+    - family: Montserrat
       fonts:
-        - asset: assets/fonts/Merriweather-Regular.ttf
-        - asset: assets/fonts/Merriweather-Bold.ttf
-          weight: 700
-    - family: Inter
-      fonts:
-        - asset: assets/fonts/Inter-Regular.ttf
-        - asset: assets/fonts/Inter-Medium.ttf
+        - asset: assets/fonts/Montserrat-Regular.ttf
+        - asset: assets/fonts/Montserrat-Medium.ttf
           weight: 500
-        - asset: assets/fonts/Inter-SemiBold.ttf
+        - asset: assets/fonts/Montserrat-SemiBold.ttf
           weight: 600
+        - asset: assets/fonts/Montserrat-Bold.ttf
+          weight: 700
 ```
 
 ---

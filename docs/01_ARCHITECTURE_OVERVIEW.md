@@ -144,14 +144,14 @@ These live in `core/` and are injected via GetIt:
 
 | Concern | Interface | Default Implementation |
 |---------|-----------|----------------------|
-| HTTP Client | `HttpClient` | `DioHttpClient` |
+| HTTP Client | `HttpClient` (abstract) | `DioHttpClient` |
 | Local DB | `AppDatabase` (Drift) + DAOs | `BookDao`, `ReadingDao` |
-| Secure Storage | `SecureStore` | `FlutterSecureStorageAdapter` |
-| Analytics | `AnalyticsService` | `CompositeAnalyticsService` |
-| Logging | `AppLogger` | `PrettyAppLogger` (dev), `ProductionAppLogger` (prod) |
-| Connectivity | `ConnectivityService` | `ConnectivityPlusAdapter` |
-| Theme | `ThemeManager` | `BlocThemeManager` |
-| Token Management | `TokenProvider` | `SecureTokenProvider` |
+| Secure Storage | `SecureStore` (abstract) | `FlutterSecureStorageAdapter` |
+| Analytics | `AnalyticsService` (abstract) | `CompositeAnalyticsService` |
+| Logging | `AppLogger` (abstract) | `PrettyAppLogger` (dev), `ProductionAppLogger` (prod) |
+| Connectivity | `ConnectivityService` (concrete) | Wraps `connectivity_plus` directly — no abstract interface |
+| Theme | `ThemeBloc` | Manages palette, mode, font scale via BLoC events |
+| Token Management | `TokenProvider` (abstract) | `SecureTokenProvider` (wraps `SecureStore`) |
 
 ---
 

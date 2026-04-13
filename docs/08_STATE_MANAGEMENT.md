@@ -26,7 +26,7 @@
 | Auth | BLoC | Login, logout, refresh, session expire events |
 | Library | BLoC | Load, search, filter, paginate events |
 | Reader | BLoC | Load chapter, navigate, bookmark, progress events |
-| Settings | Cubit | Direct method calls for each setting |
+| Settings | Cubit | Direct method calls for each setting (no events file — state only) |
 | Theme | BLoC | Multiple theme-change events, persistence side effects |
 | Connectivity | BLoC | Stream-driven, external event source |
 

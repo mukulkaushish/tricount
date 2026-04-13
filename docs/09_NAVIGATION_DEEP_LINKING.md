@@ -173,8 +173,8 @@ Configured in `AppTheme.build()` via `pageTransitionsTheme`:
 
 | Platform | Transition | Duration |
 |----------|-----------|----------|
-| Android | `SharedAxisTransition` (horizontal) | 300ms |
-| iOS | `CupertinoPageTransition` (slide from right) | 350ms |
+| Android | `ZoomPageTransitionsBuilder` (Material default) | 300ms |
+| iOS | `CupertinoPageTransitionsBuilder` (slide from right) | 350ms |
 
 ### Per-Route Overrides
 

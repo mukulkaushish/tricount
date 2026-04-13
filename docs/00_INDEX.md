@@ -17,7 +17,7 @@
 | 03 | [Dependency Manifest](03_DEPENDENCY_MANIFEST.md) | Every pub.dev package, version constraints, and why each is needed |
 | 04 | [App Bootstrap & main.dart](04_APP_BOOTSTRAP.md) | Initialization sequence, DI setup, environment config, entry point |
 | 05 | [Dynamic Theming System](05_THEMING_SYSTEM.md) | Multi-color palettes, night mode, font scaling, no inline themes |
-| 06 | [Networking Layer](06_NETWORKING_LAYER.md) | Dio setup, interceptors (auth, retry, cache, logging), API service |
+| 06 | [Networking Layer](06_NETWORKING_LAYER.md) | Dio setup, interceptors (auth, retry, cache, built-in LogInterceptor), HttpClient interface |
 | 07 | [JSON Parsing & Codable](07_JSON_PARSING_CODABLE.md) | JsonParser mixin, JsonCodable interface, AppException hierarchy |
 | 08 | [State Management](08_STATE_MANAGEMENT.md) | flutter_bloc architecture, BLoC/Cubit conventions, event/state design |
 | 09 | [Navigation & Deep Linking](09_NAVIGATION_DEEP_LINKING.md) | auto_route setup, guards, deep link schemas, route definitions |

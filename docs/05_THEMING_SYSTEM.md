@@ -101,7 +101,7 @@ All text styles are defined once and derive from a base configuration. Use Mater
 
 **Default font: `Montserrat`** — used as the primary UI font across the entire app. All `TextStyle`s in `AppTextStyles` set `fontFamily: 'Montserrat'` by default.
 
-Bundle Montserrat weights (Regular, Medium, SemiBold, Bold) in `assets/fonts/` and register them in `pubspec.yaml` under `family: Montserrat`. Do not pull fonts at runtime from a network font provider (no `google_fonts`). An optional monospace family may be declared centrally for code blocks.
+Bundle Montserrat weights (Regular 400, Medium 500, SemiBold 600, Bold 700) in `assets/fonts/` and register them in `pubspec.yaml` under `family: Montserrat`. Do not pull fonts at runtime from a network font provider (no `google_fonts`). An optional monospace family may be declared centrally for code blocks.
 
 ### Font Scaling
 
@@ -157,6 +157,8 @@ On `ThemeRestored` event (called at app start), these values are read and applie
 **File**: `lib/core/theme/app_theme.dart`
 
 **Method**: `static ThemeData build({required AppColorPalette palette, required Brightness brightness, required double fontScale, required TargetPlatform platform})`
+
+**API note**: Use the normalized `*ThemeData` suffix classes when defining component themes in `ThemeData` (e.g., `AppBarThemeData`, `CardThemeData`, `DialogThemeData`, `TabBarThemeData`, `InputDecorationThemeData`). Do not use the widget-name form (`AppBarTheme`, `CardTheme`, etc.) as these refer to the `Theme` wrapper widgets, not the data classes.
 
 **The one rule**: every visual property for every component lives in this factory. Feature code never sets `color:`, `padding:`, `shape:`, `textStyle:`, `elevation:`, `borderRadius:`, or any inline styling on a widget. If a widget renders wrong, **fix the theme**, not the call site.
 

@@ -297,10 +297,9 @@ lib/
 │       │       └── update_font_size_usecase.dart
 │       └── presentation/
 │           ├── presentation.dart          # BARREL
-│           ├── bloc/
-│           │   ├── settings_bloc.dart     # Also barrel
-│           │   ├── settings_event.dart
-│           │   └── settings_state.dart
+│           ├── cubit/
+│           │   ├── settings_cubit.dart    # Also barrel - exports state
+│           │   └── settings_state.dart    # Cubit has no events (direct methods)
 │           ├── pages/
 │           │   └── settings_page.dart
 │           └── widgets/
@@ -320,9 +319,7 @@ lib/
 │   │   ├── app_error_page.dart
 │   │   ├── app_scaffold.dart
 │   │   ├── connectivity_banner.dart
-│   │   ├── app_button.dart
-│   │   ├── app_text_field.dart
-│   │   ├── app_image.dart
+│   │   ├── app_image.dart                 # Behavioral: cached loading + shimmer + error states
 │   │   ├── shimmer_loading.dart           # Custom, no package
 │   │   └── adaptive_layout.dart
 │   └── mixins/
@@ -424,18 +421,22 @@ test/
 │   │   │   └── get_books_usecase_test.dart
 │   │   └── presentation/
 │   │       └── library_bloc_test.dart
-│   └── reader/
-│       ├── data/
-│       │   └── reader_repository_impl_test.dart
-│       ├── domain/
-│       │   └── get_chapter_content_usecase_test.dart
+│   ├── reader/
+│   │   ├── data/
+│   │   │   └── reader_repository_impl_test.dart
+│   │   ├── domain/
+│   │   │   └── get_chapter_content_usecase_test.dart
+│   │   └── presentation/
+│   │       └── reader_bloc_test.dart
+│   └── settings/
 │       └── presentation/
-│           └── reader_bloc_test.dart
+│           └── settings_cubit_test.dart
 │
 ├── shared/
 │   └── widgets/
 │       ├── app_loading_page_test.dart
 │       ├── app_error_page_test.dart
+│       ├── app_image_test.dart
 │       └── connectivity_banner_test.dart
 │
 ├── fixtures/

@@ -39,8 +39,8 @@ UI renders based on AppException type
 
 ```
 sealed class AppException {
-  String get message;
-  String get userMessage;  // Safe to display in UI
+  String get message;       // Technical detail for logging
+  String get userMessage;   // Safe to display in UI
 }
 ```
 
@@ -58,7 +58,10 @@ sealed class AppException {
 | `RateLimitException(Duration? retryAfter)` | 429 | "Too many requests. Please wait." |
 | `DataMismatchException(String fieldName)` | JSON parse failures | "We received unexpected data." |
 | `CacheException` | Local storage errors | "Unable to load saved data." |
+| `StorageException` | Drift / secure storage errors | "Unable to access storage." |
 | `UnknownException` | Catch-all | "An unexpected error occurred." |
+
+> **Note**: The complete hierarchy is documented in [07_JSON_PARSING_CODABLE.md](07_JSON_PARSING_CODABLE.md#appexception-hierarchy). Both listings must stay in sync.
 
 ### What Was Removed
 
@@ -178,7 +181,7 @@ Center
     ├── SizedBox(AppDimensions.spacingL)
     ├── Text(exception.userMessage, style: textTheme.bodyMedium)
     ├── SizedBox(AppDimensions.spacingL)
-    └── AppButton("Try Again", onPressed: onRetry) [if retryable]
+    └── FilledButton("Try Again", onPressed: onRetry) [if retryable]
 ```
 
 ---
