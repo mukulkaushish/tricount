@@ -1,6 +1,11 @@
 # 09 - Navigation & Deep Linking (auto_route)
 
 > Route names, deep-link schemes, and example paths in this document are illustrative. Replace them with the real navigation model for your app.
+>
+> This document describes the target navigation architecture once the app
+> adopts `auto_route`. The current repository does not yet include that
+> package, so treat the examples here as planned structure rather than current
+> code.
 
 ## Overview
 
@@ -8,7 +13,8 @@ Navigation uses `auto_route` exclusively. auto_route provides:
 - Declarative route definitions with code generation
 - Type-safe route arguments with `@PathParam()` and `@QueryParam()`
 - Deep linking with path parameters and `DeepLinkBuilder`
-- Route guards via `AutoRouteGuard` and reactive `AutoRedirectGuard`
+- Route guards via `AutoRouteGuard`
+- Reactive guard re-checks via `reevaluateListenable` or `router.reevaluateGuards()`
 - Per-route DI injection via `WrappedRoute` mixin
 - Nested tab navigation via `AutoTabsRouter` / `AutoTabsScaffold`
 - Built-in context extensions (`context.router`, `context.pushRoute()`, etc.)
@@ -149,37 +155,64 @@ class LibraryPage extends StatelessWidget implements AutoRouteWrapper {
 
 ## Route Guards
 
-### AuthGuard (using AutoRedirectGuard)
+### AuthGuard (using AutoRouteGuard)
 
 **File**: `lib/router/guards/auth_guard.dart`
 
-Use `AutoRedirectGuard` (not plain `AutoRouteGuard`) for auth flows. It supports reactive re-evaluation when auth state changes via `reevaluate()`.
+Use `AutoRouteGuard` with `onNavigation(...)` for auth flows. For auth
+changes after navigation has already happened, trigger re-checks with either
+`reevaluateListenable` in `router.config(...)` or `router.reevaluateGuards()`
+from your auth state listener.
 
-**Dependencies**: `TokenProvider` (via GetIt), `AuthBloc` stream
+**Dependencies**: `TokenProvider` (via GetIt), optional auth state listener
 
 **Setup**:
 ```dart
-class AuthGuard extends AutoRedirectGuard {
+class AuthGuard extends AutoRouteGuard {
   final TokenProvider _tokenProvider;
 
-  AuthGuard(this._tokenProvider, Stream<AuthState> authStream) {
-    // Re-evaluate guard whenever auth state changes
-    authStream.listen((_) => reevaluate());
-  }
+  AuthGuard(this._tokenProvider);
 
   @override
-  Future<bool> canNavigate(NavigationResolver resolver, StackRouter router) async {
-    if (await _tokenProvider.hasValidToken()) return true;
-    // Redirect to login, auto-restores destination after login
-    resolver.redirect(const LoginRoute());
-    return false;
+  Future<void> onNavigation(
+    NavigationResolver resolver,
+    StackRouter router,
+  ) async {
+    if (await _tokenProvider.hasValidToken()) {
+      resolver.next();
+      return;
+    }
+
+    resolver.redirectUntil(
+      LoginRoute(
+        onResult: (didLogin) {
+          resolver.resolveNext(didLogin, reevaluateNext: false);
+        },
+      ),
+    );
   }
 }
 ```
 
-**Why AutoRedirectGuard over AutoRouteGuard**:
-- `AutoRouteGuard` evaluates once per navigation. If auth state changes while on a screen, nothing happens.
-- `AutoRedirectGuard` reactively calls `reevaluate()` when conditions change (e.g., token expires, user logs out), automatically re-running the guard and redirecting if needed.
+**Reactive re-check options**:
+- Preferred when you already have a `Listenable` or auth stream: pass
+  `reevaluateListenable` into `router.config(...)`
+- Alternative: call `appRouter.reevaluateGuards()` from an auth listener or
+  `AuthBloc` subscription when login/logout/token state changes
+
+```dart
+MaterialApp.router(
+  routerConfig: appRouter.config(
+    reevaluateListenable: ReevaluateListenable.stream(authBloc.stream),
+  ),
+)
+```
+
+```dart
+authBloc.stream.listen((_) {
+  appRouter.reevaluateGuards();
+});
+```
 
 **Applied to**: All routes except `SplashRoute`, `LoginRoute`, `ErrorRoute`
 
@@ -187,8 +220,7 @@ class AuthGuard extends AutoRedirectGuard {
 
 | Guard Type | When to Use |
 |-----------|-------------|
-| `AutoRouteGuard` | One-time checks (feature flags, permissions) |
-| `AutoRedirectGuard` | Reactive state-dependent access (auth, onboarding) |
+| `AutoRouteGuard` | Route protection, including auth checks that may later be re-evaluated via `reevaluateListenable` or `router.reevaluateGuards()` |
 
 ---
 
@@ -355,7 +387,7 @@ LibraryRoute
 ### Deep Link Flow
 ```
 <app_scheme>://books/abc123
-  -> AuthGuard.canNavigate()
+  -> AuthGuard.onNavigation()
     |- Token valid -> BookDetailRoute(bookId: "abc123")
-    +-- No token -> redirect(LoginRoute()) -> after login -> BookDetailRoute(bookId: "abc123")
+    +-- No token -> redirectUntil(LoginRoute()) -> after login -> BookDetailRoute(bookId: "abc123")
 ```
