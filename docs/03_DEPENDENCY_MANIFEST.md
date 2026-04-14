@@ -25,7 +25,7 @@ Before adding anything, compare this document with:
 | State management | `flutter_bloc` | Predictable event/state flow for medium and large features |
 | Event transformers | `bloc_concurrency` | `droppable()`, `restartable()`, `sequential()` for BLoC event control |
 | Equality | `equatable` | Lightweight value equality for states and events |
-| Navigation | `auto_route` | Typed routes, guards, and nested routing when the app needs them |
+| Navigation | `go_router` | Flutter team maintained; typed routes via `go_router_builder`, guards via `redirect`, shell routes, deep links |
 | Responsive layout | `flutter_adaptive_scaffold` | Official Flutter adaptive layouts, auto-adaptive navigation, foldable device support |
 | Networking | `dio` | Mature interceptor model and flexible request handling |
 | Connectivity | `connectivity_plus` | Network-awareness signals for resilience features |
@@ -40,6 +40,7 @@ Before adding anything, compare this document with:
 | Logging | `logger` | Structured local logging during development |
 | Images | `cached_network_image` | Disk-backed image loading for remote media |
 | SVG | `flutter_svg` | Vector rendering for icons and illustrations |
+| Grid layouts | **No package required** | Native `GridView.builder` + breakpoints in `AppDimensions` cover 99% of cases |
 
 ### Optional Production Dependencies
 
@@ -50,6 +51,7 @@ Add only when the product actually needs them:
 | Crash reporting | `sentry_flutter` | Release monitoring and crash diagnostics |
 | Product analytics | provider-specific SDKs | Once event tracking requirements are defined |
 | Remote config / feature flags | provider-specific SDKs | Only when server-driven behavior is required |
+| Variable-height grids | `flutter_staggered_grid_view` | Only if grid items have significantly different heights (Pinterest-style layouts); native `GridView` is preferred for uniform-height cards |
 
 ## Recommended Dev Dependencies
 
@@ -60,7 +62,7 @@ Add only when the product actually needs them:
 | BLoC testing | `bloc_test` | State-sequence testing helpers |
 | Mocking | `mocktail` | No-codegen mocks and easy interaction verification |
 | Drift generation | `drift_dev` | Drift code generation support |
-| Route generation | `auto_route_generator` | Route code generation support |
+| Route generation | `go_router_builder` | Type-safe route codegen for go_router |
 | Integration testing | `integration_test` | End-to-end and profiling flows |
 
 ## Packages To Avoid By Default
@@ -70,7 +72,7 @@ These are not universally bad; they are just not default choices for this archit
 | Package / Pattern | Why It Is Not Default |
 |------------------|-----------------------|
 | `dartz` | Heavier functional layer when `fpdart` is enough |
-| `injectable` | Extra code generation for DI that can stay explicit with `get_it` |
+| `auto_route` | Extra codegen and ceremony — `go_router` (Flutter-team maintained) is the current recommended choice |
 | `mockito` | Code generation overhead when `mocktail` is sufficient |
 | `google_fonts` | Runtime dependency that is often unnecessary when fonts can be bundled |
 | extra navigation wrappers | Adds indirection on top of typed route APIs |
@@ -95,7 +97,7 @@ dependencies:
   flutter_bloc: ^<verified_version>
   bloc_concurrency: ^<verified_version>
   equatable: ^<verified_version>
-  auto_route: ^<verified_version>
+  go_router: ^<verified_version>
   flutter_adaptive_scaffold: ^<verified_version>
   dio: ^<verified_version>
   connectivity_plus: ^<verified_version>
@@ -120,7 +122,7 @@ dev_dependencies:
   bloc_test: ^<verified_version>
   mocktail: ^<verified_version>
   drift_dev: ^<verified_version>
-  auto_route_generator: ^<verified_version>
+  go_router_builder: ^<verified_version>
   integration_test:
     sdk: flutter
 ```

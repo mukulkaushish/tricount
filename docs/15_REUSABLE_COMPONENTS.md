@@ -247,27 +247,156 @@ Custom implementation using `AnimationController` + `ShaderMask` (~30 lines, no 
 
 ---
 
-## Adaptive Layout
+## Responsive Grid Components
 
-**File**: `lib/shared/widgets/adaptive_layout.dart`
+Grid layouts are the **primary pattern for content browsing** across all screen sizes. Rather than creating custom layout wrappers, use native `GridView` with breakpoint-aware column counts. See **[25_RESPONSIVE_LAYOUT_AND_ADAPTIVITY.md § Grid Layouts](25_RESPONSIVE_LAYOUT_AND_ADAPTIVITY.md#grid-layouts-primary-pattern-for-content-browsing)** for complete grid implementation guidance including foldables and iPad multitasking.
 
-Responsive wrapper that switches layout based on screen width. **See [25_RESPONSIVE_LAYOUT_AND_ADAPTIVITY.md](25_RESPONSIVE_LAYOUT_AND_ADAPTIVITY.md) for full implementation strategies for iPads and Foldables.**
+### Grid Component Pattern
 
-| Prop | Type | Required | Purpose |
-|------|------|----------|---------|
-| `mobile` | `Widget` | Yes | Layout for < 600dp |
-| `tablet` | `Widget?` | No | Layout for 600-840dp |
-| `desktop` | `Widget?` | No | Layout for > 840dp |
+Create a reusable grid widget per feature. Example: `BillsGridView` for the bills list.
 
-Uses `LayoutBuilder` to determine breakpoints. Falls back to `mobile` if larger breakpoint widget is not provided.
+**File**: `lib/features/bills/presentation/widgets/bills_grid_view.dart`
 
-### Breakpoints
+```dart
+import 'package:tricount/core/theme/theme_extensions.dart';
+import 'package:tricount/core/theme/app_dimensions.dart';
 
-| Name | Width Range | Typical Use |
-|------|------------|-------------|
-| Compact (Mobile) | < 600dp | Single column, full-width cards |
-| Medium (Tablet) | 600-840dp | Two-column, side panel, Foldables |
-| Expanded (Desktop/iPad) | > 840dp | Three-column, expanded nav, large iPads |
+class BillsGridView extends StatelessWidget {
+  final List<Bill> bills;
+  final void Function(Bill)? onTapBill;
+
+  const BillsGridView({
+    required this.bills,
+    this.onTapBill,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Compute column count from existing breakpoints
+    final crossAxisCount = context.isCompact ? 2 :      // Phones: 2
+                           context.isMedium ? 3 :       // Tablets: 3
+                           context.isExpanded ? 4 : 5;  // iPad/Large: 4-5
+
+    return GridView.builder(
+      padding: context.responsiveContentPadding,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        mainAxisSpacing: AppDimensions.s16,
+        crossAxisSpacing: AppDimensions.s16,
+        childAspectRatio: 1.0,
+      ),
+      itemCount: bills.length,
+      itemBuilder: (context, index) {
+        final bill = bills[index];
+        return BillCard(
+          bill: bill,
+          onTap: () => onTapBill?.call(bill),
+        );
+      },
+    );
+  }
+}
+```
+
+### Grid Card Components
+
+Cards used in grids should be **theme-aware** and **configurable**:
+
+| Property | Default | Notes |
+|----------|---------|-------|
+| `bill` (or entity) | required | The data model |
+| `onTap` | optional | Callback when card is tapped |
+| `showBadge` | `true` | Display status badge (settled, pending) |
+
+**File**: `lib/features/bills/presentation/widgets/bill_card.dart`
+
+```dart
+class BillCard extends StatelessWidget {
+  final Bill bill;
+  final VoidCallback? onTap;
+  final bool showBadge;
+
+  const BillCard({
+    required this.bill,
+    this.onTap,
+    this.showBadge = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Card(
+        child: Padding(
+          padding: EdgeInsets.all(AppDimensions.s12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                bill.description,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.textTheme.titleSmall,
+              ),
+              SizedBox(height: AppDimensions.s8),
+              Text(
+                '\$${bill.amount.toStringAsFixed(2)}',
+                style: context.textTheme.headlineSmall
+                    ?.copyWith(color: context.colorScheme.primary),
+              ),
+              const Spacer(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    bill.paidBy,
+                    style: context.textTheme.labelSmall,
+                  ),
+                  if (showBadge)
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppDimensions.s8,
+                        vertical: AppDimensions.s4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: bill.isSettled
+                            ? context.colorScheme.tertiary
+                            : context.colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(AppDimensions.r4),
+                      ),
+                      child: Text(
+                        bill.isSettled ? 'Settled' : 'Pending',
+                        style: context.textTheme.labelSmall
+                            ?.copyWith(fontSize: 10),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+```
+
+### Accessibility for Grid Cards
+
+- **Tap target >= 48dp** — Entire card is tappable (GestureDetector)
+- **Semantics** — Frame as `Semantics(button: true, child: GestureDetector(...))`
+- **Text contrast** — Use `context.colorScheme` (already contrast-checked)
+- **Overflow** — Always use `maxLines` + `TextOverflow.ellipsis` to prevent layout shift
+
+### When NOT to Create Custom Layout Wrappers
+
+Do not create `AdaptiveLayoutBuilder`, `TwoPaneLayout`, or custom responsive wrappers. Instead:
+- Use native `LayoutBuilder` + `MediaQuery` directly in page/widget code
+- Read breakpoint helpers from `context.isCompact`, `context.isMedium` (defined in `theme_extensions.dart`)
+- Use `GridView.builder` with computed `crossAxisCount` based on breakpoints
+- Let `flutter_adaptive_scaffold` handle navigation switching (see [25_RESPONSIVE_LAYOUT_AND_ADAPTIVITY.md](25_RESPONSIVE_LAYOUT_AND_ADAPTIVITY.md))
+
+No custom wrappers = simpler code, fewer bugs, easier testing.
 
 ---
 

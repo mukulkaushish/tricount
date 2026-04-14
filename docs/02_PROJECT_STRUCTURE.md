@@ -339,12 +339,10 @@ lib/
 │
 └── router/
     ├── router.dart                        # BARREL
-    ├── app_router.dart                    # @AutoRouterConfig annotated router
-    ├── app_router.gr.dart                 # Generated route code (NOT in barrel)
-    └── guards/
-        ├── guards.dart                    # BARREL
-        ├── auth_guard.dart
-        └── connectivity_guard.dart
+    ├── app_router.dart                    # GoRouter instance + route definitions
+    ├── app_router.g.dart                  # go_router_builder generated code (NOT in barrel)
+    ├── auth_redirect.dart                 # authRedirect() — pure function, testable guard logic
+    └── go_router_refresh_stream.dart      # ChangeNotifier wrapper for auth/state streams
 ```
 
 ---
@@ -494,5 +492,4 @@ Auto-generated files - commit them, but **never** export from barrel files:
 
 | File | Generator | Command |
 |------|-----------|---------|
-| `*.g.dart` | Drift | `dart run build_runner build` |
-| `*.gr.dart` | auto_route | `dart run build_runner build` |
+| `*.g.dart` | Drift, go_router_builder | `dart run build_runner build` |

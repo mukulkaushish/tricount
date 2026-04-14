@@ -40,13 +40,28 @@ main.dart
 **Responsibility**: Minimal entry point. Calls `bootstrap()` and runs the app.
 
 **Behavior**:
-- Calls `WidgetsFlutterBinding.ensureInitialized()`
-- Calls `await bootstrap()` which sets up all DI
-- Sets `FlutterError.onError` to report to analytics
-- Sets `PlatformDispatcher.instance.onError` for async errors
+- Calls `await bootstrap()` which initializes all DI and error handlers
 - Calls `runApp()` with the root `App` widget
 
 **Must NOT contain**: Business logic, DI setup, theme definitions, or route configuration.
+
+### Complete Implementation
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:tricount/app.dart';
+import 'package:tricount/bootstrap.dart';
+
+void main() async {
+  // Initialize all dependencies and error handlers
+  await bootstrap();
+  
+  // Run the app
+  runApp(const App());
+}
+```
+
+**That's it.** All complexity is deferred to `bootstrap()` and `App()`. No error handling, no service setup, nothing. The entry point is maximally simple.
 
 ---
 
@@ -71,7 +86,38 @@ main.dart
 9. **BLoC Observer** - `Bloc.observer = AppBlocObserver()` for global state logging/error reporting
 10. **App Lifecycle Observer** - `WidgetsBinding.instance.addObserver(AppLifecycleObserver())` for resume/pause handling
 
-**Error Strategy**: If any init step fails, log the error and throw. The app should not start in a partially initialized state.
+**Error Strategy**: If any init step fails, log the error and throw. The app must never start in a partially initialized state.
+
+```dart
+Future<void> bootstrap() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final sl = GetIt.instance;
+  try {
+    const env = String.fromEnvironment('ENV', defaultValue: 'development');
+    await initDependencies(environment: env);           // all GetIt registrations
+    final logger = sl<AppLogger>();
+    Bloc.observer = AppBlocObserver(logger: logger);    // global BLoC logging
+    FlutterError.onError = (details) =>
+        logger.error(details.exceptionAsString(), stackTrace: details.stack);
+    PlatformDispatcher.instance.onError = (error, stack) {
+      logger.error('$error', stackTrace: stack);
+      return true;
+    };
+    WidgetsBinding.instance.addObserver(AppLifecycleObserver(logger: logger));
+  } catch (e, st) {
+    sl.isRegistered<AppLogger>()
+        ? sl<AppLogger>().error('Bootstrap failed', stackTrace: st)
+        : debugPrint('Bootstrap failed: $e');
+    rethrow;
+  }
+}
+```
+
+`AppLifecycleObserver` is a `WidgetsBindingObserver` that logs and handles `resumed` / `paused` / `detached` lifecycle transitions (refresh tokens, save progress, cancel requests).
+
+### initDependencies Function
+
+Lives in `lib/core/di/injection_container.dart` and handles all GetIt registration.
 
 ---
 
@@ -106,24 +152,164 @@ final sl = GetIt.instance;  // 'sl' = service locator
 
 **Registration order matters** - dependencies must be registered before dependents.
 
+### Complete Implementation
+
+```dart
+import 'package:get_it/get_it.dart';
+import 'package:tricount/core/logging/app_logger.dart';
+import 'package:tricount/core/network/network_module.dart';
+import 'package:tricount/core/storage/storage_module.dart';
+import 'package:tricount/core/di/app_bloc_observer.dart';
+import 'package:tricount/features/auth/di/auth_module.dart';
+import 'package:tricount/features/bills/di/bills_module.dart';
+
+/// Initialize all dependencies
+Future<void> initDependencies({required String environment}) async {
+  final sl = GetIt.instance;
+
+  // Step 1: Register Logger first (everything else may log)
+  // Use PrettyAppLogger in development, SilentAppLogger in production
+  sl.registerSingleton<AppLogger>(
+    environment == 'production'
+        ? SilentAppLogger()
+        : PrettyAppLogger(),
+  );
+
+  // Step 2: Register networking layer (uses logger)
+  registerNetworkModule(sl);
+
+  // Step 3: Register storage layer (database, secure storage, preferences)
+  // This is async if using Drift
+  await registerStorageModule(sl);
+
+  // Step 4: Register feature modules
+  // Each module registers its repositories, use cases, and BLoCs
+  registerAuthModule(sl);
+  registerBillsModule(sl);
+  // Add more feature modules as needed
+
+  // Step 5: Theme, Connectivity, Analytics (global services)
+  // These are typically registered in feature modules or here as global
+  // sl.registerLazySingleton<ThemeBloc>(() => ThemeBloc(theme Provider));
+  // sl.registerLazySingleton<ConnectivityBloc>(() => ConnectivityBloc(...));
+}
+```
+
 ### Registration Modules
 
-Each module is a separate file with a `void register()` function:
+Each module is a separate file with a `void register()` or `Future<void> register()` function:
 
 | Module | Registers |
 |--------|-----------|
 | `network_module.dart` | Dio, interceptors, HttpClient (DioHttpClient) |
 | `storage_module.dart` | Drift DB, SecureStore, SharedPreferences |
-| `analytics_module.dart` | AnalyticsService + adapters |
-| `feature_module.dart` | All feature repos, use cases, BLoCs |
+| `auth_module.dart` | AuthRepository, LoginUseCase, AuthBloc |
+| `bills_module.dart` | BillsRepository, BillsBloc |
+
+#### Example: network_module.dart
+
+```dart
+import 'package:dio/dio.dart';
+import 'package:get_it/get_it.dart';
+import 'package:tricount/core/network/dio_http_client.dart';
+import 'package:tricount/core/network/http_client.dart';
+import 'package:tricount/core/network/interceptors/auth_interceptor.dart';
+import 'package:tricount/core/network/interceptors/retry_interceptor.dart';
+import 'package:tricount/core/logging/app_logger.dart';
+
+void registerNetworkModule(GetIt sl) {
+  // Create Dio instance with base config
+  final dio = Dio()
+    ..options = BaseOptions(
+      baseUrl: 'https://api.example.com/v1',
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 30),
+      sendTimeout: const Duration(seconds: 15),
+      contentType: 'application/json',
+      responseType: ResponseType.json,
+    );
+
+  // Add Dio's built-in LogInterceptor
+  dio.interceptors.add(
+    LogInterceptor(
+      requestBody: true,
+      responseBody: true,
+      error: true,
+    ),
+  );
+
+  // Add custom interceptors (order matters)
+  dio.interceptors.add(
+    AuthInterceptor(
+      tokenProvider: sl<TokenProvider>(),
+    ),
+  );
+
+  dio.interceptors.add(
+    RetryInterceptor(
+      logger: sl<AppLogger>(),
+    ),
+  );
+
+  // Register Dio
+  sl.registerLazySingleton<Dio>(() => dio);
+
+  // Register HttpClient implementation
+  sl.registerLazySingleton<HttpClient>(
+    () => DioHttpClient(
+      dio: sl<Dio>(),
+      logger: sl<AppLogger>(),
+    ),
+  );
+}
+```
+
+#### Example: auth_module.dart
+
+```dart
+import 'package:get_it/get_it.dart';
+import 'package:tricount/features/auth/domain/repositories/auth_repository.dart';
+import 'package:tricount/features/auth/data/repositories/remote_auth_repository.dart';
+import 'package:tricount/features/auth/domain/usecases/login_use_case.dart';
+import 'package:tricount/features/auth/presentation/bloc/auth_bloc.dart';
+
+void registerAuthModule(GetIt sl) {
+  // Register repository (interface in domain, impl in data)
+  sl.registerLazySingleton<AuthRepository>(
+    () => RemoteAuthRepository(
+      httpClient: sl<HttpClient>(),
+      secureStore: sl<SecureStore>(),
+    ),
+  );
+
+  // Register use cases
+  sl.registerLazySingleton<LoginUseCase>(
+    () => LoginUseCase(repository: sl<AuthRepository>()),
+  );
+
+  sl.registerLazySingleton<ForgotPasswordUseCase>(
+    () => ForgotPasswordUseCase(repository: sl<AuthRepository>()),
+  );
+
+  // Register BLoC (factory, not singleton - new instance per screen)
+  sl.registerFactory<AuthBloc>(
+    () => AuthBloc(
+      loginUseCase: sl<LoginUseCase>(),
+      forgotPasswordUseCase: sl<ForgotPasswordUseCase>(),
+    ),
+  );
+}
+```
 
 ### Singleton vs Factory
 
-| Type | When |
-|------|------|
-| `registerLazySingleton` | Services: HttpClient, Database, Analytics, Repositories |
-| `registerFactory` | BLoCs (new instance per screen) |
-| `registerSingletonAsync` | Services requiring async init (Database) |
+| Type | When | Use Case |
+|------|------|----------|
+| `registerLazySingleton` | Expensive-to-create services that should be reused | HttpClient, Database, Repository, Logger |
+| `registerFactory` | New instance per request | BLoCs, Cubits (each screen gets a fresh BLoC) |
+| `registerSingletonAsync` | Services requiring async init | Drift Database, Analytics initialization |
+
+**Rule**: Repositories and Services → Singleton. BLoCs → Factory.
 
 ---
 
@@ -150,7 +336,7 @@ MultiBlocProvider
 ```
 
 **Rules**:
-- `MaterialApp.router` is used (not `MaterialApp`) because auto_route provides the router config
+- `MaterialApp.router` is used (not `MaterialApp`) because go_router provides the router config
 - Theme is built from `ThemeState`, never hardcoded
 - `ConnectivityBanner` wraps the entire app as a `builder` overlay
 - No inline `ThemeData` construction - always delegate to `AppTheme.build()`

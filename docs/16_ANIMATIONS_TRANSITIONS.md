@@ -25,14 +25,14 @@ Configured in `AppTheme.build()` via `pageTransitionsTheme`.
 
 ### Route-Specific Overrides
 
-Use auto_route's `CustomRoute` with built-in `TransitionsBuilders` -> [09_NAVIGATION_DEEP_LINKING.md](09_NAVIGATION_DEEP_LINKING.md#built-in-transitionsbuilders-library)
+Use go_router's `CustomTransitionPage` inside the route `pageBuilder` → [09_NAVIGATION_DEEP_LINKING.md](09_NAVIGATION_DEEP_LINKING.md#page-transitions)
 
-| Route | TransitionsBuilder | Duration | Reason |
-|-------|-------------------|----------|--------|
-| Reader page | `TransitionsBuilders.fadeIn` | 250ms | Immersive content entry |
-| Modal bottom sheet | `TransitionsBuilders.slideBottom` | 300ms | Platform convention |
-| Settings sub-pages | `TransitionsBuilders.fadeIn` | 200ms | Lightweight navigation |
-| Tab switch | `TransitionsBuilders.noTransition` | 0ms | Tabs should feel instant |
+| Route | Transition | Duration | Reason |
+|-------|-----------|----------|--------|
+| Bill detail page | Fade in | 250ms | Smooth content entry |
+| Modal bottom sheet | Slide from bottom | 300ms | Platform convention |
+| Settings sub-pages | Fade in | 200ms | Lightweight navigation |
+| Tab switch | None | 0ms | Tabs should feel instant |
 
 ---
 
@@ -103,4 +103,4 @@ pageTransitionsTheme: PageTransitionsTheme(
 )
 ```
 
-For route-specific overrides, use auto_route's `@RoutePage(transitionsBuilder: ...)` annotation.
+For route-specific overrides, use go_router's `CustomTransitionPage` in the route `pageBuilder` callback.

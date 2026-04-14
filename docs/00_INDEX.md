@@ -25,13 +25,13 @@
 | 06 | [Networking Layer](06_NETWORKING_LAYER.md) | HTTP abstractions, interceptors, and request conventions |
 | 07 | [JSON Parsing & Codable](07_JSON_PARSING_CODABLE.md) | Parsing helpers, DTO conventions, and serialization rules |
 | 08 | [State Management](08_STATE_MANAGEMENT.md) | BLoC/Cubit guidance, state modeling, and event conventions |
-| 09 | [Navigation & Deep Linking](09_NAVIGATION_DEEP_LINKING.md) | Routing setup, guards, and deep-link handling |
+| 09 | [Navigation & Deep Linking](09_NAVIGATION_DEEP_LINKING.md) | go_router setup, auth redirect, shell routes, deep linking |
 | 10 | [Local Storage](10_LOCAL_STORAGE.md) | Drift, secure storage, and caching strategy |
 | 11 | [Connectivity & Resilience](11_CONNECTIVITY_RESILIENCE.md) | Offline behavior, retries, and network awareness |
 | 12 | [Analytics Interface](12_ANALYTICS_INTERFACE.md) | Analytics contracts, event taxonomy, and adapters |
 | 13 | [Logging System](13_LOGGING_SYSTEM.md) | Logging structure, environments, and crash-reporting hooks |
 | 14 | [Error Handling](14_ERROR_HANDLING.md) | Exception modeling, UI error states, and error boundaries |
-| 15 | [Reusable Components](15_REUSABLE_COMPONENTS.md) | Shared widgets, loading states, and design consistency |
+| 15 | [Reusable Components](15_REUSABLE_COMPONENTS.md) | Shared widgets, loading states, and design consistency **— prioritizes grid components for content browsing** |
 | 16 | [Animations & Transitions](16_ANIMATIONS_TRANSITIONS.md) | Motion patterns and performance-friendly transitions |
 | 17 | [Testing Strategy](17_TESTING_STRATEGY.md) | Recommended unit, widget, and integration testing approach |
 | 18 | [CI/CD Pipeline](18_CI_CD_PIPELINE.md) | Recommended GitHub Actions pipeline and rollout path |
@@ -41,7 +41,7 @@
 | 22 | [Accessibility](22_ACCESSIBILITY.md) | Semantics, contrast, touch targets, and assistive-tech support |
 | 23 | [Environments & Flavors](23_ENVIRONMENTS_AND_FLAVORS.md) | Minimal environment strategy first, native flavors only when packaging needs differ |
 | 24 | [Performance & Release Gates](24_PERFORMANCE_AND_RELEASE_GATES.md) | Performance profiling, quality checks, and release readiness |
-| 25 | [Responsive Layout & Adaptivity](25_RESPONSIVE_LAYOUT_AND_ADAPTIVITY.md) | iPad, Foldable, and large screen layout strategies |
+| 25 | [Responsive Layout & Adaptivity](25_RESPONSIVE_LAYOUT_AND_ADAPTIVITY.md) | Grid layouts (primary pattern), navigation adaptation, iPad/foldable strategies, Material 3 breakpoints |
 
 ## How To Use These Docs
 

@@ -39,29 +39,234 @@ UI renders based on AppException type
 
 **File**: `lib/core/error/app_exception.dart`
 
-```
-sealed class AppException {
-  String get message;       // Technical detail for logging
-  String get userMessage;   // Safe to display in UI
+### Complete Implementation
+
+```dart
+import 'package:dio/dio.dart';
+
+sealed class AppException implements Exception {
+  /// Technical detail for logging and debugging
+  String get message;
+  
+  /// Safe to display directly in the UI
+  String get userMessage;
+  
+  /// Factory to map DioException to AppException subtypes
+  factory AppException.fromDioError(DioException error) {
+    if (error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        error.type == DioExceptionType.sendTimeout) {
+      return NetworkException(message: error.message ?? 'Request timeout');
+    }
+    
+    if (error.type == DioExceptionType.connectionError) {
+      return NetworkException(message: error.message ?? 'Network error');
+    }
+    
+    final statusCode = error.response?.statusCode ?? 0;
+    
+    switch (statusCode) {
+      case 400:
+        return BadRequestException(
+          message: error.response?.data?['message'] ?? 'Bad request',
+        );
+      case 401:
+        return UnauthorizedException(
+          message: error.response?.data?['message'] ?? 'Unauthorized',
+        );
+      case 403:
+        return ForbiddenException(
+          message: error.response?.data?['message'] ?? 'Forbidden',
+        );
+      case 404:
+        return NotFoundException(
+          message: error.response?.data?['message'] ?? 'Not found',
+        );
+      case 422:
+        return ValidationException(
+          message: error.response?.data?['message'] ?? 'Validation error',
+          fieldErrors: _parseValidationErrors(error.response?.data),
+        );
+      case 429:
+        return RateLimitException(
+          message: 'Too many requests',
+          retryAfter: _parseRetryAfter(error.response?.headers),
+        );
+      case >= 500:
+        return ServerException(
+          statusCode: statusCode,
+          message: error.response?.data?['message'] ?? 'Server error',
+        );
+      default:
+        return UnknownException(message: error.message ?? 'Unknown error');
+    }
+  }
+
+  static Map<String, List<String>>? _parseValidationErrors(dynamic data) {
+    if (data is! Map) return null;
+    final errors = data['errors'] as Map?;
+    if (errors == null) return null;
+    return Map.from(errors).map(
+      (key, value) => MapEntry(
+        key.toString(),
+        (value as List?)?.map((v) => v.toString()).toList() ?? [],
+      ),
+    );
+  }
+
+  static Duration? _parseRetryAfter(Headers? headers) {
+    final retryAfter = headers?['retry-after'];
+    if (retryAfter == null) return null;
+    final seconds = int.tryParse(retryAfter);
+    return seconds != null ? Duration(seconds: seconds) : null;
+  }
+}
+
+/// No network connectivity, DNS failure, or timeout
+final class NetworkException extends AppException {
+  NetworkException({required this.message});
+  
+  @override
+  final String message;
+  
+  @override
+  String get userMessage => 'Please check your internet connection.';
+}
+
+/// 5xx server error
+final class ServerException extends AppException {
+  ServerException({required this.statusCode, required this.message});
+  
+  final int statusCode;
+  @override
+  final String message;
+  
+  @override
+  String get userMessage => 'Something went wrong. Please try again later.';
+}
+
+/// 400 Bad Request
+final class BadRequestException extends AppException {
+  BadRequestException({required this.message});
+  
+  @override
+  final String message;
+  
+  @override
+  String get userMessage => 'Invalid request.';
+}
+
+/// 401 Unauthorized (session expired, invalid credentials)
+final class UnauthorizedException extends AppException {
+  UnauthorizedException({required this.message});
+  
+  @override
+  final String message;
+  
+  @override
+  String get userMessage => 'Session expired. Please log in again.';
+}
+
+/// 403 Forbidden (user lacks permission)
+final class ForbiddenException extends AppException {
+  ForbiddenException({required this.message});
+  
+  @override
+  final String message;
+  
+  @override
+  String get userMessage => "You don't have access to this content.";
+}
+
+/// 404 Not Found
+final class NotFoundException extends AppException {
+  NotFoundException({required this.message});
+  
+  @override
+  final String message;
+  
+  @override
+  String get userMessage => 'Content not found.';
+}
+
+/// 422 Unprocessable Entity (form validation errors)
+final class ValidationException extends AppException {
+  ValidationException({
+    required this.message,
+    required this.fieldErrors,
+  });
+  
+  @override
+  final String message;
+  final Map<String, List<String>>? fieldErrors;
+  
+  @override
+  String get userMessage => 'Please check your input.';
+}
+
+/// 429 Too Many Requests (rate limited)
+final class RateLimitException extends AppException {
+  RateLimitException({required this.message, this.retryAfter});
+  
+  @override
+  final String message;
+  final Duration? retryAfter;
+  
+  @override
+  String get userMessage {
+    if (retryAfter != null) {
+      final seconds = retryAfter!.inSeconds;
+      return 'Too many requests. Please wait ${seconds}s.';
+    }
+    return 'Too many requests. Please wait.';
+  }
+}
+
+/// JSON response parsing failure (field missing, wrong type, etc.)
+final class DataMismatchException extends AppException {
+  DataMismatchException({required this.fieldName, required this.message});
+  
+  final String fieldName;
+  @override
+  final String message;
+  
+  @override
+  String get userMessage => 'We received unexpected data.';
+}
+
+/// Local cache/database read error
+final class CacheException extends AppException {
+  CacheException({required this.message});
+  
+  @override
+  final String message;
+  
+  @override
+  String get userMessage => 'Unable to load saved data.';
+}
+
+/// Local storage (Drift, secure storage) error
+final class StorageException extends AppException {
+  StorageException({required this.message});
+  
+  @override
+  final String message;
+  
+  @override
+  String get userMessage => 'Unable to access storage.';
+}
+
+/// Catch-all for unexpected exceptions
+final class UnknownException extends AppException {
+  UnknownException({required this.message});
+  
+  @override
+  final String message;
+  
+  @override
+  String get userMessage => 'An unexpected error occurred.';
 }
 ```
-
-### Subtypes
-
-| Type | When | userMessage |
-|------|------|-------------|
-| `NetworkException` | No connectivity, timeout, DNS | "Please check your internet connection." |
-| `ServerException(int statusCode)` | 5xx responses | "Something went wrong. Please try again later." |
-| `BadRequestException` | 400 | "Invalid request." |
-| `UnauthorizedException` | 401 (usually interceptor handles) | "Session expired. Please log in again." |
-| `ForbiddenException` | 403 | "You don't have access to this content." |
-| `NotFoundException` | 404 | "Content not found." |
-| `ValidationException(Map<String, List<String>> fieldErrors)` | 422 | "Please check your input." |
-| `RateLimitException(Duration? retryAfter)` | 429 | "Too many requests. Please wait." |
-| `DataMismatchException(String fieldName)` | JSON parse failures | "We received unexpected data." |
-| `CacheException` | Local storage errors | "Unable to load saved data." |
-| `StorageException` | Drift / secure storage errors | "Unable to access storage." |
-| `UnknownException` | Catch-all | "An unexpected error occurred." |
 
 > `DataMismatchException` is the JSON-specific subtype — see [07_JSON_PARSING_CODABLE.md](07_JSON_PARSING_CODABLE.md#datamismatchexception) for parse-failure context.
 
@@ -317,6 +522,6 @@ Android may kill the app process while it's in the background. When the user ret
 | Drift database | In-memory BLoC state |
 | SharedPreferences | Active network requests |
 | flutter_secure_storage | Stream subscriptions |
-| Navigation stack (auto_route restores) | Ephemeral widget state |
+| Navigation stack (go_router restores via `initialLocation`) | Ephemeral widget state |
 
 **Strategy**: Persist critical state (reading progress, form drafts) to Drift or SharedPreferences immediately — don't rely on BLoC state surviving background. On `resumed`, re-hydrate BLoCs from local storage before fetching remote.

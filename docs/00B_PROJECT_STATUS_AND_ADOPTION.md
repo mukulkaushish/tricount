@@ -71,6 +71,24 @@ If a doc describes a file that does not yet exist, treat it as a planned structu
 3. Add performance and release checks from `24`.
 4. Add release automation only after the app can produce meaningful artifacts.
 
+## Design Priorities
+
+### Content Browsing: Grids Over Lists
+
+**Grid layouts are the primary pattern** for displaying collections (bills, items, cards). Reasons:
+
+1. **Responsive by nature** — automatically adapt column count by breakpoint without conditional layout code
+2. **Space efficient** — use screen width effectively on phones, tablets, iPads, and foldables
+3. **No custom wrappers** — use native `GridView.builder` + breakpoints from `AppDimensions`
+4. **Accessible** — cards have adequate tap targets (48dp minimum) and semantic labels
+
+**Lists are for:**
+- Navigation items (navigation bar, menu)
+- Long-form text-heavy content (conversations, chat history, feeds)
+- Single-column browsing where items have variable structure
+
+When a screen shows a browsable collection of similar items (bills, transactions, products), implement it as a grid. See [25_RESPONSIVE_LAYOUT_AND_ADAPTIVITY.md § Grid Layouts](../docs/25_RESPONSIVE_LAYOUT_AND_ADAPTIVITY.md#grid-layouts-primary-pattern-for-content-browsing) for implementation patterns.
+
 ## Rules For Contributors
 
 - Prefer incremental adoption over large architecture-only refactors.
@@ -78,6 +96,7 @@ If a doc describes a file that does not yet exist, treat it as a planned structu
 - When current code and target docs disagree, document the gap and either:
   - implement the missing piece, or
   - narrow the doc so it clearly says "planned" or "recommended"
+- **Use grids (not lists) for content browsing** to ensure responsive layouts across all screen sizes by default.
 
 ## Definition Of Done For Future Doc Updates
 

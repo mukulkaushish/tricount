@@ -328,28 +328,160 @@ class HomePage extends StatelessWidget {
 
 ---
 
+## Grid Layouts (Primary Pattern for Content Browsing)
+
+Grids are the **preferred layout pattern** for browsing content (bills, items, cards) across all screen sizes. Complete widget implementations (`BillsGridView`, `BillCard`) → [15_REUSABLE_COMPONENTS.md § Responsive Grid Components](15_REUSABLE_COMPONENTS.md#responsive-grid-components).
+
+### When to Use Grids
+
+| Use Grid | Use List |
+|----------|----------|
+| Content browsing (bills, transactions, cards) | Navigation items, menus |
+| Any screen showing a similar-item collection | Long-form text, feeds, chat |
+| Responsive by default, no conditional layout code | Single-column variable-structure items |
+
+### GridView.builder — Column Count from Breakpoints
+
+```dart
+final crossAxisCount = context.isCompact ? 2 :   // Phones
+                       context.isMedium  ? 3 :   // Tablets
+                       context.isExpanded ? 4 : 5; // iPad/Large
+
+GridView.builder(
+  padding: context.responsiveContentPadding,
+  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+    crossAxisCount: crossAxisCount,
+    mainAxisSpacing: AppDimensions.s16,
+    crossAxisSpacing: AppDimensions.s16,
+    childAspectRatio: 1.0,
+  ),
+  itemCount: items.length,
+  itemBuilder: (context, index) => ItemCard(item: items[index]),
+);
+```
+
+### GridView.extent — Width-Based Auto-Columns
+
+Prefer this when column count should derive from item width, not a fixed count:
+
+```dart
+GridView.extent(
+  maxCrossAxisExtent: context.isCompact ? 150 : context.isMedium ? 200 : 250,
+  mainAxisSpacing: AppDimensions.s16,
+  crossAxisSpacing: AppDimensions.s16,
+  children: items.map((item) => ItemCard(item: item)).toList(),
+)
+```
+
+### Foldable-Aware Grids
+
+Avoid placing content on the hinge in tabletop / book mode:
+
+```dart
+final gridHeight = context.hasActiveFold ? screenHeight / 2 : screenHeight;
+
+SizedBox(
+  height: gridHeight,
+  child: GridView.builder(
+    padding: context.hingeAwarePadding, // respects fold bounds
+    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: context.isCompact ? 2 : context.isMedium ? 3 : 4,
+    ),
+    ...
+  ),
+);
+```
+
+### iPad Multitasking
+
+Grids adapt to Split View / Slide Over automatically — `context.isCompact/isMedium/isExpanded` recalculate as the window width changes. No extra code needed.
+
+| Multitasking mode | Width | Columns |
+|-------------------|-------|---------|
+| Full screen | Expanded | 4+ |
+| 50% Split View | Medium | 3 |
+| 33% Slide Over | Compact | 2 |
+
+### Content Max-Width on Large Screens
+
+```dart
+ConstrainedBox(
+  constraints: BoxConstraints(
+    maxWidth: context.isExpanded ? AppDimensions.maxContentWidth : double.infinity,
+  ),
+  child: Center(child: GridView.builder(...)),
+)
+```
+
+### Variable-Height Items (Optional)
+
+For cards with significantly different heights, use `flutter_staggered_grid_view`:
+
+```yaml
+dependencies:
+  flutter_staggered_grid_view: ^0.7.0
+```
+
+```dart
+MasonryGridView.builder(
+  gridDelegate: SliverSimpleGridDelegateWithFixedCrossAxisCount(
+    crossAxisCount: context.isCompact ? 2 : context.isMedium ? 3 : 4,
+  ),
+  ...
+)
+```
+
+Only adopt if items have meaningfully different heights. Native `GridView` is simpler and faster for uniform cards.
+
+### Grid Performance
+
+- Use `const` constructors on card widgets
+- Keep `itemBuilder` build time < 16ms — avoid heavy work inside it
+- Use `childAspectRatio` to avoid remeasuring card heights
+- Never wrap `GridView` in `SingleChildScrollView` — it scrolls natively
+
+---
+
 ## Testing & Validation
 
 ### Simulators & Emulators
 
 | Device | How to Test | Key Scenarios |
 |--------|------------|--------------|
-| iPad 12.9" | Xcode simulator or Flutter device | Expanded (> 840dp), full-screen app |
-| iPad 12.9" Split View | Xcode simulator with Split View | Compact (33% split), Medium (50% split) |
-| Android Tablet (10") | Android emulator | Medium/Expanded, landscape/portrait |
-| Samsung Galaxy Fold | Emulator (limited) or device | Folded (Compact), Unfolded (Medium) |
+| iPad 12.9" | Xcode simulator or Flutter device | Expanded (> 840dp), full-screen app, grid with 4+ columns |
+| iPad 12.9" Split View | Xcode simulator with Split View | Compact (33% split, 2 columns), Medium (50% split, 3 columns) |
+| Android Tablet (10") | Android emulator | Grid columns adapt: Medium/Expanded in landscape |
+| Samsung Galaxy Fold | Emulator (limited) or device | Folded (Compact, 2 cols), Unfolded (Medium, 3 cols) |
 
 ### Testing Checklist
 
+**Layout & Responsiveness:**
+- [ ] Grid columns adjust correctly: 2 (compact), 3 (medium), 4+ (expanded)
+- [ ] Grid adapts smoothly during iPad Split View resize (33% → 50% → full)
+- [ ] Grid columns recompute on device rotation without layout bugs
+- [ ] List-detail transitions smooth when folding/unfolding foldable device
 - [ ] No stretched buttons or full-width text lines on large screens (max-width enforced)
+- [ ] Multitasking works: app gracefully shrinks when user drags to Split View/Slide Over
+
+**Grid-Specific:**
+- [ ] Card content doesn't overflow (titles truncated, no word wrap in narrow cards)
+- [ ] Grid scroll position preserved during rotate/resize
+- [ ] Grid items have consistent aspect ratio (no layout shift during scroll)
+- [ ] Card tap targets >= 48dp (Material 3 minimum)
+- [ ] Foldable grids: no critical content placed on hinge/fold line
+- [ ] Grid spacing respects `hingeAwarePadding` on foldables
+- [ ] Grid padding scales per breakpoint (compactH, mediumH, expandedH from AppDimensions)
+
+**iPad & Tablet:**
+- [ ] Text remains readable on 13" iPad (use max-width constraints on grid container)
+- [ ] Hover states working on iPad with trackpad/mouse (add `MouseRegion` to cards if needed)
+- [ ] Grid layout optimal for landscape orientation on tablets
+
+**General Responsiveness:**
 - [ ] Keyboard appears without overlapping action buttons on all screen sizes
 - [ ] Content not cut off by hinge on dual-screen devices
 - [ ] App state (form inputs, scroll position) preserved during resize/orientation change
 - [ ] Navigation accessible with one hand on large devices (buttons not in unreachable corners)
-- [ ] Hover states working on iPad with trackpad/mouse
-- [ ] List-detail transitions smooth when folding/unfolding foldable device
-- [ ] Multitasking works: app gracefully shrinks when user drags to Split View/Slide Over
-- [ ] Text remains readable on 13" iPad (use max-width constraints)
 
 ### Debugging Responsive Issues
 
@@ -382,7 +514,17 @@ Positioned(
 
 ## References
 
+**Navigation & Adaptive Layout:**
 - [flutter_adaptive_scaffold](https://pub.dev/packages/flutter_adaptive_scaffold) — Official Flutter team package
-- [Material 3 Adaptive UI](https://m3.material.io/foundations/adaptive-design/overview) — Design specs
 - [Flutter Responsive UI Guide](https://flutter.dev/docs/development/ui/adaptive-responsive)
 - [MediaQuery.displayFeatures Docs](https://api.flutter.dev/flutter/widgets/MediaQuery/displayFeaturesOf.html) — Foldable API
+
+**Grid & Layout:**
+- [GridView Documentation](https://api.flutter.dev/flutter/widgets/GridView-class.html) — Native GridView.builder and GridView.extent
+- [SliverGridDelegate Docs](https://api.flutter.dev/flutter/widgets/SliverGridDelegate-class.html) — Column count and aspect ratio
+- [flutter_staggered_grid_view](https://pub.dev/packages/flutter_staggered_grid_view) — For variable-height items (optional)
+- [Responsive Grid Example (GitHub)](https://github.com/rydmike/resp_stag_grid) — Breakpoint-based grid implementation
+
+**Design & Standards:**
+- [Material 3 Adaptive UI](https://m3.material.io/foundations/adaptive-design/overview) — Design specs
+- [Flutter Large Screens Guide](https://docs.flutter.dev/ui/adaptive-responsive/large-screens) — iPad/tablet optimization

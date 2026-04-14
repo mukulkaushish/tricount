@@ -153,7 +153,7 @@ blocks that are shared across features.
 
 ## Cross-Cutting Concerns
 
-These live in `core/` and are injected via GetIt. Feature-scoped BLoCs are provided per-route using auto_route's `WrappedRoute` mixin -> [09_NAVIGATION_DEEP_LINKING.md](09_NAVIGATION_DEEP_LINKING.md#per-route-di-with-wrappedroute)
+These live in `core/` and are injected via GetIt. Feature-scoped BLoCs are provided per-route inside the go_router `builder` callback → [09_NAVIGATION_DEEP_LINKING.md](09_NAVIGATION_DEEP_LINKING.md#per-route-bloc-injection)
 
 | Concern | Interface | Default Implementation |
 |---------|-----------|----------------------|
@@ -187,8 +187,8 @@ Extensions should stay:
 
 | Don't Wrap | Already Provided By |
 |-----------|-------------------|
-| `context.pushRoute()` | auto_route (built-in) |
-| `context.router` | auto_route (built-in) |
+| `context.go()` / `context.push()` | go_router (built-in) |
+| `context.pop()` / `context.canPop()` | go_router (built-in) |
 | `context.read<T>()` / `context.watch<T>()` | flutter_bloc (built-in) |
 | `context.select<T, V>()` | flutter_bloc (built-in) |
 

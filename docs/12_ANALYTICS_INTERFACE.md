@@ -170,9 +170,9 @@ Wraps multiple adapters and fans out every call:
 Analytics events are NOT fired from widgets. They are fired from:
 
 1. **BLoC event handlers** - after successful state transitions
-2. **Route observer** - auto_route's `AutoRouteObserver` for screen tracking
+2. **Route observer** - go_router `NavigatorObserver` for screen tracking
 3. **Global error handlers** - `FlutterError.onError`, `PlatformDispatcher.onError`
 
-### Screen Tracking via AutoRouteObserver
+### Screen Tracking via NavigatorObserver
 
-Implementation details → [09_NAVIGATION_DEEP_LINKING.md](09_NAVIGATION_DEEP_LINKING.md#screen-tracking-with-autorouteobserver)
+Implementation details → [09_NAVIGATION_DEEP_LINKING.md](09_NAVIGATION_DEEP_LINKING.md#screen-tracking)

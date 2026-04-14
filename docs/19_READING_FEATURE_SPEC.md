@@ -28,7 +28,7 @@ When creating a new feature, document it using this structure. Each section maps
 ### 4. Presentation Layer
 - **BLoC/Cubit**: Events table, state definition, transformer choices
 - **Page**: Widget tree sketch, which `BlocBuilder`/`BlocSelector` wraps what
-- **WrappedRoute**: What providers the page injects via `wrappedRoute()`
+- **Route injection**: What BLoC/Repository providers the route builder injects (via go_router `builder` callback)
 
 ### 5. User Flows
 - Step-by-step flow for the feature's primary action
@@ -82,35 +82,23 @@ The example below applies the template to a reading/content feature.
 
 ## Reader Page Specification
 
-### Route Setup (WrappedRoute)
+### Route Setup (go_router)
 
-> This is an illustrative target-architecture example for the point where the
-> app adopts `auto_route`. The current repository does not yet include that
-> package, so treat this snippet as planned structure rather than current code.
-
-`ReaderPage` implements `AutoRouteWrapper` to inject its scoped BLoC:
+Scoped BLoC is provided inside the go_router route builder — lifecycle ties to the route:
 
 ```dart
-@RoutePage()
-class ReaderPage extends StatelessWidget implements AutoRouteWrapper {
-  final String bookId;
-  final int chapterIndex;
-
-  const ReaderPage({
-    super.key,
-    @PathParam('bookId') required this.bookId,
-    @PathParam('chapterIndex') required this.chapterIndex,
-  });
-
-  @override
-  Widget wrappedRoute(BuildContext context) {
+GoRoute(
+  path: '/reader/:bookId/:chapterIndex',
+  builder: (context, state) {
+    final bookId = state.pathParameters['bookId']!;
+    final chapterIndex = int.parse(state.pathParameters['chapterIndex']!);
     return BlocProvider(
       create: (_) => sl<ReaderBloc>()
         ..add(ReaderChapterRequested(bookId: bookId, chapterIndex: chapterIndex)),
-      child: this,
+      child: ReaderPage(bookId: bookId, chapterIndex: chapterIndex),
     );
-  }
-}
+  },
+),
 ```
 
 ### ReaderBloc

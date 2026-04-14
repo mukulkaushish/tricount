@@ -86,8 +86,8 @@ In this repository, `<app_package>` resolves to `tricount`.
 
 ### Navigation
 
-- Use `auto_route` APIs directly when the app has adopted `auto_route`
-- Avoid custom wrappers around `context.router`, `pushRoute`, or `maybePop` unless there is a proven need
+- Use `go_router` APIs directly (`context.go`, `context.push`, `context.pop`) — no custom wrappers
+- Navigation package: `go_router` (Flutter team maintained) — see `docs/09_NAVIGATION_DEEP_LINKING.md`
 
 ## Naming Conventions
 

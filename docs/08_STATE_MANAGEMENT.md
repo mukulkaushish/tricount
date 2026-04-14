@@ -203,35 +203,34 @@ Always provide `buildWhen` to prevent unnecessary rebuilds:
 
 Provided via `MultiBlocProvider` wrapping `MaterialApp.router`.
 
-### Scoped BLoCs (provided per route via WrappedRoute)
+### Scoped BLoCs (provided per route via go_router builder)
 
 | BLoC | Scope | Provided Via |
 |------|-------|-------------|
-| `LibraryBloc` | Library tab | `WrappedRoute` on `LibraryPage` |
-| `ReaderBloc` | Reader screen | `WrappedRoute` on `ReaderPage` |
-| `SettingsCubit` | Settings screen | `WrappedRoute` on `SettingsPage` |
+| `BillsBloc` | Bills tab | `BlocProvider` inside go_router route `builder` |
+| `BillDetailBloc` | Bill detail screen | `BlocProvider` inside go_router route `builder` |
+| `SettingsCubit` | Settings screen | `BlocProvider` inside go_router route `builder` |
 
-Scoped BLoCs use auto_route's `WrappedRoute` mixin for per-route injection -> [09_NAVIGATION_DEEP_LINKING.md](09_NAVIGATION_DEEP_LINKING.md#per-route-di-with-wrappedroute)
+Per-route injection pattern → [09_NAVIGATION_DEEP_LINKING.md](09_NAVIGATION_DEEP_LINKING.md#per-route-bloc-injection)
 
 ### RepositoryProvider (for widget-tree DI)
 
 `flutter_bloc` provides `RepositoryProvider` and `MultiRepositoryProvider` for injecting repositories into the widget tree. Use these when a subtree needs a repository that isn't registered globally in GetIt:
 
 ```dart
-@override
-Widget wrappedRoute(BuildContext context) {
-  return MultiRepositoryProvider(
+// Inside GoRouter route definition:
+GoRoute(
+  path: '/bills',
+  builder: (context, state) => MultiBlocProvider(
     providers: [
-      RepositoryProvider(create: (_) => sl<LibraryRepository>()),
+      RepositoryProvider(create: (_) => sl<BillsRepository>()),
+      BlocProvider(
+        create: (context) => sl<BillsBloc>()..add(const BillsRequested()),
+      ),
     ],
-    child: BlocProvider(
-      create: (context) => LibraryBloc(
-        getBooks: sl<GetBooksUseCase>(),
-      )..add(const LibraryBooksRequested(page: 1)),
-      child: this,
-    ),
-  );
-}
+    child: const BillsPage(),
+  ),
+),
 ```
 
 **When to use RepositoryProvider vs GetIt**:
@@ -239,12 +238,12 @@ Widget wrappedRoute(BuildContext context) {
 | Approach | When |
 |----------|------|
 | GetIt (`sl<T>()`) | Default — most repos are singletons, accessible anywhere |
-| `RepositoryProvider` | When a repo instance is scoped to a route subtree, or when passing repo to a BLoC that should be testable via `context.read` |
+| `RepositoryProvider` | When a repo instance is scoped to a specific route subtree |
 
 ### DI Registration (GetIt)
 
 - Global BLoCs: `registerLazySingleton` in GetIt
-- Scoped BLoCs: `registerFactory` in GetIt, injected via `WrappedRoute`
+- Scoped BLoCs: `registerFactory` in GetIt, injected inside go_router route `builder`
 
 ---
 

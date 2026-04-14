@@ -1,28 +1,18 @@
-# 09 - Navigation & Deep Linking (auto_route)
+# 09 - Navigation & Deep Linking (go_router)
 
-> Route names, deep-link schemes, and example paths in this document are illustrative. Replace them with the real navigation model for your app.
->
-> This document describes the target navigation architecture once the app
-> adopts `auto_route`. The current repository does not yet include that
-> package, so treat the examples here as planned structure rather than current
-> code.
+> Route names, paths, and examples are illustrative. Replace with the real navigation model for your app.
 
 ## Overview
 
-Navigation uses `auto_route` exclusively. auto_route provides:
-- Declarative route definitions with code generation
-- Type-safe route arguments with `@PathParam()` and `@QueryParam()`
-- Deep linking with path parameters and `DeepLinkBuilder`
-- Route guards via `AutoRouteGuard`
-- Reactive guard re-checks via `reevaluateListenable` or `router.reevaluateGuards()`
-- Per-route DI injection via `WrappedRoute` mixin
-- Nested tab navigation via `AutoTabsRouter` / `AutoTabsScaffold`
-- Built-in context extensions (`context.router`, `context.pushRoute()`, etc.)
-- Built-in transition library via `TransitionsBuilders`
-- `AutoRouteObserver` for route-aware widgets and `AutoRouterObserver` for global tracking
-- Custom page transitions per route via `CustomRoute`
+Navigation uses `go_router` — the Flutter team's recommended routing package, maintained in `flutter/packages`. It supersedes third-party alternatives with full official support.
 
-**No custom navigation extensions needed.** auto_route provides everything.
+**Capabilities:**
+- Declarative URL-based routing
+- Type-safe routes via `go_router_builder` codegen
+- Route protection via `redirect` callbacks
+- Deep linking (Android App Links + iOS Universal Links)
+- Shell routes for persistent navigation UI (tabs, drawer)
+- Built-in context extensions — no custom wrappers needed
 
 ---
 
@@ -30,364 +20,376 @@ Navigation uses `auto_route` exclusively. auto_route provides:
 
 **File**: `lib/router/app_router.dart`
 
+```dart
+import 'package:go_router/go_router.dart';
+
+final appRouter = GoRouter(
+  initialLocation: '/splash',
+  redirect: _authRedirect,
+  refreshListenable: GoRouterRefreshStream(sl<AuthBloc>().stream),
+  observers: [AnalyticsRouteObserver()],
+  routes: [
+    GoRoute(path: '/splash', builder: (_, __) => const SplashPage()),
+    GoRoute(path: '/login',  builder: (_, __) => const LoginPage()),
+    ShellRoute(
+      builder: (_, __, child) => AppShell(child: child),
+      routes: [
+        GoRoute(path: '/bills', builder: (_, __) => const BillsPage()),
+        GoRoute(
+          path: '/bills/:billId',
+          builder: (_, state) => BillDetailPage(
+            billId: state.pathParameters['billId']!,
+          ),
+        ),
+        GoRoute(path: '/groups',   builder: (_, __) => const GroupsPage()),
+        GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
+      ],
+    ),
+  ],
+);
+```
+
 ### Route Table
 
-| Route Name | Path | Page | Guard | Deep Link |
-|------------|------|------|-------|-----------|
-| `SplashRoute` | `/` | `SplashPage` | None | No |
-| `LoginRoute` | `/login` | `LoginPage` | None | No |
-| `HomeRoute` | `/home` | `HomePage` (tab shell) | `AuthGuard` | No |
-| `LibraryRoute` | `/home/library` | `LibraryPage` | `AuthGuard` | Yes |
-| `BookDetailRoute` | `/home/library/:bookId` | `BookDetailPage` | `AuthGuard` | Yes: `<app_scheme>://books/:bookId` |
-| `ReaderRoute` | `/reader/:bookId/:chapterIndex` | `ReaderPage` | `AuthGuard` | Yes: `<app_scheme>://read/:bookId/:chapterIndex` |
-| `SettingsRoute` | `/home/settings` | `SettingsPage` | `AuthGuard` | No |
-| `ErrorRoute` | `/error` | `AppErrorPage` | None | No |
-
-### Typed Parameter Extraction
-
-auto_route generates typed arguments from path/query parameters:
-
-| Annotation | Purpose | Example |
-|-----------|---------|---------|
-| `@PathParam('bookId')` | Extract from URL path segment | `/books/:bookId` -> `String bookId` |
-| `@QueryParam('page')` | Extract from query string | `?page=2` -> `int? page` |
-
-Parameters are declared on the page constructor. auto_route generates the corresponding `Args` class automatically.
-
-### Nested Navigation (Tabs)
-
-Uses `AutoTabsScaffold` or `AutoTabsRouter` (both built into auto_route):
-
-```
-HomeRoute (AutoTabsScaffold)
-|- Tab 0: LibraryRoute
-|   +-- BookDetailRoute (pushed on top)
-|- Tab 1: SearchRoute (future)
-+-- Tab 2: SettingsRoute
-```
-
-#### Tab Variants
-
-| Widget | Use When |
-|--------|----------|
-| `AutoTabsScaffold` | Standard tab layout with bottom nav / app bar |
-| `AutoTabsRouter` | Custom tab layout — full control via builder callback |
-| `AutoTabsRouter.pageView` | Swipeable tabs (PageView-style) |
-| `AutoTabsRouter.tabBar` | TabBarView-style tabs |
-
-`AutoTabsScaffold` accepts `bottomNavigationBuilder` and `appBarBuilder` directly. It handles tab persistence, state retention, and nested navigation stacks automatically.
+| Path | Page | Guard |
+|------|------|-------|
+| `/splash` | `SplashPage` | None |
+| `/login` | `LoginPage` | None |
+| `/bills` | `BillsPage` | Auth redirect |
+| `/bills/:billId` | `BillDetailPage` | Auth redirect |
+| `/groups` | `GroupsPage` | Auth redirect |
+| `/settings` | `SettingsPage` | Auth redirect |
 
 ---
 
-## Navigation API (Built into auto_route)
+## Auth Guard
 
-**Do NOT create custom navigation extensions.** Use auto_route's built-in context extensions directly:
+go_router has no separate `Guard` class. Protection is a `redirect` callback on `GoRouter` — evaluated before every navigation attempt and re-evaluated whenever `refreshListenable` fires.
 
-| Built-in Method | Purpose |
-|-----------------|---------|
-| `context.router` | Access the nearest `StackRouter` |
-| `context.pushRoute(route)` | Push a typed route onto the stack |
-| `context.replaceRoute(route)` | Replace current route |
-| `context.maybePop()` | Pop if possible (returns `bool`) |
-| `context.popRoute()` | Unconditional pop |
-| `context.navigateTo(route)` | Declarative navigate (push or activate existing) |
-| `context.navigateNamedTo(path)` | Navigate by URL string |
-| `context.tabsRouter` | Access nearest `TabsRouter` (for tab switching) |
-| `context.routeData` | Access current route's data, params, query params |
-| `context.topRoute` | Topmost route data in the stack |
-| `context.innerRouterOf<T>()` | Access a specific nested router by type |
-| `context.watchRouter` | Rebuilds widget when router state changes |
+### File layout
 
-### Why No Custom Extensions
-
-```dart
-// WRONG - unnecessary wrapper:
-extension NavigationX on BuildContext {
-  void navigateToBook(String bookId) =>
-    pushRoute(BookDetailRoute(bookId: bookId));
-}
-
-// RIGHT - just use auto_route directly:
-context.pushRoute(BookDetailRoute(bookId: bookId));
+```
+lib/router/
+  app_router.dart              # GoRouter instance
+  go_router_refresh_stream.dart  # ChangeNotifier wrapper for auth stream
+  auth_redirect.dart           # redirect logic (testable pure function)
 ```
 
-Custom navigation wrappers add indirection, hide the actual route being navigated to, and make searching for route usages harder. auto_route's typed routes are already self-documenting.
+### auth_redirect.dart
 
----
-
-## Per-Route DI with WrappedRoute
-
-**`WrappedRoute`** is auto_route's built-in mixin for injecting dependencies (BlocProviders, RepositoryProviders) at the route level. This is how scoped BLoCs are provided — not via manual `BlocProvider` wrappers in the router config.
-
-### Usage Pattern
+**File**: `lib/router/auth_redirect.dart`
 
 ```dart
-@RoutePage()
-class LibraryPage extends StatelessWidget implements AutoRouteWrapper {
-  const LibraryPage({super.key});
+import 'package:flutter/widgets.dart';
+import 'package:go_router/go_router.dart';
+import 'package:tricount/core/security/token_provider.dart';
 
-  @override
-  Widget wrappedRoute(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<LibraryBloc>()..add(const LibraryBooksRequested(page: 1)),
-      child: this,
-    );
+/// Public routes that never require authentication.
+const _publicPaths = {'/splash', '/login'};
+
+/// Global redirect evaluated before every navigation attempt.
+/// Returns a redirect path string, or null to allow navigation.
+Future<String?> authRedirect(
+  BuildContext context,
+  GoRouterState state,
+  TokenProvider tokenProvider,
+) async {
+  final isAuthenticated = await tokenProvider.hasValidToken();
+  final isPublic = _publicPaths.contains(state.matchedLocation);
+
+  // Unauthenticated user hitting a protected route → send to login
+  // Preserve the intended destination so we can redirect back after login.
+  if (!isAuthenticated && !isPublic) {
+    final from = Uri.encodeComponent(state.uri.toString());
+    return '/login?from=$from';
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // LibraryBloc is available here via context.read<LibraryBloc>()
+  // Authenticated user hitting a login/splash → send to home
+  if (isAuthenticated && isPublic) {
+    return '/bills';
   }
+
+  return null; // allow navigation
 }
 ```
 
-### When to Use WrappedRoute
+**Why preserve `from`**: Deep links and bookmarks hit protected routes directly. Storing the intended destination in a query param means the login page can redirect the user where they were going after a successful login.
 
-| Scenario | Approach |
-|----------|----------|
-| Global BLoCs (Auth, Theme, Connectivity) | `MultiBlocProvider` at app root in `app.dart` |
-| Feature BLoCs (Library, Reader, Settings) | `WrappedRoute` on the page — BLoC lifecycle ties to route lifecycle |
-| Shared repositories needed by child routes | `RepositoryProvider` inside `wrappedRoute` |
-
-**Why WrappedRoute**: The BLoC is created when the route is entered and disposed when popped. No manual lifecycle management. The wrapping lives with the page class itself, keeping DI visible at the point of use.
-
----
-
-## Route Guards
-
-### AuthGuard (using AutoRouteGuard)
-
-**File**: `lib/router/guards/auth_guard.dart`
-
-Use `AutoRouteGuard` with `onNavigation(...)` for auth flows. For auth
-changes after navigation has already happened, trigger re-checks with either
-`reevaluateListenable` in `router.config(...)` or `router.reevaluateGuards()`
-from your auth state listener.
-
-**Dependencies**: `TokenProvider` (via GetIt), optional auth state listener
-
-**Setup**:
-```dart
-class AuthGuard extends AutoRouteGuard {
-  final TokenProvider _tokenProvider;
-
-  AuthGuard(this._tokenProvider);
-
-  @override
-  Future<void> onNavigation(
-    NavigationResolver resolver,
-    StackRouter router,
-  ) async {
-    if (await _tokenProvider.hasValidToken()) {
-      resolver.next();
-      return;
-    }
-
-    resolver.redirectUntil(
-      LoginRoute(
-        onResult: (didLogin) {
-          resolver.resolveNext(didLogin, reevaluateNext: false);
-        },
-      ),
-    );
-  }
-}
-```
-
-**Reactive re-check options**:
-- Preferred when you already have a `Listenable` or auth stream: pass
-  `reevaluateListenable` into `router.config(...)`
-- Alternative: call `appRouter.reevaluateGuards()` from an auth listener or
-  `AuthBloc` subscription when login/logout/token state changes
+### app_router.dart (wired up)
 
 ```dart
-MaterialApp.router(
-  routerConfig: appRouter.config(
-    reevaluateListenable: ReevaluateListenable.stream(authBloc.stream),
+final appRouter = GoRouter(
+  initialLocation: '/splash',
+  // Re-evaluate redirect whenever auth state changes (login / logout / token refresh)
+  refreshListenable: GoRouterRefreshStream(sl<AuthBloc>().stream),
+  redirect: (context, state) => authRedirect(
+    context,
+    state,
+    sl<TokenProvider>(),
   ),
+  routes: [...],
+);
+```
+
+### go_router_refresh_stream.dart
+
+**File**: `lib/router/go_router_refresh_stream.dart`
+
+```dart
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+
+/// Wraps a [Stream] as a [ChangeNotifier] so go_router can
+/// re-evaluate its redirect logic whenever the stream emits.
+final class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    _sub = stream.asBroadcastStream().listen((_) => notifyListeners());
+  }
+
+  late final StreamSubscription<dynamic> _sub;
+
+  @override
+  void dispose() {
+    _sub.cancel();
+    super.dispose();
+  }
+}
+```
+
+### Post-login redirect (honoring the `from` param)
+
+In `LoginPage`, after a successful login event is emitted, read the `from` query param and navigate there:
+
+```dart
+BlocListener<AuthBloc, AuthState>(
+  listenWhen: (_, current) => current is AuthAuthenticated,
+  listener: (context, state) {
+    // Honor deep link destination stored by authRedirect
+    final from = GoRouterState.of(context).uri.queryParameters['from'];
+    final destination = from != null
+        ? Uri.decodeComponent(from)
+        : '/bills';
+    context.go(destination);
+  },
+  child: ...,
 )
 ```
 
+### Triggering logout
+
+On session expiry (401 from `AuthInterceptor`) or explicit logout, add an event to `AuthBloc`. `GoRouterRefreshStream` detects the state change and calls `authRedirect` again, which redirects to `/login`:
+
 ```dart
-authBloc.stream.listen((_) {
-  appRouter.reevaluateGuards();
-});
+// In AuthInterceptor (on 401 refresh failure):
+sl<AuthBloc>().add(const SessionExpired());
+
+// In settings / logout button:
+context.read<AuthBloc>().add(const LogoutRequested());
 ```
 
-**Applied to**: All routes except `SplashRoute`, `LoginRoute`, `ErrorRoute`
+No manual `context.go('/login')` needed — the redirect handles it automatically when `refreshListenable` fires.
 
-### Guard Comparison
+### Redirect evaluation order
 
-| Guard Type | When to Use |
-|-----------|-------------|
-| `AutoRouteGuard` | Route protection, including auth checks that may later be re-evaluated via `reevaluateListenable` or `router.reevaluateGuards()` |
+```
+User taps / deep link arrives
+       │
+       ▼
+GoRouter evaluates redirect() top-down for each matched route
+       │
+  authRedirect()
+       ├── No valid token + protected route → return '/login?from=<original>'
+       ├── Valid token + public route        → return '/bills'
+       └── Otherwise                        → return null (allow)
+       │
+       ▼
+Route builder runs, BlocProvider wraps the page
+```
+
+### What `authRedirect` does NOT handle
+
+| Concern | Where it lives |
+|---------|---------------|
+| Token refresh on 401 | `AuthInterceptor` (Dio — see Doc 06) |
+| Session expiry notification | `AuthBloc` emitting `SessionExpired` state |
+| Permission checks (role-based) | A second `redirect` on specific routes, or in the BLoC |
+
+---
+
+## Navigation API
+
+Use go_router's built-in context extensions directly:
+
+| Method | Purpose |
+|--------|---------|
+| `context.go('/bills')` | Navigate (replace stack) |
+| `context.push('/bills/$id')` | Push onto stack |
+| `context.pop()` | Pop current route |
+| `context.canPop()` | Check if pop is possible |
+| `context.goNamed('bills')` | Navigate by name |
+| `context.pushNamed('billDetail', pathParameters: {'billId': id})` | Push by name with params |
+
+**Rule**: Never create custom navigation extension wrappers. go_router's typed routes are already self-documenting.
+
+---
+
+## Type-Safe Routes (go_router_builder)
+
+Add to dev_dependencies:
+
+```yaml
+dev_dependencies:
+  go_router_builder: ^<verified_version>
+```
+
+```dart
+@TypedGoRoute<BillDetailRoute>(path: '/bills/:billId')
+class BillDetailRoute extends GoRouteData {
+  const BillDetailRoute({required this.billId});
+  final String billId;
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      BillDetailPage(billId: billId);
+}
+
+// Usage — compile-time safe, no string literals:
+BillDetailRoute(billId: id).go(context);
+```
+
+Run `dart run build_runner build` to generate.
+
+---
+
+## Shell Routes (Tab Navigation)
+
+`ShellRoute` keeps a persistent shell (bottom nav, drawer) while swapping body content:
+
+```dart
+ShellRoute(
+  builder: (context, state, child) => AppShell(
+    currentIndex: _indexFromPath(state.matchedLocation),
+    child: child,
+  ),
+  routes: [
+    GoRoute(path: '/bills',    builder: (_, __) => const BillsPage()),
+    GoRoute(path: '/groups',   builder: (_, __) => const GroupsPage()),
+    GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
+  ],
+),
+```
+
+For nested tab stacks that need independent history per tab, use `StatefulShellRoute.indexedStack` (go_router 7+):
+
+```dart
+StatefulShellRoute.indexedStack(
+  builder: (context, state, shell) => AppShell(shell: shell),
+  branches: [
+    StatefulShellBranch(routes: [GoRoute(path: '/bills', ...)]),
+    StatefulShellBranch(routes: [GoRoute(path: '/groups', ...)]),
+  ],
+),
+```
+
+---
+
+## Per-Route BLoC Injection
+
+Provide scoped BLoCs inside the route builder — lifecycle ties to the route:
+
+```dart
+GoRoute(
+  path: '/bills',
+  builder: (context, state) => BlocProvider(
+    create: (_) => sl<BillsBloc>()..add(const BillsRequested()),
+    child: const BillsPage(),
+  ),
+),
+```
+
+For routes that need multiple BLoCs or repositories:
+
+```dart
+GoRoute(
+  path: '/bills/:billId',
+  builder: (context, state) => MultiBlocProvider(
+    providers: [
+      BlocProvider(create: (_) => sl<BillDetailBloc>()),
+      BlocProvider(create: (_) => sl<GroupsBloc>()),
+    ],
+    child: BillDetailPage(billId: state.pathParameters['billId']!),
+  ),
+),
+```
+
+**Global BLoCs** (Auth, Theme, Connectivity) are still provided at app root in `app.dart` via `MultiBlocProvider`.
 
 ---
 
 ## Deep Link Configuration
 
-### URI Scheme
+go_router matches deep links via path automatically — no extra builder needed for standard cases.
 
-| Platform | Scheme | Example |
-|----------|--------|---------|
-| Both | `<app_scheme>://` | `<app_scheme>://books/abc123` |
-| Android | `https://<app_domain>/` | `https://<app_domain>/books/abc123` |
-| iOS | `https://<app_domain>/` | Universal link |
+| Platform | Setup |
+|----------|-------|
+| Android | Intent filters in `AndroidManifest.xml` for custom scheme + App Links |
+| iOS | Associated Domains entitlement + `apple-app-site-association` on server |
 
-### Deep Link Builder
-
-auto_route provides `DeepLinkBuilder` to intercept and validate deep links:
-
-```dart
-// In AppRouter config:
-deepLinkBuilder: (deepLink) {
-  // Validate, transform, or reject deep links
-  if (deepLink.path.startsWith('/books')) return deepLink;
-  return DeepLink.defaultPath; // fallback to home
-}
-```
-
-### Supported Deep Links
-
-| Pattern | Resolves To | Parameters |
-|---------|-------------|------------|
-| `<app_scheme>://books/:bookId` | `BookDetailRoute` | `bookId: String` |
-| `<app_scheme>://read/:bookId/:chapterIndex` | `ReaderRoute` | `bookId: String, chapterIndex: int` |
-| `<app_scheme>://library` | `LibraryRoute` | None |
-
-### Platform Configuration
-
-**Android**: `AndroidManifest.xml` intent filters for both custom scheme and app links
-**iOS**: Associated Domains entitlement + `apple-app-site-association` file on server
-
-Only add this platform-specific setup when the product is actually shipping deep links or app links. Do not front-load native configuration that the current app does not use.
+Only add platform-level setup when deep links are a shipping requirement.
 
 ---
 
-## Screen Tracking with AutoRouteObserver
-
-auto_route has **two** observer types — they serve different purposes:
-
-| Type | Purpose | Scope |
-|------|---------|-------|
-| `AutoRouterObserver` | Global route tracking (analytics, logging) | Registered on the router |
-| `AutoRouteObserver` | Route-aware widgets (pause/resume behavior) | Mixin on individual pages |
-
-### Global Screen Tracking (AutoRouterObserver)
-
-For analytics integration, extend `AutoRouterObserver`:
+## Screen Tracking
 
 ```dart
-class AnalyticsRouteObserver extends AutoRouterObserver {
+class AnalyticsRouteObserver extends NavigatorObserver {
   @override
-  void didPush(Route route, Route? previousRoute) {
-    analyticsService.trackScreen(route.settings.name ?? '');
-  }
+  void didPush(Route route, Route? previousRoute) =>
+      analyticsService.trackScreen(route.settings.name ?? '');
+
+  @override
+  void didPop(Route route, Route? previousRoute) =>
+      analyticsService.trackScreen(previousRoute?.settings.name ?? '');
 }
 ```
 
-Register in `navigatorObservers`. The builder returns **fresh instances** (required — an observer can only be used by a single router).
-
-### Route-Aware Widgets (AutoRouteObserver)
-
-For pages that need to react to being shown/hidden (e.g., pause video, refresh data):
-
-```dart
-class ReaderPage extends StatefulWidget {
-  const ReaderPage({super.key});
-
-  @override
-  State<ReaderPage> createState() => _ReaderPageState();
-}
-
-class _ReaderPageState extends State<ReaderPage>
-    with AutoRouteAwareStateMixin<ReaderPage> {
-  @override
-  void didChangeTabRoute(TabPageRoute previousRoute) {
-    // Tab became active again — refresh if stale
-  }
-}
-```
-
-Hooks: `didInitTabRoute`, `didChangeTabRoute`, `didPush`, `didPopNext`
+Register in `GoRouter(observers: [AnalyticsRouteObserver()])`.
 
 ---
 
 ## Page Transitions
 
-Default per-platform transitions are configured in `AppTheme.build()` via `pageTransitionsTheme` -> [05_THEMING_SYSTEM.md](05_THEMING_SYSTEM.md). Performance budgets for transitions -> [16_ANIMATIONS_TRANSITIONS.md](16_ANIMATIONS_TRANSITIONS.md).
+Default per-platform transitions are configured in `AppTheme.build()` via `pageTransitionsTheme` → [05_THEMING_SYSTEM.md](05_THEMING_SYSTEM.md).
 
-### Built-in TransitionsBuilders Library
-
-auto_route provides `TransitionsBuilders` with ready-made transitions — use these instead of writing custom ones:
-
-| Builder | Effect |
-|---------|--------|
-| `TransitionsBuilders.fadeIn` | Fade in |
-| `TransitionsBuilders.slideBottom` | Slide up from bottom |
-| `TransitionsBuilders.slideLeft` | Slide from left |
-| `TransitionsBuilders.slideRight` | Slide from right |
-| `TransitionsBuilders.slideTop` | Slide from top |
-| `TransitionsBuilders.zoomIn` | Zoom in |
-| `TransitionsBuilders.noTransition` | Instant, no animation |
-| `TransitionsBuilders.slideLeftWithFade` | Slide left + fade |
-| `TransitionsBuilders.slideRightWithFade` | Slide right + fade |
-
-### Per-Route Overrides with CustomRoute
-
-Use `CustomRoute` in route definitions for route-specific transitions:
+Per-route override with `CustomTransitionPage`:
 
 ```dart
-CustomRoute(
-  page: ReaderRoute.page,
-  transitionsBuilder: TransitionsBuilders.fadeIn,
-  durationInMilliseconds: 250,
-)
+GoRoute(
+  path: '/bills/:billId',
+  pageBuilder: (context, state) => CustomTransitionPage(
+    key: state.pageKey,
+    child: BillDetailPage(billId: state.pathParameters['billId']!),
+    transitionsBuilder: (_, animation, __, child) =>
+        FadeTransition(opacity: animation, child: child),
+  ),
+),
 ```
-
-| Route | Transition | Reason |
-|-------|-----------|--------|
-| `ReaderRoute` | `TransitionsBuilders.fadeIn` | Seamless content entry |
-| Modal dialogs | `TransitionsBuilders.slideBottom` | Platform convention |
-| Tab switches | `TransitionsBuilders.noTransition` | Tabs should feel instant |
 
 ---
 
-## Built-in Utility Widgets
+## Navigation Flow
 
-auto_route provides utility widgets — use them instead of custom implementations:
-
-| Widget | Purpose |
-|--------|---------|
-| `AutoLeadingButton` | Context-aware back/close button — adapts to stack depth and dialog context |
-| `AutoBackButton` | Simple back button |
-| `AutoRouter()` | Outlet widget for rendering nested child routes |
-| `EmptyRouterPage` | Placeholder shell for nested route groups that need no UI |
-
----
-
-## Navigation Flow Diagrams
-
-### App Launch
 ```
-SplashRoute
-  |- Has valid token? -> HomeRoute (LibraryTab)
-  +-- No token? -> LoginRoute
-                    +-- Login success -> HomeRoute (LibraryTab)
-```
+/splash
+  ├── token valid  → /bills
+  └── no token     → /login
+                       └── login success → /bills
 
-### Reading Flow
-```
-LibraryRoute
-  -> tap book -> context.pushRoute(BookDetailRoute(bookId: id))
-    -> tap "Read" -> context.pushRoute(ReaderRoute(bookId: id, chapterIndex: 0))
-    -> tap "Continue" -> context.pushRoute(ReaderRoute(bookId: id, chapterIndex: saved))
-```
+/bills
+  └── tap bill → /bills/:billId
 
-### Deep Link Flow
-```
-<app_scheme>://books/abc123
-  -> AuthGuard.onNavigation()
-    |- Token valid -> BookDetailRoute(bookId: "abc123")
-    +-- No token -> redirectUntil(LoginRoute()) -> after login -> BookDetailRoute(bookId: "abc123")
+Deep link: tricount://bills/abc123
+  ├── authenticated → /bills/abc123
+  └── not authenticated → /login → after login → /bills/abc123
 ```

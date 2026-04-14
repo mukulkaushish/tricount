@@ -123,66 +123,41 @@ Takes a single `Dio` instance (already configured with base URL and interceptors
 | `contentType` | `application/json` | Standard REST |
 | `responseType` | `ResponseType.json` | Auto-parse |
 
-### Implementation Details
+### Key Implementation Behaviors
 
-#### request<T> Flow
-1. Call `_dio.request()` with `Options(method: method.name)`, data, query params
-2. Guard: check for HTML responses (bad gateway, proxy errors)
-3. Guard: check status code is 2xx
-4. Extract data via `keyPath` if provided (dot-notation traversal)
-5. Validate extracted data is `Map<String, dynamic>`
-6. Call `fromJson` on extracted data
-7. Return `right(parsed)` on success, `left(exception)` on any failure
-8. Catch `DioException` → delegate to `_handleDioException`
-9. Catch generic `Exception` → wrap in `UnknownException`
+**File**: `lib/core/network/dio_http_client.dart` — `final class DioHttpClient implements HttpClient`
 
-#### requestList<T> Flow
-Same as `request<T>`, except:
-- `keyPath` resolves to a `List`, not a `Map`
-- Cast each item to `Map<String, dynamic>`, apply `fromJson`
-- Empty/null response body → `right(<T>[])` (graceful, not error)
+| Behavior | Detail |
+|----------|--------|
+| HTML guard | Detects proxy/gateway error pages via `Content-Type: text/html` header or body prefix; returns `NetworkException` instead of dumping HTML |
+| keyPath extraction | Dot-notation traversal of response JSON (e.g. `"data.user"` extracts nested map) |
+| `requestList` null body | Returns `right(<T>[])` — empty list is not an error |
+| `DioException` mapping | Delegates to `AppException.fromDioError()` — see [14_ERROR_HANDLING.md](14_ERROR_HANDLING.md) |
+| Unexpected exceptions | Wrapped in `UnknownException` |
 
-#### requestEmpty Flow
-- Execute request, check HTML guard and status code
-- Return `right(const EmptyResponse())` on success
-- No JSON parsing at all
+```dart
+// Skeleton — full implementation lives in the source file
+final class DioHttpClient implements HttpClient {
+  DioHttpClient({required Dio dio, required AppLogger logger});
 
-### keyPath Extraction
+  @override
+  Future<Either<AppException, T>> request<T>({
+    required String path,
+    required RequestMethod method,
+    required T Function(Map<String, dynamic>) fromJson,
+    Map<String, dynamic>? queryParameters,
+    dynamic body,
+    String? keyPath,
+    CancelToken? cancelToken,
+  }) async { ... }
 
-Private helper `_extractByKeyPath(dynamic data, String keyPath)`:
+  @override
+  Future<Either<AppException, List<T>>> requestList<T>({ ... }) async { ... }
 
-| API Response | keyPath | Extracted Data |
-|-------------|---------|----------------|
-| `{ "data": { "id": "1", ... } }` | `"data"` | `{ "id": "1", ... }` |
-| `{ "response": { "user": { ... } } }` | `"response.user"` | `{ ... }` |
-| `{ "id": "1", "title": "..." }` | `null` | Entire response as-is |
-| `{ "data": [ {...}, {...} ] }` | `"data"` | `[ {...}, {...} ]` (for `requestList`) |
-
-Split keyPath by `.`, traverse one key at a time. Return `null` if any key is missing → triggers `DataMismatchException`.
-
-### HTML Response Detection
-
-Private helper `_isHtmlResponse(Response response)`:
-
-**Detection checks** (in order):
-1. `Content-Type` header contains `text/html`
-2. Response body (if `String`) starts with `<!doctype html` or `<html`
-3. Response body contains gateway-error patterns (`bad gateway`, `502:`)
-
-**When HTML detected**:
-- Log a warning
-- Create a `NetworkException` with cleared response data (forces user-friendly error message instead of HTML dump)
-- Return `left(exception)`
-
-### Error Handling (Private Methods)
-
-#### `_handleDioException(DioException e)`
-1. Check if response is HTML → create sanitized `NetworkException`
-2. Otherwise → `AppException.fromDioError(e)`
-3. Return `left(exception)`
-
-#### `_handleGenericException(Exception e)`
-- `left(UnknownException(e.toString()))`
+  @override
+  Future<Either<AppException, EmptyResponse>> requestEmpty({ ... }) async { ... }
+}
+```
 
 ---
 
