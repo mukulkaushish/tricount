@@ -23,9 +23,9 @@ class ThemeBloc extends Bloc<ThemeEvent, ThemeState> {
   ThemeBloc({
     required SharedPreferences prefs,
     required TargetPlatform platform,
-  })  : _prefs = prefs,
-        _platform = platform,
-        super(ThemeState.initial()) {
+  }) : _prefs = prefs,
+       _platform = platform,
+       super(ThemeState.initial()) {
     on<ThemeRestored>(_onRestored);
     on<ThemePaletteChanged>(_onPaletteChanged);
     on<ThemeModeChanged>(_onModeChanged);
@@ -40,19 +40,20 @@ class ThemeBloc extends Bloc<ThemeEvent, ThemeState> {
   void _onRestored(ThemeRestored event, Emitter<ThemeState> emit) {
     final paletteId = _prefs.getString(_kPaletteId);
     final themeModeStr = _prefs.getString(_kThemeMode);
-    final fontScale =
-        _prefs.getDouble(_kFontScale) ?? AppTextStyles.scaleM;
+    final fontScale = _prefs.getDouble(_kFontScale) ?? AppTextStyles.scaleM;
 
     final palette = paletteId != null
         ? AppColors.fromId(paletteId)
         : AppColors.defaultPalette;
     final themeMode = _themeModeFromString(themeModeStr);
 
-    emit(_buildState(
-      palette: palette,
-      themeMode: themeMode,
-      fontScale: fontScale,
-    ));
+    emit(
+      _buildState(
+        palette: palette,
+        themeMode: themeMode,
+        fontScale: fontScale,
+      ),
+    );
   }
 
   void _onPaletteChanged(
@@ -103,24 +104,23 @@ class ThemeBloc extends Bloc<ThemeEvent, ThemeState> {
     required AppColorPalette palette,
     required ThemeMode themeMode,
     required double fontScale,
-  }) =>
-      ThemeState(
-        palette: palette,
-        themeMode: themeMode,
-        fontScale: fontScale,
-        lightTheme: AppTheme.build(
-          palette: palette,
-          brightness: Brightness.light,
-          fontScale: fontScale,
-          platform: _platform,
-        ),
-        darkTheme: AppTheme.build(
-          palette: palette,
-          brightness: Brightness.dark,
-          fontScale: fontScale,
-          platform: _platform,
-        ),
-      );
+  }) => ThemeState(
+    palette: palette,
+    themeMode: themeMode,
+    fontScale: fontScale,
+    lightTheme: AppTheme.build(
+      palette: palette,
+      brightness: Brightness.light,
+      fontScale: fontScale,
+      platform: _platform,
+    ),
+    darkTheme: AppTheme.build(
+      palette: palette,
+      brightness: Brightness.dark,
+      fontScale: fontScale,
+      platform: _platform,
+    ),
+  );
 
   static ThemeMode _themeModeFromString(String? value) {
     return switch (value) {

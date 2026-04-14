@@ -12,6 +12,12 @@ We use an abstract `HttpClient` interface to decouple repositories from Dio.
 - `request<T>`: Single object response.
 - `requestList<T>`: List of objects.
 - `requestEmpty`: No-body responses (204 No Content).
+- All methods accept an optional `CancelToken` for route-aware cancellation.
+- `request<T>` and `requestList<T>` accept an optional dot-notation `keyPath`
+  (for example `data.user` or `data.items`) so repositories can decode wrapped
+  payloads without reaching into raw Dio responses.
+- `DioHttpClient` rejects accidental HTML responses before JSON decoding and
+  turns malformed payloads into `AppException`/`DataMismatchException` early.
 
 ### Interceptor Stack (Order Matters)
 1. **LogInterceptor**: Built-in Dio logger (Debug only).

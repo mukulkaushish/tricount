@@ -67,8 +67,10 @@ extension ResponsiveContextExtensions on BuildContext {
   }
 
   /// Responsive EdgeInsets combining horizontal and vertical padding.
-  EdgeInsets get responsiveContentPadding =>
-      EdgeInsets.symmetric(horizontal: responsivePaddingH, vertical: responsivePaddingV);
+  EdgeInsets get responsiveContentPadding => EdgeInsets.symmetric(
+    horizontal: responsivePaddingH,
+    vertical: responsivePaddingV,
+  );
 
   /// Checks for foldable device with hinge/fold in half-opened state.
   ///
@@ -80,7 +82,7 @@ extension ResponsiveContextExtensions on BuildContext {
       (f) =>
           (f.type == DisplayFeatureType.hinge ||
               f.type == DisplayFeatureType.fold) &&
-          f.state == DisplayFeatureState.halfOpened,
+          f.state == DisplayFeatureState.postureHalfOpened,
     );
   }
 
@@ -89,16 +91,13 @@ extension ResponsiveContextExtensions on BuildContext {
   /// Used to avoid placing critical UI elements directly on the crease.
   Rect? get foldBounds {
     final features = MediaQuery.displayFeaturesOf(this);
-    try {
-      final fold = features.firstWhere(
-        (f) =>
-            f.type == DisplayFeatureType.hinge ||
-            f.type == DisplayFeatureType.fold,
-      );
-      return fold.bounds;
-    } catch (_) {
-      return null;
+    for (final feature in features) {
+      if (feature.type == DisplayFeatureType.hinge ||
+          feature.type == DisplayFeatureType.fold) {
+        return feature.bounds;
+      }
     }
+    return null;
   }
 
   /// Safe padding below the hinge (for content that should be below it).

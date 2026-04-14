@@ -1,38 +1,73 @@
 import 'package:equatable/equatable.dart';
 
-import 'package:tricount/features/auth/data/auth_data.dart';
+import 'package:tricount/core/auth/auth.dart';
+import 'package:tricount/core/network/network.dart';
 
-sealed class AuthState extends Equatable {
-  const AuthState();
+enum AuthAction {
+  apple,
+  google,
+  login,
+  passkey,
+  register,
+  requestPasswordResetOtp,
+  resetPassword,
+}
+
+enum AuthStatus {
+  authenticated,
+  failure,
+  idle,
+  otpSent,
+  passwordReset,
+  submitting,
+}
+
+class AuthState extends Equatable {
+  const AuthState({
+    required this.status,
+    this.action,
+    this.failure,
+    this.passwordResetEmail,
+    this.session,
+  });
+
+  const AuthState.initial() : this(status: AuthStatus.idle);
+
+  final AuthAction? action;
+  final AppException? failure;
+  final String? passwordResetEmail;
+  final AppSession? session;
+  final AuthStatus status;
+
+  bool get isSubmitting => status == AuthStatus.submitting;
+
+  AuthState copyWith({
+    AuthAction? action,
+    AppException? failure,
+    bool resetFailure = false,
+    String? passwordResetEmail,
+    bool resetPasswordResetEmail = false,
+    AppSession? session,
+    bool resetSession = false,
+    AuthStatus? status,
+  }) {
+    return AuthState(
+      status: status ?? this.status,
+      action: action ?? this.action,
+      failure: resetFailure ? null : failure ?? this.failure,
+      passwordResetEmail: resetPasswordResetEmail
+          ? null
+          : passwordResetEmail ?? this.passwordResetEmail,
+      session: resetSession ? null : session ?? this.session,
+    );
+  }
 
   @override
-  List<Object?> get props => [];
-}
-
-final class AuthInitial extends AuthState {
-  const AuthInitial();
-}
-
-final class AuthLoading extends AuthState {
-  const AuthLoading();
-}
-
-final class AuthSuccess extends AuthState {
-  const AuthSuccess({required this.token});
-  final AuthToken token;
-
-  @override
-  List<Object?> get props => [token.accessToken];
-}
-
-final class AuthFailure extends AuthState {
-  const AuthFailure({required this.message});
-  final String message;
-
-  @override
-  List<Object?> get props => [message];
-}
-
-final class ForgotPasswordSent extends AuthState {
-  const ForgotPasswordSent();
+  List<Object?> get props => [
+    status,
+    action,
+    failure,
+    passwordResetEmail,
+    session,
+  ];
 }

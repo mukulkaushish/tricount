@@ -1,0 +1,80 @@
+{
+  "@@locale": "en",
+  "appName": "Tricount",
+  "authTitle": "Welcome back",
+  "authSubtitle": "Sign in to keep your group expenses in sync.",
+  "emailLabel": "Email",
+  "emailHint": "name@example.com",
+  "passwordLabel": "Password",
+  "passwordHint": "Enter your password",
+  "displayNameLabel": "Display name",
+  "displayNameHint": "Your name",
+  "confirmPasswordLabel": "Confirm password",
+  "confirmPasswordHint": "Repeat your password",
+  "loginCta": "Sign in",
+  "registerCta": "Create account",
+  "forgotPasswordCta": "Forgot password?",
+  "sendOtpCta": "Send email OTP",
+  "resetPasswordCta": "Reset password",
+  "passkeyCta": "Use passkey",
+  "googleLoginCta": "Continue with Google",
+  "appleLoginCta": "Continue with Apple",
+  "switchToRegister": "Create a new account",
+  "switchToLogin": "Already have an account? Sign in",
+  "registerTitle": "Create your account",
+  "registerSubtitle": "Start tracking shared expenses with your group.",
+  "forgotPasswordTitle": "Reset password",
+  "forgotPasswordSubtitle": "Request an email OTP and use it to set a new password.",
+  "otpCodeLabel": "OTP code",
+  "otpCodeHint": "6-digit code",
+  "passwordResetOtpSent": "We sent an OTP to your email.",
+  "passwordResetSuccess": "Your password has been reset.",
+  "homeTitle": "Your session",
+  "homeSubtitle": "This screen is driven by the authenticated `me` response.",
+  "accountSectionTitle": "Account",
+  "sessionSectionTitle": "Session",
+  "appearanceSectionTitle": "Appearance",
+  "accountIdValue": "ID: {id}",
+  "@accountIdValue": {
+    "placeholders": {
+      "id": {}
+    }
+  },
+  "emailVerifiedValue": "Email verified: {value}",
+  "@emailVerifiedValue": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "passkeyEnabledValue": "Passkey enabled: {value}",
+  "@passkeyEnabledValue": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "logoutCta": "Log out",
+  "refreshMeCta": "Refresh details",
+  "themeModeLabel": "Theme mode",
+  "themeModeSystem": "System",
+  "themeModeLight": "Light",
+  "themeModeDark": "Dark",
+  "paletteLabel": "Palette",
+  "fontScaleLabel": "Font size",
+  "emailValidationRequired": "Enter your email address.",
+  "emailValidationInvalid": "Enter a valid email address.",
+  "passwordValidationRequired": "Enter your password.",
+  "passwordValidationShort": "Password must be at least 8 characters.",
+  "displayNameValidationRequired": "Enter your display name.",
+  "confirmPasswordValidationRequired": "Confirm your password.",
+  "confirmPasswordValidationMismatch": "Passwords do not match.",
+  "otpValidationRequired": "Enter the email OTP code.",
+  "genericTryAgain": "Try again",
+  "loadingSession": "Loading your session…",
+  "errorNetwork": "No internet connection. Check your connection and try again.",
+  "errorTimeout": "The request timed out. Please try again.",
+  "errorUnauthorized": "Your session is no longer valid. Please sign in again.",
+  "errorNotFound": "We could not find what you were looking for.",
+  "errorConfiguration": "Authentication is not configured for this build.",
+  "errorValidation": "Please review the entered information.",
+  "errorGeneric": "Something went wrong. Please try again."
+}

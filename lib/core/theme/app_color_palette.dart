@@ -67,21 +67,21 @@ class AppColorTokens extends Equatable {
 
   @override
   List<Object?> get props => [
-        primary,
-        onPrimary,
-        secondary,
-        onSecondary,
-        background,
-        onBackground,
-        surface,
-        onSurface,
-        surfaceVariant,
-        onSurfaceVariant,
-        error,
-        onError,
-        outline,
-        shadow,
-      ];
+    primary,
+    onPrimary,
+    secondary,
+    onSecondary,
+    background,
+    onBackground,
+    surface,
+    onSurface,
+    surfaceVariant,
+    onSurfaceVariant,
+    error,
+    onError,
+    outline,
+    shadow,
+  ];
 }
 
 /// A named color palette that bundles light and dark [AppColorTokens].

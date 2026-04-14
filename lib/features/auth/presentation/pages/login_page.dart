@@ -1,102 +1,180 @@
 import 'dart:async';
 
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 
 import 'package:tricount/core/core.dart';
-import 'package:tricount/features/auth/data/auth_data.dart';
-import 'package:tricount/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:tricount/features/auth/presentation/widgets/auth_form.dart';
-import 'package:tricount/features/home/home.dart';
-import 'package:tricount/shared/shared.dart';
+import 'package:tricount/features/auth/auth.dart';
+import 'package:tricount/router/router.dart';
 
-class LoginPage extends StatelessWidget {
+@RoutePage()
+class LoginPage extends StatelessWidget implements AutoRouteWrapper {
   const LoginPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget wrappedRoute(BuildContext context) {
     return BlocProvider(
-      create: (_) => AuthBloc(
-        repository: AuthRepositoryImpl(dio: createDio()),
-      ),
+      create: (_) => sl<AuthBloc>(),
+      child: this,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state.status == AuthStatus.authenticated && state.session != null) {
+          context.read<SessionBloc>().add(
+            SessionSignedIn(session: state.session!),
+          );
+          unawaited(context.router.replaceAll([const HomeRoute()]));
+          context.read<AuthBloc>().add(const AuthStatusCleared());
+        }
+
+        if (state.status == AuthStatus.failure && state.failure != null) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(content: Text(state.failure!.localizedMessage(context))),
+            );
+        }
+      },
       child: const _LoginView(),
     );
   }
 }
 
-class _LoginView extends StatelessWidget {
+class _LoginView extends StatefulWidget {
   const _LoginView();
 
   @override
+  State<_LoginView> createState() => _LoginViewState();
+}
+
+class _LoginViewState extends State<_LoginView> {
+  final _emailController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final scheme = context.colorScheme;
-    final size = MediaQuery.sizeOf(context);
-    final topPadding = MediaQuery.paddingOf(context).top;
+    final l10n = context.l10n;
 
-    return BlocListener<AuthBloc, AuthState>(
-      listener: (context, state) {
-        if (state is AuthSuccess) {
-          unawaited(
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute<void>(
-                builder: (_) => const HomePage(displayName: 'there'),
-              ),
-            ),
-          );
-        }
-      },
-      child: KeyboardDismisser(
-        gestures: const [
-          GestureType.onTap,
-          GestureType.onPanUpdateDownDirection,
-          GestureType.onPanUpdateUpDirection,
-        ],
-        child: Scaffold(
-          resizeToAvoidBottomInset: true,
-          backgroundColor: scheme.surface,
-          body: Stack(
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.appName)),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: context.responsiveContentPadding,
+          child: AuthFormCard(
+            title: l10n.authTitle,
+            subtitle: l10n.authSubtitle,
             children: [
-              // ── Gradient background ─────────────────────────────────────
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                height: size.height * 0.50,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [scheme.primary, scheme.secondary],
+              Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextFormField(
+                      controller: _emailController,
+                      autofillHints: const [AutofillHints.email],
+                      decoration: InputDecoration(
+                        labelText: l10n.emailLabel,
+                        hintText: l10n.emailHint,
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      validator: _validateEmail,
                     ),
-                  ),
+                    const Gap(AppDimensions.s16),
+                    TextFormField(
+                      controller: _passwordController,
+                      autofillHints: const [AutofillHints.password],
+                      decoration: InputDecoration(
+                        labelText: l10n.passwordLabel,
+                        hintText: l10n.passwordHint,
+                      ),
+                      obscureText: true,
+                      textInputAction: TextInputAction.done,
+                      validator: _validatePassword,
+                    ),
+                  ],
                 ),
               ),
-
-              // ── Scrollable content ──────────────────────────────────────
-              SafeArea(
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: size.height - topPadding,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        SizedBox(
-                          height: size.height * 0.30,
-                          child: const Center(
-                            child: _BrandingSection(),
-                          ),
-                        ),
-                        const _FormCard(),
-                      ],
+              const Gap(AppDimensions.s16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => context.router.push(
+                    ForgotPasswordRoute(
+                      prefillEmail: _emailController.text.trim(),
                     ),
                   ),
+                  child: Text(l10n.forgotPasswordCta),
                 ),
+              ),
+              const Gap(AppDimensions.s8),
+              BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, state) {
+                  return FilledButton(
+                    onPressed: state.isSubmitting ? null : _submitLogin,
+                    child:
+                        state.isSubmitting && state.action == AuthAction.login
+                        ? const CircularProgressIndicator.adaptive()
+                        : Text(l10n.loginCta),
+                  );
+                },
+              ),
+              const Gap(AppDimensions.s12),
+              BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, state) {
+                  return OutlinedButton.icon(
+                    onPressed: state.isSubmitting ? null : _submitPasskey,
+                    icon: const Icon(Icons.fingerprint_rounded),
+                    label: Text(l10n.passkeyCta),
+                  );
+                },
+              ),
+              const Gap(AppDimensions.s12),
+              BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, state) {
+                  return OutlinedButton.icon(
+                    onPressed: state.isSubmitting
+                        ? null
+                        : () => context.read<AuthBloc>().add(
+                            const GoogleSignInRequested(),
+                          ),
+                    icon: const Icon(Icons.public_rounded),
+                    label: Text(l10n.googleLoginCta),
+                  );
+                },
+              ),
+              const Gap(AppDimensions.s12),
+              BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, state) {
+                  return OutlinedButton.icon(
+                    onPressed: state.isSubmitting
+                        ? null
+                        : () => context.read<AuthBloc>().add(
+                            const AppleSignInRequested(),
+                          ),
+                    icon: const Icon(Icons.apple_rounded),
+                    label: Text(l10n.appleLoginCta),
+                  );
+                },
+              ),
+              const Gap(AppDimensions.s24),
+              TextButton(
+                onPressed: () => context.router.push(const RegisterRoute()),
+                child: Text(l10n.switchToRegister),
               ),
             ],
           ),
@@ -104,150 +182,51 @@ class _LoginView extends StatelessWidget {
       ),
     );
   }
-}
 
-// ── Branding ─────────────────────────────────────────────────────────────────
+  String? _validateEmail(String? value) {
+    final l10n = context.l10n;
+    if (value == null || value.trim().isEmpty) {
+      return l10n.emailValidationRequired;
+    }
+    final emailPattern = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+    if (!emailPattern.hasMatch(value.trim())) {
+      return l10n.emailValidationInvalid;
+    }
+    return null;
+  }
 
-class _BrandingSection extends StatelessWidget {
-  const _BrandingSection();
+  String? _validatePassword(String? value) {
+    final l10n = context.l10n;
+    if (value == null || value.isEmpty) {
+      return l10n.passwordValidationRequired;
+    }
+    if (value.length < 8) {
+      return l10n.passwordValidationShort;
+    }
+    return null;
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    final scheme = context.colorScheme;
+  void _submitLogin() {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: AppDimensions.logoContainerSize,
-          height: AppDimensions.logoContainerSize,
-          decoration: BoxDecoration(
-            color: scheme.onPrimary.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(
-              AppDimensions.logoContainerRadius,
-            ),
-            border: Border.all(
-              color: scheme.onPrimary.withValues(alpha: 0.25),
-              width: 1.5,
-            ),
-          ),
-          child: Icon(
-            Icons.receipt_long_rounded,
-            size: AppDimensions.s40,
-            color: scheme.onPrimary,
-          ),
-        )
-            .animate()
-            .fadeIn(duration: 500.ms)
-            .scale(
-              begin: const Offset(0.8, 0.8),
-              duration: 500.ms,
-              curve: Curves.easeOutBack,
-            ),
-
-        const Gap(AppDimensions.s16),
-
-        Text(
-          'Tricount',
-          style: context.textTheme.headlineLarge?.copyWith(
-            color: scheme.onPrimary,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.5,
-          ),
-        )
-            .animate()
-            .fadeIn(delay: 100.ms, duration: 400.ms)
-            .slideY(begin: 0.2, end: 0, delay: 100.ms, duration: 400.ms),
-
-        const Gap(AppDimensions.s8),
-
-        Text(
-          'Split bills, stay friends',
-          style: context.textTheme.bodyMedium?.copyWith(
-            color: scheme.onPrimary.withValues(alpha: 0.75),
-          ),
-        )
-            .animate()
-            .fadeIn(delay: 180.ms, duration: 400.ms),
-      ],
+    context.read<AuthBloc>().add(
+      LoginSubmitted(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      ),
     );
   }
-}
 
-// ── Form card ────────────────────────────────────────────────────────────────
+  void _submitPasskey() {
+    if (_validateEmail(_emailController.text) != null) {
+      _formKey.currentState!.validate();
+      return;
+    }
 
-class _FormCard extends StatelessWidget {
-  const _FormCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = context.colorScheme;
-
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppDimensions.r28),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 24,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppDimensions.pagePaddingH,
-          AppDimensions.s28,
-          AppDimensions.pagePaddingH,
-          AppDimensions.s32,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Center(
-              child: Container(
-                width: AppDimensions.s32,
-                height: AppDimensions.s4,
-                decoration: BoxDecoration(
-                  color: scheme.outline,
-                  borderRadius: BorderRadius.circular(AppDimensions.r4),
-                ),
-              ),
-            ),
-            const Gap(AppDimensions.s20),
-            Text(
-              'Sign in',
-              style: context.textTheme.headlineSmall?.copyWith(
-                color: scheme.onSurface,
-                fontWeight: FontWeight.w700,
-              ),
-            )
-                .animate()
-                .fadeIn(delay: 50.ms, duration: 350.ms)
-                .slideY(
-                  begin: 0.1,
-                  end: 0,
-                  delay: 50.ms,
-                  duration: 350.ms,
-                ),
-            const Gap(AppDimensions.s24),
-            const AuthForm(),
-          ],
-        ),
-      ),
-    )
-        .animate()
-        .slideY(
-          begin: 0.15,
-          end: 0,
-          duration: 450.ms,
-          curve: Curves.easeOutCubic,
-        )
-        .fadeIn(duration: 350.ms);
+    context.read<AuthBloc>().add(
+      PasskeySignInRequested(email: _emailController.text.trim()),
+    );
   }
 }

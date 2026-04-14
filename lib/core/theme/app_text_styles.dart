@@ -153,6 +153,5 @@ abstract final class AppTextStyles {
     required Color primaryColor,
     required Color mutedColor,
     required double scale,
-  }) =>
-      build(primaryColor: primaryColor, mutedColor: mutedColor, scale: scale);
+  }) => build(primaryColor: primaryColor, mutedColor: mutedColor, scale: scale);
 }
