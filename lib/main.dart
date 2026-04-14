@@ -9,6 +9,8 @@ import 'package:tricount/core/core.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await configureDependencies();
+
   final prefs = await SharedPreferences.getInstance();
 
   runApp(

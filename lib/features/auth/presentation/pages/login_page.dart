@@ -6,7 +6,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 
 import 'package:tricount/core/core.dart';
-import 'package:tricount/features/auth/data/auth_data.dart';
 import 'package:tricount/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:tricount/features/auth/presentation/widgets/auth_form.dart';
 import 'package:tricount/features/home/home.dart';
@@ -18,9 +17,7 @@ class LoginPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => AuthBloc(
-        repository: AuthRepositoryImpl(dio: createDio()),
-      ),
+      create: (_) => sl<AuthBloc>(),
       child: const _LoginView(),
     );
   }

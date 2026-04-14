@@ -4,22 +4,39 @@
 
 The repository docs describe a production-ready Flutter architecture, but the codebase is currently much smaller than that target. This file keeps contributors aligned on what exists today, what is planned, and how to adopt the architecture safely.
 
-## Current Repository State
+## Current Repository State (Phase 3 complete)
 
-- `lib/` only contains `main.dart`
-- `pubspec.yaml` is still close to the default Flutter starter configuration
-- no documented feature modules, networking stack, or CI workflows have been implemented yet
+Phases 1–3 are complete. The following layers are fully in place:
 
-**Active work (Phase 1 + partial Phase 2):**
+| Area | Location | Status |
+|------|----------|--------|
+| Core theme layer | `lib/core/theme/` | ✅ Done |
+| Context extensions | `lib/core/extensions/` | ✅ Done |
+| Core error | `lib/core/error/app_exception.dart` — sealed `AppException` with subtypes | ✅ Done |
+| JSON parsing | `lib/core/json/json_parser.dart` — `JsonParser` mixin, `JsonCodable` interface | ✅ Done |
+| Logging | `lib/core/logging/` — `AppLogger` abstract, `PrettyAppLogger`, global `logger` | ✅ Done |
+| Networking | `lib/core/network/` — `HttpClient` interface, `NetworkManager` (Dio impl), `RequestMethod`, `EmptyResponse`, `AuthInterceptor` | ✅ Done |
+| Security | `lib/core/security/` — `TokenProvider` interface, `InMemoryTokenProvider` (swap with `flutter_secure_storage` for prod) | ✅ Done |
+| Constants | `lib/core/constants/api_constants.dart` — base URL, all auth endpoints | ✅ Done |
+| Dependency injection | `lib/core/di/injection_container.dart` — GetIt wiring for core + auth | ✅ Done |
+| Auth domain | `lib/features/auth/domain/` — `AuthToken`, `User` entities; `AuthRepository` interface; 7 use cases | ✅ Done |
+| Auth data | `lib/features/auth/data/` — `DioAuthDataSource`, `AuthTokenModel` (uses `JsonParser`), `RemoteAuthRepository` | ✅ Done |
+| Auth BLoC | `lib/features/auth/presentation/bloc/` — full `AuthBloc` using use cases + `Either` folding | ✅ Done |
+| Auth screens | `lib/features/auth/presentation/pages/` — `LoginPage`, `RegisterPage`, `SplashPage` | ✅ Done |
 
-The following is being built now as the first implementation slice:
+**Auth API endpoints wired (from Postman collection):**
 
-| Area | Files being created | Status |
-|------|---------------------|--------|
-| Core theme layer | `lib/core/theme/` — `app_color_palette.dart`, `app_colors.dart` (3 palettes: teal, indigo, slate), `app_text_styles.dart`, `app_dimensions.dart`, `app_theme.dart`, `theme_extensions.dart`, `theme_bloc/` | In progress |
-| Context extensions | `lib/core/extensions/build_context_extensions.dart` | In progress |
-| App wiring | `lib/app.dart`, updated `lib/main.dart` | In progress |
-| Auth — login screen | `lib/features/auth/presentation/pages/login_page.dart`, `auth_form.dart`, `auth_bloc/` (stub) | In progress |
+| Endpoint | Use Case | Status |
+|----------|----------|--------|
+| `POST /v1/auth/login` | `LoginUseCase` | ✅ |
+| `POST /v1/auth/register` | `RegisterUseCase` | ✅ |
+| `POST /v1/auth/forgot-password` | `ForgotPasswordUseCase` | ✅ |
+| `POST /v1/auth/reset-password` | `ResetPasswordUseCase` | ✅ |
+| `POST /v1/auth/refresh` | `RefreshTokenUseCase` | ✅ |
+| `POST /v1/auth/google` | `LoginWithGoogleUseCase` | ✅ wired, needs `google_sign_in` |
+| `POST /v1/auth/apple` | `LoginWithAppleUseCase` | ✅ wired, needs `sign_in_with_apple` |
+| `POST /v1/auth/passkeys/authenticate/options` | — | Planned Phase 4 |
+| `POST /v1/auth/passkeys/authenticate/verify` | — | Planned Phase 4 |
 
 This means many docs in this folder describe the intended architecture, not completed code. The theme system and login screen represent the first concrete adoption of these patterns.
 

@@ -92,12 +92,24 @@ class _AuthFormState extends State<AuthForm> {
 
   void _onGooglePressed() {
     unawaited(HapticFeedback.lightImpact());
-    context.read<AuthBloc>().add(const LoginWithGoogleRequested());
+    // TODO(auth): obtain a real Google ID token via google_sign_in package,
+    // then dispatch: LoginWithGoogleRequested(idToken: idToken)
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('Google sign-in coming soon.')),
+      );
   }
 
   void _onApplePressed() {
     unawaited(HapticFeedback.lightImpact());
-    context.read<AuthBloc>().add(const LoginWithAppleRequested());
+    // TODO(auth): obtain a real Apple ID token via sign_in_with_apple package,
+    // then dispatch: LoginWithAppleRequested(idToken: idToken)
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('Apple sign-in coming soon.')),
+      );
   }
 
   void _onForgotPasswordPressed() {
