@@ -26,6 +26,7 @@ Before adding anything, compare this document with:
 | Event transformers | `bloc_concurrency` | `droppable()`, `restartable()`, `sequential()` for BLoC event control |
 | Equality | `equatable` | Lightweight value equality for states and events |
 | Navigation | `auto_route` | Typed routes, guards, and nested routing when the app needs them |
+| Responsive layout | `flutter_adaptive_scaffold` | Official Flutter adaptive layouts, auto-adaptive navigation, foldable device support |
 | Networking | `dio` | Mature interceptor model and flexible request handling |
 | Connectivity | `connectivity_plus` | Network-awareness signals for resilience features |
 | Local database | `drift` | Type-safe local persistence with migrations and DAOs |
@@ -95,6 +96,7 @@ dependencies:
   bloc_concurrency: ^<verified_version>
   equatable: ^<verified_version>
   auto_route: ^<verified_version>
+  flutter_adaptive_scaffold: ^<verified_version>
   dio: ^<verified_version>
   connectivity_plus: ^<verified_version>
   drift: ^<verified_version>

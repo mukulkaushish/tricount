@@ -80,4 +80,34 @@ abstract final class AppDimensions {
   // ── Page padding ───────────────────────────────────────────────────────────
   static const double pagePaddingH = 24;
   static const double pagePaddingV = 16;
+
+  // ── Responsive Breakpoints (logical pixels) ─────────────────────────────
+  /// Compact: all phones in portrait, small foldables when folded.
+  static const double breakpointCompact = 600;
+
+  /// Medium: tablets, foldables when unfolded, large phones in landscape.
+  static const double breakpointMedium = 840;
+
+  /// Expanded: large tablets, desktop.
+  static const double breakpointExpanded = 1200;
+
+  // ── Responsive Content Constraints ──────────────────────────────────────
+  /// Maximum content width for readable text on large screens (blog, article).
+  static const double maxContentWidth = 800;
+
+  /// Side navigation width when using NavigationRail (Medium breakpoint).
+  static const double railWidth = 80;
+
+  /// Permanent navigation drawer width (Expanded breakpoint).
+  static const double drawerWidth = 320;
+
+  // ── Responsive Padding ──────────────────────────────────────────────────
+  /// Horizontal padding for Compact screens (phones).
+  static const double paddingCompactH = 16;
+
+  /// Horizontal padding for Medium screens (tablets).
+  static const double paddingMediumH = 24;
+
+  /// Horizontal padding for Expanded screens (large tablets, desktop).
+  static const double paddingExpandedH = 40;
 }
