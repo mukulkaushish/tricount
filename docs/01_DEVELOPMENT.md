@@ -28,6 +28,7 @@ We use `very_good_analysis`. Every file must pass `flutter analyze` with zero wa
 - **No Magic Numbers**: Use `AppDimensions` for spacing, padding, and radius.
 - **No Inline Themes**: Access themes via `context.textTheme` or `context.appColors`.
 - **Exhaustive Patterns**: No `default` cases in switches over sealed classes or enums.
+- **Prioritize Extensions**: Use Dart extensions to centralize utility logic and SDK-type enhancements (e.g., `BuildContext`, `String`) to avoid code duplication.
 - **Naming**: `PascalCase` for classes/enums, `snake_case` for files, `camelCase` for variables/constants.
 
 ### File Organization

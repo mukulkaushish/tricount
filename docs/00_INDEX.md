@@ -33,4 +33,5 @@ This docs set is a practical handbook for moving the Tricount Flutter codebase f
 - **Barrel Files**: Every folder with 2+ public files must have a barrel file.
 - **Grids over Lists**: Use `GridView.builder` for content browsing to ensure responsiveness.
 - **Zero Inline Styles**: All styling must live in `AppTheme.build`.
+- **Prioritize Extensions**: Centralize utility logic on SDK types to ensure high reusability.
 - **Typed Errors**: Use `sealed class AppException` and `Either<AppException, T>`.

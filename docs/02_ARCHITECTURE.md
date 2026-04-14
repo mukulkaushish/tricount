@@ -14,14 +14,33 @@ We follow **Clean Architecture** with a **feature-first** organization.
 3. **Data**: Repository implementations, DTOs, and Data Sources (Remote/Local). Depends on Domain.
 4. **Core**: App-wide infrastructure (Network, Auth, Theme, DI).
 
-### Core Rules
-- **Dependency Inversion**: Domain defines interfaces; Data implements them.
-- **Single Responsibility**: BLoCs handle logic; Repositories handle data; Widgets handle UI.
-- **Interface Segregation**: Services (Analytics, Logging) are hidden behind abstract interfaces.
+### Core Rules (SOLID)
+- **Single Responsibility (S)**: BLoCs handle logic; Repositories handle data; Widgets handle UI.
+- **Open/Closed (O)**: Classes/modules are open for extension but closed for modification. Use inheritance and composition to add behavior.
+- **Liskov Substitution (L)**: Subtypes must be substitutable for their base types without affecting correctness.
+- **Interface Segregation (I)**: Services (Analytics, Logging) are hidden behind small, focused abstract interfaces.
+- **Dependency Inversion (D)**: High-level modules (Domain) define interfaces; Low-level modules (Data) implement them.
 
 ---
 
-## 2. Dependency Manifest
+## 2. Extensions: The Reusability Layer
+
+We prioritize **Dart Extensions** to promote code reuse and avoid duplication across the project.
+
+### Why Extensions?
+- **DRY (Don't Repeat Yourself)**: Common logic on SDK types (e.g., `BuildContext`, `String`, `DateTime`) is centralized.
+- **Readability**: Logic is accessed fluently (e.g., `context.colorScheme` instead of `Theme.of(context).colorScheme`).
+- **Encapsulation**: Keeps feature code clean by moving utility logic to the `core/extensions/` directory.
+
+### Key Extension Areas
+- **BuildContext**: Quick access to Theme, MediaQuery, and Localization.
+- **Strings/Numbers**: Formatting, validation, and transformations.
+- **Date/Time**: Relative time, custom formatting, and comparisons.
+- **UI Components**: Applying common styles or constraints to widgets.
+
+---
+
+## 3. Dependency Manifest
 
 We add dependencies **deliberately**, prioritizing Flutter SDK capabilities first.
 
