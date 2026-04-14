@@ -19,7 +19,7 @@ This docs set is a practical handbook for moving the Tricount Flutter codebase f
 | **Language** | Dart (latest stable) |
 | **UI Framework** | Flutter (Material 3) |
 | **State Management** | BLoC / Cubit (`flutter_bloc`) |
-| **Navigation** | `go_router` |
+| **Navigation** | `auto_route` |
 | **Networking** | `dio` + abstract `HttpClient` |
 | **Database** | `drift` (SQLite) |
 | **DI** | `get_it` |

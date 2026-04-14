@@ -27,7 +27,7 @@ We add dependencies **deliberately**, prioritizing Flutter SDK capabilities firs
 
 ### Key Production Packages
 - **State**: `flutter_bloc`, `bloc_concurrency`, `equatable`.
-- **Navigation**: `go_router` (with `go_router_builder` for type-safety).
+- **Navigation**: `auto_route` (with `auto_route_generator` for type-safety and `AutoRouteWrapper` for BLoC scoping).
 - **Networking**: `dio`, `connectivity_plus`.
 - **Storage**: `drift` (SQLite), `flutter_secure_storage`, `shared_preferences`.
 - **DI**: `get_it`.
@@ -76,4 +76,19 @@ We use `bloc_concurrency` to control event flow:
 ## 5. Global vs Scoped State
 
 - **Global BLoCs**: Provided in `app.dart` (Theme, Auth, Connectivity).
-- **Scoped BLoCs**: Provided per-route in `app_router.dart` using `BlocProvider` in the `builder` callback. This ensures BLoCs are disposed of when the user leaves the route.
+- **Scoped BLoCs**: For feature-specific state that should be disposed of when leaving the route, implement `AutoRouteWrapper` on the page widget. This ensures the BLoC is created and provided only for that specific route and its sub-routes.
+```dart
+@RoutePage()
+class LoginPage extends StatelessWidget implements AutoRouteWrapper {
+  @override
+  Widget wrappedRoute(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<AuthBloc>(),
+      child: this,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => const LoginView();
+}
+```

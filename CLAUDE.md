@@ -45,6 +45,11 @@ Read these documents before making structural changes:
 - **Zero Inline Styles**: All styling must live in `AppTheme.build`.
 - **Grids over Lists**: Use `GridView.builder` for content browsing.
 
+### Navigation
+- Use `auto_route` for navigation and deep linking.
+- Implement `AutoRouteWrapper` on pages for scoped BLoC injection.
+- Use `AutoRouteGuard` for protecting private routes.
+
 ## Recommended Commands
 
 ```bash

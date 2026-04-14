@@ -20,15 +20,30 @@ Every visual property must live in `AppTheme.build`. **No widget may inline styl
 
 ---
 
-## 2. Navigation (go_router)
+## 2. Navigation (auto_route)
 
-We use `go_router` for all navigation, including deep links and guards.
+We use `auto_route` for all navigation, including deep links and guards.
 
 ### Pattern
-- **Typed Routes**: Use `go_router_builder` for type-safe navigation.
-- **Auth Guard**: A global `redirect` in `app_router.dart` checks for tokens and redirects to `/login` if needed.
-- **Shell Routes**: Used for persistent bottom navigation (Tabs).
-- **Injection**: BLoCs are injected per-route in the `builder` callback to ensure they are disposed of correctly.
+- **Typed Routes**: Generate routes using `@RoutePage()` and `auto_route_generator`.
+- **Auth Guard**: Implement `AutoRouteGuard` to protect private routes.
+- **Scoping**: Use `AutoRouteWrapper` on pages to wrap them with `BlocProvider`. This ensures BLoCs are correctly scoped and disposed.
+- **Observers**: Use `AutoRouterObserver` for global navigation tracking.
+- **Persistence**: Supports deep linking and universal links natively.
+
+### Example Guard
+```dart
+class AuthGuard extends AutoRouteGuard {
+  @override
+  void onNavigation(NavigationResolver resolver, StackRouter router) {
+    if (isAuthenticated) {
+      resolver.next(true);
+    } else {
+      router.push(const LoginRoute());
+    }
+  }
+}
+```
 
 ---
 

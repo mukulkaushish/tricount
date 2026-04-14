@@ -46,8 +46,9 @@ Read these documents before making structural changes:
 - **Grids over Lists**: Use `GridView.builder` for content browsing.
 
 ### Navigation
-- Use `go_router` APIs directly (`context.go`, `context.push`, `context.pop`).
-- Use `go_router_builder` for type-safe routes.
+- Use `auto_route` for navigation and deep linking.
+- Generate routes using `@RoutePage()` and use `StackRouter` or `TabsRouter`.
+- Implement `AutoRouteWrapper` on pages for scoped BLoC injection.
 
 ## Naming Conventions
 
