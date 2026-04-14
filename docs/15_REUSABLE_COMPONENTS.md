@@ -251,13 +251,13 @@ Custom implementation using `AnimationController` + `ShaderMask` (~30 lines, no 
 
 **File**: `lib/shared/widgets/adaptive_layout.dart`
 
-Responsive wrapper that switches layout based on screen width.
+Responsive wrapper that switches layout based on screen width. **See [25_RESPONSIVE_LAYOUT_AND_ADAPTIVITY.md](25_RESPONSIVE_LAYOUT_AND_ADAPTIVITY.md) for full implementation strategies for iPads and Foldables.**
 
 | Prop | Type | Required | Purpose |
 |------|------|----------|---------|
 | `mobile` | `Widget` | Yes | Layout for < 600dp |
-| `tablet` | `Widget?` | No | Layout for 600-1200dp |
-| `desktop` | `Widget?` | No | Layout for > 1200dp |
+| `tablet` | `Widget?` | No | Layout for 600-840dp |
+| `desktop` | `Widget?` | No | Layout for > 840dp |
 
 Uses `LayoutBuilder` to determine breakpoints. Falls back to `mobile` if larger breakpoint widget is not provided.
 
@@ -265,9 +265,9 @@ Uses `LayoutBuilder` to determine breakpoints. Falls back to `mobile` if larger 
 
 | Name | Width Range | Typical Use |
 |------|------------|-------------|
-| Mobile | < 600dp | Single column, full-width cards |
-| Tablet | 600-1200dp | Two-column, side panel |
-| Desktop | > 1200dp | Three-column, expanded nav |
+| Compact (Mobile) | < 600dp | Single column, full-width cards |
+| Medium (Tablet) | 600-840dp | Two-column, side panel, Foldables |
+| Expanded (Desktop/iPad) | > 840dp | Three-column, expanded nav, large iPads |
 
 ---
 
