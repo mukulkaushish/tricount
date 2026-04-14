@@ -41,11 +41,12 @@
 | 22 | [Accessibility](22_ACCESSIBILITY.md) | Semantics, contrast, touch targets, and assistive-tech support |
 | 23 | [Environments & Flavors](23_ENVIRONMENTS_AND_FLAVORS.md) | Minimal environment strategy first, native flavors only when packaging needs differ |
 | 24 | [Performance & Release Gates](24_PERFORMANCE_AND_RELEASE_GATES.md) | Performance profiling, quality checks, and release readiness |
+| 25 | [Responsive Layout & Adaptivity](25_RESPONSIVE_LAYOUT_AND_ADAPTIVITY.md) | iPad, Foldable, and large screen layout strategies |
 
 ## How To Use These Docs
 
 - Use `00A` and `00B` to understand the rules and the repo's current maturity.
-- Treat `01` through `24` as the recommended target architecture unless a doc explicitly says otherwise.
+- Treat `01` through `25` as the recommended target architecture unless a doc explicitly says otherwise.
 - Adapt patterns to the app's actual size and complexity instead of applying every pattern on day one.
 - When a doc describes files or dependencies that do not yet exist, create them only when they meaningfully support the next implementation step.
 

@@ -10,5 +10,5 @@ analyzer:
 
 linter:
   rules:
-    # Project-specific overrides (only if justified):
-    # public_member_api_docs: false  # Enable once stable API is defined
+    # App (not a published package) — no public API docs required.
+    public_member_api_docs: false

@@ -96,15 +96,20 @@ In this repository, `<app_package>` resolves to `tricount`.
 - Variables and functions: `camelCase`
 - Barrel files: `<folder_name>.dart`
 
-Common architecture naming:
+Common architecture naming — use **descriptive prefixes**, never `Impl`:
 
-- Repository contract: `AccountRepository`
-- Repository implementation: `AccountRepositoryImpl`
-- Use case: `GetAccountsUseCase`
-- BLoC: `AccountsBloc`
-- DTO/model: `AccountModel`
-- Entity: `Account`
-- Screen/page: `AccountsPage`
+| Role | Naming pattern | Example |
+|------|---------------|---------|
+| Repository contract | `AccountRepository` | abstract interface |
+| Repository implementation | `Remote<Name>Repository` | `RemoteAccountRepository` |
+| Data source | `Dio<Name>DataSource` | `DioAuthDataSource` |
+| Use case | `<Verb><Noun>UseCase` | `GetAccountsUseCase` |
+| BLoC | `<Feature>Bloc` | `AccountsBloc` |
+| DTO / model | `<Name>Model` | `AccountModel` |
+| Entity | `<Name>` | `Account` |
+| Screen / page | `<Name>Page` | `AccountsPage` |
+| Logger | `<Qualifier>AppLogger` | `PrettyAppLogger`, `SilentAppLogger` |
+| Secure store | `Platform<Name>` | `PlatformSecureStore` |
 
 ## Documentation Maintenance
 

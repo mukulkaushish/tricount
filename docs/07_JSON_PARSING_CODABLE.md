@@ -7,8 +7,9 @@
 The app uses a single `JsonParser` mixin that serves as the complete codable system — providing both deserialization (type-safe field extraction) and serialization (null-stripping `toJson`). Inspired by Swift's Codable protocol. No code generation needed.
 
 Two components:
-1. **`JsonCodable`** - interface that all DTOs implement (`fromJson` factory + `toJson` method)
-2. **`JsonParser`** - mixin with static helpers used inside `fromJson`/`toJson` implementations
+
+1. **`JsonCodable`** — interface that all DTOs implement (`fromJson` factory + `toJson` method)
+2. **`JsonParser`** — mixin with static helpers used inside `fromJson`/`toJson` implementations
 
 ---
 
@@ -16,29 +17,28 @@ Two components:
 
 **File**: `lib/core/json/codable.dart`
 
-```
+```dart
 abstract class JsonCodable {
   Map<String, dynamic> toJson();
 }
 ```
 
 Every DTO model in the `data/models/` layer implements `JsonCodable` and provides:
+
 - A `factory Model.fromJson(Map<String, dynamic> json)` constructor
 - A `toJson()` method returning `Map<String, dynamic>`
 
-### Contract
-
 | Method | Purpose |
 |--------|---------|
-| `fromJson(Map<String, dynamic>)` | Factory constructor - deserialize from JSON |
+| `fromJson(Map<String, dynamic>)` | Factory constructor — deserialize from JSON |
 | `toJson()` | Serialize to JSON map |
 
-### Rules
+**Rules:**
 
-1. `fromJson` uses `JsonParser` methods for every field extraction
-2. `toJson` uses `JsonParser.toJson()` to strip nulls and serialize nested objects
-3. Models are in `data/models/`, never in `domain/entities/`
-4. Models may extend domain entities or map to them via a `.toEntity()` method
+1. `fromJson` uses `JsonParser` static methods for every field — never direct `json['key']` access
+2. `toJson` uses `JsonParser.toJson()` for null-stripping and nested serialization
+3. Models live in `data/models/`, never in `domain/entities/`
+4. Models map to domain entities via extension/inheritance (see Model-to-Entity section)
 
 ---
 
@@ -46,70 +46,137 @@ Every DTO model in the `data/models/` layer implements `JsonCodable` and provide
 
 **File**: `lib/core/json/json_parser.dart`
 
-This mixin (provided in full by the user) provides type-safe parsing with clear error messages via `DataMismatchException`.
+Declared as `mixin JsonParser` but all methods are `static` — no instance state. You do **not** need to apply the mixin to a class to call these methods; use them directly as `JsonParser.parseString(json, key)`. The mixin declaration exists so classes can optionally `with JsonParser` for convenience.
 
-### Available Methods
+`DataMismatchException` is imported from `network_exception.dart` (part of the error layer). It is a subtype of `AppException` — see [14_ERROR_HANDLING.md](14_ERROR_HANDLING.md).
 
-All methods are `static` — called as `JsonParser.parseString(json, key)`.
+---
 
-#### Primitive Types
+### Primitive parsers
 
-| Method | Returns | Behavior |
-|--------|---------|----------|
-| `parseString(json, key)` | `String` | Throws if missing/null/wrong type |
-| `parseStringOptional(json, key)` | `String?` | Returns null if missing/wrong |
-| `parseInt(json, key)` | `int` | Handles int, double (if whole), string parsing |
-| `parseIntOptional(json, key)` | `int?` | Returns null if missing/wrong |
-| `parseDouble(json, key)` | `double` | Handles double, int, string parsing |
-| `parseDoubleOptional(json, key)` | `double?` | Returns null if missing/wrong |
-| `parseBool(json, key)` | `bool` | Handles bool, string ("true"/"false"/"1"/"0"), int (0/non-zero) |
-| `parseBoolOptional(json, key)` | `bool?` | Returns null if missing/wrong |
+All required variants throw `DataMismatchException` when the field is missing, null, or cannot be coerced. Optional variants return `null` in those cases.
 
-#### Typed List Parsing
+#### `parseString` / `parseStringOptional`
 
-| Method | Returns | Behavior |
-|--------|---------|----------|
-| `parseStringList(json, key)` | `List<String>` | Throws on null items, converts non-strings via `.toString()` |
-| `parseStringListOptional(json, key)` | `List<String>?` | Returns null if missing |
-| `parseIntList(json, key)` | `List<int>` | Handles int, double (if whole), string items |
-| `parseIntListOptional(json, key)` | `List<int>?` | Returns null if missing |
-| `parseDoubleList(json, key)` | `List<double>` | Handles double, int, string items |
-| `parseDoubleListOptional(json, key)` | `List<double>?` | Returns null if missing |
-| `parseBoolList(json, key)` | `List<bool>` | Handles bool, string, int items |
-| `parseBoolListOptional(json, key)` | `List<bool>?` | Returns null if missing |
+| Input type | Behavior |
+|---|---|
+| `String` | Returned as-is |
+| `null` | Required: throws. Optional: returns `null` |
+| Any other type | Required: throws. Optional: returns `null` (no `.toString()` coercion on scalar fields) |
 
-#### Object & Generic List Parsing
+#### `parseInt` / `parseIntOptional`
 
-| Method | Returns | Behavior |
-|--------|---------|----------|
-| `parseList<T>(json, key, fromJson)` | `List<T>` | Parses list of objects using factory |
-| `parseListOptional<T>(json, key, fromJson)` | `List<T>?` | Returns null if missing |
-| `parseObject<T>(json, key, fromJson)` | `T` | Parses nested object using factory |
-| `parseObjectOptional<T>(json, key, fromJson)` | `T?` | Returns null if missing |
+| Input type | Behavior |
+|---|---|
+| `int` | Returned as-is |
+| `double` | Converted only if finite AND `value == value.truncateToDouble()` (i.e., no fractional part). Otherwise throws. |
+| `String` | Parsed via `int.tryParse`. Throws if `null` result. |
+| `null` | Required: throws. Optional: returns `null` |
+| Any other type | Throws |
 
-#### Serialization & Utilities
+`parseIntOptional` internally creates a temp single-key map and delegates to `parseInt`, returning `null` on any exception.
 
-| Method | Returns | Behavior |
-|--------|---------|----------|
-| `toJson(fields)` | `Map<String, dynamic>` | Strips null values, serializes nested objects recursively |
-| `validateRequiredFields(json, fields)` | `void` | Throws if any required field is missing/null |
-| `hasKey(json, key)` | `bool` | Check if key exists in map |
-| `getKeys(json)` | `Set<String>` | Returns all keys in the map |
+#### `parseDouble` / `parseDoubleOptional`
+
+| Input type | Behavior |
+|---|---|
+| `double` | Returned as-is |
+| `int` | Widened to `double` via `.toDouble()` |
+| `String` | Parsed via `double.tryParse`. Must be finite — throws on `Infinity`/`NaN`. |
+| `null` | Required: throws. Optional: returns `null` |
+| Any other type | Throws |
+
+#### `parseBool` / `parseBoolOptional`
+
+| Input type | Behavior |
+|---|---|
+| `bool` | Returned as-is |
+| `String` | Case-insensitive: `"true"` / `"1"` → `true`; `"false"` / `"0"` → `false`. Any other string throws. |
+| `int` | `0` → `false`, any non-zero → `true` |
+| `null` | Required: throws. Optional: returns `null` |
+| Any other type | Throws |
+
+---
+
+### Typed list parsers
+
+All list parsers first assert the value is a `List`. Per-item errors include the index in `fieldName` (e.g., `"tags[2]"`) for precise diagnostics.
+
+#### Primitive list variants
+
+| Method | Returns | Per-item coercion |
+|---|---|---|
+| `parseStringList` / `parseStringListOptional` | `List<String>` / `List<String>?` | Non-string items converted via `.toString()` (unlike scalar `parseString`). Null items throw. |
+| `parseIntList` / `parseIntListOptional` | `List<int>` / `List<int>?` | Same coercion rules as `parseInt` per item |
+| `parseDoubleList` / `parseDoubleListOptional` | `List<double>` / `List<double>?` | Same coercion rules as `parseDouble` per item |
+| `parseBoolList` / `parseBoolListOptional` | `List<bool>` / `List<bool>?` | Same coercion rules as `parseBool` per item |
+
+#### Generic list — `parseList<T>` / `parseListOptional<T>`
+
+```dart
+static List<T> parseList<T>(
+  Map<String, dynamic> json,
+  String key,
+  T Function(Map<String, dynamic>) fromJson,
+)
+```
+
+Each element must be `Map<String, dynamic>`. If `fromJson` throws, the error is re-wrapped as `DataMismatchException` with `fieldName: '$key[$i]'`.
+
+#### Nested object — `parseObject<T>` / `parseObjectOptional<T>`
+
+```dart
+static T parseObject<T>(
+  Map<String, dynamic> json,
+  String key,
+  T Function(Map<String, dynamic>) fromJson,
+)
+```
+
+Value must be `Map<String, dynamic>`. Any exception from `fromJson` is re-wrapped as `DataMismatchException`.
+
+---
+
+### Serialization — `toJson`
+
+```dart
+static Map<String, dynamic> toJson(Map<String, dynamic> fields)
+```
+
+Pass every field as a key/value map. `toJson` strips `null` values and recursively serializes via `_serializeValue`:
+
+| Value type | Serialized as |
+|---|---|
+| `String`, `int`, `double`, `bool` | As-is |
+| `null` | Key omitted from output |
+| `List` | Each element run through `_serializeValue` recursively |
+| `Map<String, dynamic>` | Each value run through `_serializeValue` recursively |
+| Any object | Attempts to call `.toJson()` dynamically. Falls back to `.toString()` if the call fails. |
+
+> **Note:** The dynamic `.toJson()` detection uses a runtime string check and a `dynamic` cast. It will work for any class that exposes a `toJson()` method, but failures are silently swallowed and fall back to `.toString()`. Prefer passing pre-serialized maps for nested objects rather than relying on this fallback.
+
+---
+
+### Utilities
+
+| Method | Signature | Purpose |
+|---|---|---|
+| `validateRequiredFields` | `(Map, List<String>) → void` | Throws `DataMismatchException` for the first missing/null field in the list |
+| `hasKey` | `(Map, String) → bool` | Returns `true` if the key exists (even if value is `null`) |
+| `getKeys` | `(Map) → Set<String>` | Returns all keys in the map |
 
 ---
 
 ## DataMismatchException
 
-> Full `AppException` hierarchy is defined in [14_ERROR_HANDLING.md](14_ERROR_HANDLING.md). `DataMismatchException` is the JSON-specific subtype relevant here.
-
-Used by `JsonParser` when a field is missing, null (when required), or the wrong type.
+Thrown by `JsonParser` when a field is missing, null when required, or the wrong type.
 
 | Field | Type | Purpose |
 |-------|------|---------|
-| `message` | `String` | Human-readable description |
-| `fieldName` | `String` | The JSON key that failed |
+| `message` | `String` | Human-readable description including field name and type mismatch detail |
+| `fieldName` | `String` | The JSON key that failed — includes index for list errors (e.g., `"chapters[0]"`) |
 
-This exception is a subtype of `AppException` and flows through `Either` unchanged — no mapping needed.
+Imported from `network_exception.dart`. Flows through `Either` as the Left value unchanged — no mapping needed at repository boundaries.
 
 ---
 
@@ -117,103 +184,92 @@ This exception is a subtype of `AppException` and flows through `Either` unchang
 
 Every model follows this exact pattern:
 
-### Required Elements
+```dart
+// lib/features/auth/data/models/user_model.dart
 
-1. **Class declaration**: `class BookModel extends Book implements JsonCodable`
-   - Extends the domain entity
-   - Implements `JsonCodable`
+class UserModel extends User implements JsonCodable {
+  const UserModel({
+    required super.id,
+    required super.email,
+    super.displayName,
+  });
 
-2. **Constructor**: Standard Dart constructor with named parameters
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    JsonParser.validateRequiredFields(json, ['id', 'email']);
+    return UserModel(
+      id: JsonParser.parseString(json, 'id'),
+      email: JsonParser.parseString(json, 'email'),
+      displayName: JsonParser.parseStringOptional(json, 'display_name'),
+    );
+  }
 
-3. **fromJson factory**: Uses ONLY `JsonParser` methods - no manual `json['key']` access
-
-4. **toJson method**: Uses `JsonParser.toJson()` for null-stripping and nested serialization
-
-5. **toEntity method** (if not extending entity): Converts to domain entity
+  @override
+  Map<String, dynamic> toJson() => JsonParser.toJson({
+        'id': id,
+        'email': email,
+        'display_name': displayName, // omitted if null
+      });
+}
+```
 
 ### Model-to-Entity Relationship
 
-Two strategies (choose one per model):
+| Strategy | When to use | How |
+|---|---|---|
+| **A — Model extends Entity** | Simple data carriers with no business logic | `class UserModel extends User implements JsonCodable` |
+| **B — Separate classes with mapper** | Entities with business methods or complex construction | Standalone `UserModel` + `toEntity()` / `fromEntity()` methods |
 
-**Strategy A: Model extends Entity**
-- Model class extends the domain entity
-- `fromJson` creates the model directly
-- Domain layer works with the entity type; data layer uses the model
-
-**Strategy B: Separate classes with mapper**
-- Model is standalone with `toEntity()` and `fromEntity()` methods
-- Better when entities have behavior/methods
-- Repository calls `.toEntity()` before returning to domain
-
-**Rule**: Choose Strategy A for simple data carriers, Strategy B for entities with business logic.
+Choose Strategy A by default; switch to B when the entity has methods that would be awkward to carry into the model layer.
 
 ---
 
-## Validation Pattern
+## Validation Order
 
-For models with complex validation, use `validateRequiredFields` before parsing:
+Inside every `fromJson`:
 
-**Order**:
-1. Call `JsonParser.validateRequiredFields(json, ['id', 'title', 'author'])`
+1. `JsonParser.validateRequiredFields(json, [...])` — fast early fail for missing fields
 2. Parse each field with the appropriate `JsonParser` method
-3. Any failure throws `DataMismatchException` with the exact field that failed
+3. Any failure throws `DataMismatchException` with the exact field name and mismatch detail
 
-**Where validation happens**:
-- `fromJson` validates structural correctness (types, required fields)
-- Domain entity validates business rules (non-empty title, valid ISBN)
-- Repository passes `DataMismatchException` through as `Either` Left (no mapping)
+Business rule validation (non-empty values, valid ranges, enum membership) belongs in the **domain entity** constructor, not in `fromJson`.
 
 ---
 
-## Example Model Specification (BookModel)
+## Type coercion quick reference
 
-**File**: `lib/features/library/data/models/book_model.dart`
-
-| JSON Key | Field | Type | Required | Parser Method |
-|----------|-------|------|----------|--------------|
-| `id` | `id` | `String` | Yes | `parseString` |
-| `title` | `title` | `String` | Yes | `parseString` |
-| `author` | `author` | `String` | Yes | `parseString` |
-| `cover_url` | `coverUrl` | `String?` | No | `parseStringOptional` |
-| `description` | `description` | `String?` | No | `parseStringOptional` |
-| `page_count` | `pageCount` | `int` | Yes | `parseInt` |
-| `rating` | `rating` | `double?` | No | `parseDoubleOptional` |
-| `categories` | `categories` | `List<String>` | Yes | `parseStringList` |
-| `is_premium` | `isPremium` | `bool` | Yes | `parseBool` |
-| `chapters` | `chapters` | `List<ChapterModel>?` | No | `parseListOptional` with `ChapterModel.fromJson` |
+| Parser | Accepts | Rejects |
+|---|---|---|
+| `parseString` | `String` | `int`, `double`, `bool`, `null` (throws) |
+| `parseInt` | `int`, whole `double`, numeric `String` | fractional `double`, non-numeric `String` |
+| `parseDouble` | `double`, `int`, finite numeric `String` | `Infinity`, `NaN`, non-numeric `String` |
+| `parseBool` | `bool`, `"true"/"false"/"1"/"0"` (case-insensitive), `int` (0/nonzero) | other strings |
+| `parseStringList` items | `String` (as-is), any other (`.toString()`) | `null` items (throws) |
+| `parseIntList` items | Same rules as `parseInt` per item | — |
+| `parseDoubleList` items | Same rules as `parseDouble` per item | — |
+| `parseBoolList` items | Same rules as `parseBool` per item | — |
 
 ---
 
 ## Background Parsing for Large Payloads
 
-When a JSON response contains 500+ items (e.g., paginated list responses with large pages, batch sync payloads), parsing on the main isolate can cause frame drops (>16ms).
-
-### When to Use Background Parsing
-
 | Payload Size | Strategy |
 |-------------|----------|
-| < 100 items | Parse inline (main isolate) |
-| 100-500 items | Parse inline, monitor with DevTools |
-| 500+ items | Use `compute()` to parse in background isolate |
-
-### Implementation
-
-The parsing function must be **top-level** or **static** (isolates cannot capture closures):
+| < 100 items | Parse inline on main isolate |
+| 100–500 items | Parse inline, monitor with DevTools |
+| 500+ items | Use `compute()` — top-level or static function required |
 
 ```dart
 // Top-level function — required for compute()
-List<BookModel> parseBooks(String responseBody) {
-  final parsed = (jsonDecode(responseBody) as List<Object?>)
-      .cast<Map<String, Object?>>();
-  return parsed.map(BookModel.fromJson).toList();
+List<UserModel> _parseUsers(String responseBody) {
+  final list = (jsonDecode(responseBody) as List).cast<Map<String, dynamic>>();
+  return list.map(UserModel.fromJson).toList();
 }
 
 // In repository:
-final response = await httpClient.requestRaw('/v1/books');
-final books = await compute(parseBooks, response.body);
+final users = await compute(_parseUsers, response.body);
 ```
 
-**Rule**: Only use `compute()` when profiling confirms jank. The isolate spawn overhead (~2ms) makes it wasteful for small payloads.
+Only use `compute()` after profiling confirms jank — isolate spawn overhead (~2 ms) is wasteful for small payloads.
 
 ---
 
@@ -221,11 +277,15 @@ final books = await compute(parseBooks, response.body);
 
 Each model's `fromJson` and `toJson` must be tested with:
 
-1. **Happy path**: Valid JSON → correct model fields
-2. **Missing required field**: Throws `DataMismatchException` with correct `fieldName`
-3. **Wrong type**: e.g., `int` where `String` expected → throws with descriptive message
-4. **Null optional field**: Returns null, does not throw
-5. **Round-trip**: `Model.fromJson(model.toJson())` equals original model
-6. **Edge cases**: Empty strings, zero values, empty lists, epoch timestamps
+| Case | Assertion |
+|---|---|
+| Happy path | All fields deserialize to correct types and values |
+| Missing required field | `DataMismatchException` thrown, `fieldName` matches the missing key |
+| Wrong type | `DataMismatchException` thrown with type description in message |
+| Null required field | `DataMismatchException` thrown |
+| Null optional field | Returns `null`, no exception |
+| Round-trip | `Model.fromJson(model.toJson())` equals original model |
+| Type coercion edges | Integer JSON for a `double` field, string `"true"` for a `bool` field, etc. |
+| List index errors | `fieldName` includes index (e.g., `"tags[2]"`) on per-item failure |
 
-Test fixtures live in `test/fixtures/` as `.json` files.
+Test fixtures live in `test/fixtures/` as `.json` files — never inline raw JSON strings in test files.

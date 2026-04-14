@@ -6,13 +6,22 @@ The repository docs describe a production-ready Flutter architecture, but the co
 
 ## Current Repository State
 
-At the time of writing:
-
 - `lib/` only contains `main.dart`
 - `pubspec.yaml` is still close to the default Flutter starter configuration
 - no documented feature modules, networking stack, or CI workflows have been implemented yet
 
-This means many docs in this folder describe the intended architecture, not completed code.
+**Active work (Phase 1 + partial Phase 2):**
+
+The following is being built now as the first implementation slice:
+
+| Area | Files being created | Status |
+|------|---------------------|--------|
+| Core theme layer | `lib/core/theme/` — `app_color_palette.dart`, `app_colors.dart` (3 palettes: teal, indigo, slate), `app_text_styles.dart`, `app_dimensions.dart`, `app_theme.dart`, `theme_extensions.dart`, `theme_bloc/` | In progress |
+| Context extensions | `lib/core/extensions/build_context_extensions.dart` | In progress |
+| App wiring | `lib/app.dart`, updated `lib/main.dart` | In progress |
+| Auth — login screen | `lib/features/auth/presentation/pages/login_page.dart`, `auth_form.dart`, `auth_bloc/` (stub) | In progress |
+
+This means many docs in this folder describe the intended architecture, not completed code. The theme system and login screen represent the first concrete adoption of these patterns.
 
 ## Target Architecture
 

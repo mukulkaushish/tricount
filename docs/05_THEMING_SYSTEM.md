@@ -248,6 +248,22 @@ These map directly to Android's `Switch`, `CheckBox`, `RadioButton`, `Spinner`, 
 | `TimePicker` | `timePickerTheme` | Same philosophy as date picker. |
 | `PopupMenuButton` | `popupMenuTheme` | Surface background, 8px corners, elevation 2, `textStyle: bodyMedium`. |
 
+#### Adaptive form & input patterns
+
+These are **behavioral** adaptations for multi-field forms (login, registration, profile editing). They are not part of `ThemeData` — they belong at the call site — but they are documented here because they are platform-native expectations on both iOS and Android and must be applied consistently everywhere a form appears.
+
+| Pattern | API | Rule |
+|---------|-----|------|
+| **Autofill** | `AutofillGroup` wrapping the form + `autofillHints` on each field | Always wrap credential forms in `AutofillGroup`. Email field: `autofillHints: [AutofillHints.email]`. Password field: `autofillHints: [AutofillHints.password]`. On iOS this triggers Keychain; on Android it triggers the system Autofill service. Call `TextInput.finishAutofillContext()` after a successful login. |
+| **Keyboard type** | `keyboardType` on `TextField` | Email: `TextInputType.emailAddress` (shows `@` key on both platforms). Password: `TextInputType.visiblePassword` (disables smart suggestions that would show the password). |
+| **Keyboard action** | `textInputAction` on `TextField` | Non-last field: `TextInputAction.next` (moves focus to the next field). Last field / single field: `TextInputAction.done` (dismisses keyboard or submits the form). Chain fields using `FocusNode` + `onSubmitted`. |
+| **Keyboard avoidance** | `Scaffold(resizeToAvoidBottomInset: true)` + `SingleChildScrollView` | Ensures fields stay visible when the software keyboard appears. iOS elastic scroll handles the overflow naturally; Android pushes the scroll up. Do not use fixed-height containers inside auth forms. |
+| **Haptic feedback** | `HapticFeedback` from `services` | Primary CTA tap (Login, Submit): `HapticFeedback.lightImpact()` before dispatching the event. Error state (shake animation): `HapticFeedback.heavyImpact()`. These are no-ops on Android where the OS drives vibration patterns via `ElevatedButton`/`FilledButton` ripple; they provide the expected tactile response on iOS. Do not call haptics on secondary/text buttons. |
+| **Loading in button** | `CircularProgressIndicator.adaptive()` | Use `.adaptive()` inside the button loading state — renders `CupertinoActivityIndicator` on iOS and the Material spinner on Android. Lock the button dimensions with a fixed `SizedBox` so layout does not shift when the label swaps to the spinner. |
+| **Error dialogs** | `showAdaptiveDialog` / `AlertDialog.adaptive` | Auth errors (wrong password, network failure) displayed as dialogs must use `showAdaptiveDialog` so they render as `CupertinoAlertDialog` on iOS (stacked confirm button) and `AlertDialog` on Android. |
+| **Text capitalization** | `textCapitalization` | Email fields: `TextCapitalization.none`. Name/display-name fields: `TextCapitalization.words`. Message/note fields: `TextCapitalization.sentences`. |
+| **Keyboard dismissal on gesture** | `KeyboardDismisser` (`lib/shared/widgets/keyboard_dismisser.dart`) | Wrap the `Scaffold` (or `MaterialApp` for global coverage) with `KeyboardDismisser`. Recommended gestures for form screens: `[GestureType.onTap, GestureType.onPanUpdateDownDirection, GestureType.onPanUpdateUpDirection]`. Do not combine `onPanUpdate*` with `onScaleUpdate`, and do not combine horizontal and vertical drag gestures simultaneously. Navigation-triggered dismissal is handled automatically by Flutter — this widget covers in-screen gesture cases only. See `docs/15_REUSABLE_COMPONENTS.md` for full usage guide. |
+
 #### Lists, grids, and content
 
 | Sub-theme | Configuration |
