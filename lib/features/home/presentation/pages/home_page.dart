@@ -175,20 +175,44 @@ class _HomeScaffold extends StatelessWidget {
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final columns = constraints.maxWidth >= AppDimensions.breakpointMedium
-              ? 3
-              : 1;
+          final width = constraints.maxWidth;
 
-          return GridView.builder(
-            padding: context.responsiveContentPadding,
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: columns,
-              crossAxisSpacing: AppDimensions.s16,
-              mainAxisSpacing: AppDimensions.s16,
-              mainAxisExtent: 280,
+          // Compact (phones in portrait): single-column list, natural heights.
+          if (width < AppDimensions.breakpointCompact) {
+            return ListView.builder(
+              padding: context.responsiveContentPadding,
+              itemCount: sections.length,
+              itemBuilder: (context, index) => Padding(
+                padding: EdgeInsets.only(
+                  bottom: index < sections.length - 1 ? AppDimensions.s16 : 0,
+                ),
+                child: sections[index],
+              ),
+            );
+          }
+
+          // Medium / Expanded (tablets, foldables): 2- or 3-column Wrap.
+          final columns = width >= AppDimensions.breakpointMedium ? 3 : 2;
+          final hPadding = width >= AppDimensions.breakpointMedium
+              ? AppDimensions.paddingExpandedH
+              : AppDimensions.paddingMediumH;
+          final cardWidth =
+              (width - hPadding * 2 - AppDimensions.s16 * (columns - 1)) /
+              columns;
+
+          return SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: hPadding,
+              vertical: AppDimensions.s16,
             ),
-            itemCount: sections.length,
-            itemBuilder: (context, index) => sections[index],
+            child: Wrap(
+              spacing: AppDimensions.s16,
+              runSpacing: AppDimensions.s16,
+              children: [
+                for (final section in sections)
+                  SizedBox(width: cardWidth, child: section),
+              ],
+            ),
           );
         },
       ),

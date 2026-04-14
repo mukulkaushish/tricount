@@ -15,8 +15,8 @@
 ///   const UserModel({required this.id, required this.name});
 ///
 ///   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
-///     id: JsonParser.parseRequiredString(json, 'id'),
-///     name: JsonParser.parseRequiredString(json, 'name'),
+///     id: JsonParser.parseString(json, 'id'),
+///     name: JsonParser.parseString(json, 'name'),
 ///   );
 ///
 ///   final String id;

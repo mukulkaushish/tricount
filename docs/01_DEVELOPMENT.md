@@ -30,6 +30,7 @@ We use `very_good_analysis`. Every file must pass `flutter analyze` with zero wa
 - **Exhaustive Patterns**: No `default` cases in switches over sealed classes or enums.
 - **Prioritize Extensions**: Use Dart extensions to centralize utility logic and SDK-type enhancements (e.g., `BuildContext`, `String`) to avoid code duplication.
 - **Naming**: `PascalCase` for classes/enums, `snake_case` for files, `camelCase` for variables/constants.
+- **Icons**: Always use `Icons.*_rounded` variants (e.g. `Icons.logout_rounded`). Size icons using `AppDimensions.iconSm` (18), `iconMd` (24), or `iconLg` (32). Never hardcode icon size values inline.
 
 ### File Organization
 1. Static constants/fields
@@ -44,7 +45,8 @@ We use `very_good_analysis`. Every file must pass `flutter analyze` with zero wa
 ## 3. Project Structure & Barrel Files
 
 ### The Barrel Convention
-Every folder with 2+ public Dart files **must** have a barrel file named `<folder_name>.dart`.
+Every folder with **more than 2** public Dart files (i.e. 3+) **must** have a barrel file named `<folder_name>.dart`.
+Folders with only 1–2 files do **not** need a barrel — import those files directly to avoid unnecessary indirection.
 - **Import Rule**: Always import through barrels (e.g., `import 'core/core.dart'`) when crossing module boundaries.
 - **Export Rule**: Only export the public surface. Never export implementation details (like `data/` in a feature) or generated files (`*.g.dart`).
 

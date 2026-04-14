@@ -11,8 +11,8 @@ class AuthTokensModel extends Equatable implements JsonCodable {
 
   factory AuthTokensModel.fromJson(Map<String, dynamic> json) {
     return AuthTokensModel(
-      accessToken: JsonParser.parseRequiredString(json, 'accessToken'),
-      refreshToken: JsonParser.parseRequiredString(json, 'refreshToken'),
+      accessToken: JsonParser.parseString(json, 'accessToken'),
+      refreshToken: JsonParser.parseString(json, 'refreshToken'),
     );
   }
 
@@ -46,24 +46,24 @@ class AuthenticatedUserModel extends Equatable implements JsonCodable {
 
   factory AuthenticatedUserModel.fromJson(Map<String, dynamic> json) {
     // The backend may wrap the user under a nested 'user' key.
-    final payload = JsonParser.parseMapNullable(json, 'user') ?? json;
-    final email = JsonParser.parseStringNullable(payload, 'email') ?? '';
+    final payload = JsonParser.parseMapOptional(json, 'user') ?? json;
+    final email = JsonParser.parseStringOptional(payload, 'email') ?? '';
 
     return AuthenticatedUserModel(
-      id: JsonParser.parseStringNullable(payload, 'id') ??
-          JsonParser.parseStringNullable(payload, 'userId') ??
+      id: JsonParser.parseStringOptional(payload, 'id') ??
+          JsonParser.parseStringOptional(payload, 'userId') ??
           email,
       email: email,
-      displayName: JsonParser.parseStringNullable(payload, 'displayName') ??
-          JsonParser.parseStringNullable(payload, 'name') ??
+      displayName: JsonParser.parseStringOptional(payload, 'displayName') ??
+          JsonParser.parseStringOptional(payload, 'name') ??
           email,
-      avatarUrl: JsonParser.parseStringNullable(payload, 'avatarUrl'),
-      emailVerified: JsonParser.parseBoolNullable(payload, 'emailVerified') ??
-          JsonParser.parseBoolNullable(payload, 'isEmailVerified') ??
+      avatarUrl: JsonParser.parseStringOptional(payload, 'avatarUrl'),
+      emailVerified: JsonParser.parseBoolOptional(payload, 'emailVerified') ??
+          JsonParser.parseBoolOptional(payload, 'isEmailVerified') ??
           false,
       passkeyEnabled:
-          JsonParser.parseBoolNullable(payload, 'passkeyEnabled') ??
-          JsonParser.parseBoolNullable(payload, 'hasPasskey') ??
+          JsonParser.parseBoolOptional(payload, 'passkeyEnabled') ??
+          JsonParser.parseBoolOptional(payload, 'hasPasskey') ??
           false,
     );
   }

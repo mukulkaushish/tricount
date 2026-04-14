@@ -115,8 +115,8 @@ class AuthInterceptor extends QueuedInterceptor {
       }
 
       final refreshedTokens = AuthTokens(
-        accessToken: JsonParser.parseRequiredString(body, 'accessToken'),
-        refreshToken: JsonParser.parseRequiredString(body, 'refreshToken'),
+        accessToken: JsonParser.parseString(body, 'accessToken'),
+        refreshToken: JsonParser.parseString(body, 'refreshToken'),
       );
 
       await _sessionStore.saveTokens(refreshedTokens);

@@ -47,22 +47,62 @@ class AuthGuard extends AutoRouteGuard {
 
 ---
 
-## 3. Responsive Layout (Grids over Lists)
+## 3. Responsive Layout
 
-The app must adapt from a 5" phone to a 13" iPad and 8" foldable using a single codebase.
+### Single Design System — No Separate UIs Needed
+The same design system and widget tree adapts to all form factors (phone, foldable, iPad) via breakpoints. There is **no separate tablet UI**. Use `LayoutBuilder` + `constraints.maxWidth` to drive column counts and spacing.
 
-### Priority: Grids
-**Grid layouts are the primary pattern** for content browsing.
-- **Compact (<600dp)**: 2 columns.
-- **Medium (600-840dp)**: 3 columns + Navigation Rail.
-- **Expanded (>840dp)**: 4+ columns + Navigation Drawer.
+### Breakpoints (`AppDimensions`)
+| Breakpoint | Width | Layout pattern |
+|---|---|---|
+| **Compact** | `< 600dp` | Single column, `ListView.builder`, natural card heights |
+| **Medium** | `600–840dp` | 2-column `Wrap`, `NavigationRail` |
+| **Expanded** | `> 840dp` | 3-column `Wrap`, `NavigationDrawer` |
 
-### Technology
-Use `flutter_adaptive_scaffold` for automatic navigation switching and hinge/fold awareness.
+### Pattern: Wrap Grid (no fixed `mainAxisExtent`)
+For medium/expanded screens use `Wrap` + `SizedBox(width: cardWidth)` so cards size to their content. **Never set `mainAxisExtent` in a `SliverGridDelegate`** — it causes `RenderFlex` overflow when card content is taller than the fixed height.
+
+```dart
+LayoutBuilder(builder: (context, constraints) {
+  final width = constraints.maxWidth;
+
+  if (width < AppDimensions.breakpointCompact) {
+    return ListView.builder(...); // phone: natural heights
+  }
+
+  final columns = width >= AppDimensions.breakpointMedium ? 3 : 2;
+  final hPadding = width >= AppDimensions.breakpointMedium
+      ? AppDimensions.paddingExpandedH
+      : AppDimensions.paddingMediumH;
+  final cardWidth =
+      (width - hPadding * 2 - AppDimensions.s16 * (columns - 1)) / columns;
+
+  return SingleChildScrollView(
+    padding: EdgeInsets.symmetric(horizontal: hPadding, vertical: AppDimensions.s16),
+    child: Wrap(
+      spacing: AppDimensions.s16,
+      runSpacing: AppDimensions.s16,
+      children: [for (final card in cards) SizedBox(width: cardWidth, child: card)],
+    ),
+  );
+})
+```
+
+### Foldables
+Use `context.hasActiveFold` and `context.hingeAwarePadding` (from `theme_extensions.dart`) to avoid placing content on the crease.
 
 ---
 
-## 4. Reusable Components (Shared Widgets)
+## 4. Icons
+
+- Always use `Icons.*_rounded` variants (e.g. `Icons.logout_rounded`, `Icons.add_rounded`).
+- Size icons using `AppDimensions` constants — `iconSm` (18dp), `iconMd` (24dp), `iconLg` (32dp).
+- Never hardcode icon sizes inline (no `Icon(Icons.x, size: 24)`).
+- `const Icon(Icons.x_rounded)` uses the theme's default icon size automatically; only set `size:` when deviating from that default.
+
+---
+
+## 5. Reusable Components (Shared Widgets)
 
 Shared widgets (`lib/shared/widgets/`) are justified only for **behavioral composition**, not just styling.
 
@@ -78,7 +118,7 @@ Shared widgets (`lib/shared/widgets/`) are justified only for **behavioral compo
 
 ---
 
-## 5. Accessibility & Localization
+## 6. Accessibility & Localization
 
 - **Tap Targets**: Minimum 48x48dp for all interactive elements.
 - **Contrast**: 4.5:1 minimum for all text (WCAG AA).
@@ -87,7 +127,7 @@ Shared widgets (`lib/shared/widgets/`) are justified only for **behavioral compo
 
 ---
 
-## 6. Animations & Transitions
+## 7. Animations & Transitions
 
 - **Page Transitions**: Zoom on Android, Slide on iOS (standard platform feel).
 - **Micro-interactions**: Subtle scale-down on taps, 300ms fades for images.

@@ -15,7 +15,9 @@ class DioHttpClient implements HttpClient {
     _dio.interceptors.add(authInterceptor);
     if (enableLogging) {
       // requestBody/responseBody intentionally false — never log sensitive data.
-      _dio.interceptors.add(LogInterceptor());
+      _dio.interceptors.add(
+        LogInterceptor(responseHeader: false, responseUrl: false),
+      );
     }
   }
 

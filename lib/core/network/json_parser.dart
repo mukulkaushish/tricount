@@ -8,10 +8,10 @@ import 'package:tricount/core/network/app_exception.dart';
 ///
 /// ## Naming convention
 /// - `parse<Type>` — required field; throws if missing or wrong type.
-/// - `parse<Type>Nullable` — optional field; returns null if absent.
+/// - `parse<Type>Optional` — optional field; returns null if absent.
 ///
 /// ## Junior guide: adding a new DTO
-/// 1. In `fromJson`, call `parse*` for required fields and `parse*Nullable`
+/// 1. In `fromJson`, call `parse*` for required fields and `parse*Optional`
 ///    for optional ones.
 /// 2. In `toJson`, delegate to `JsonParser.toJson` passing a plain map.
 /// 3. Implement `JsonCodable` so the compiler enforces the contract.
@@ -20,9 +20,9 @@ import 'package:tricount/core/network/app_exception.dart';
 /// ```dart
 /// class BookModel implements JsonCodable {
 ///   factory BookModel.fromJson(Map<String, dynamic> json) => BookModel(
-///     id: JsonParser.parseRequiredString(json, 'id'),
-///     title: JsonParser.parseRequiredString(json, 'title'),
-///     rating: JsonParser.parseDoubleNullable(json, 'rating'),
+///     id: JsonParser.parseString(json, 'id'),
+///     title: JsonParser.parseString(json, 'title'),
+///     rating: JsonParser.parseDoubleOptional(json, 'rating'),
 ///   );
 ///
 ///   @override
@@ -102,7 +102,7 @@ abstract final class JsonParser {
   // ── String ─────────────────────────────────────────────────────────────────
 
   /// Returns a non-empty string at [key] or throws [DataMismatchException].
-  static String parseRequiredString(Map<String, dynamic> json, String key) {
+  static String parseString(Map<String, dynamic> json, String key) {
     final value = json[key];
     if (value is String && value.isNotEmpty) return value;
     throw DataMismatchException(
@@ -112,7 +112,10 @@ abstract final class JsonParser {
   }
 
   /// Returns the string at [key], or null if absent / null in the payload.
-  static String? parseStringNullable(Map<String, dynamic> json, String key) {
+  static String? parseStringOptional(
+    Map<String, dynamic> json,
+    String key,
+  ) {
     final value = json[key];
     if (value == null) return null;
     if (value is String) return value;
@@ -152,7 +155,7 @@ abstract final class JsonParser {
   }
 
   /// Returns the int at [key], or null if absent / null in the payload.
-  static int? parseIntNullable(Map<String, dynamic> json, String key) {
+  static int? parseIntOptional(Map<String, dynamic> json, String key) {
     final value = json[key];
     if (value == null) return null;
     try {
@@ -188,7 +191,10 @@ abstract final class JsonParser {
   }
 
   /// Returns the double at [key], or null if absent / null in the payload.
-  static double? parseDoubleNullable(Map<String, dynamic> json, String key) {
+  static double? parseDoubleOptional(
+    Map<String, dynamic> json,
+    String key,
+  ) {
     final value = json[key];
     if (value == null) return null;
     try {
@@ -202,7 +208,8 @@ abstract final class JsonParser {
 
   /// Returns the bool at [key].
   ///
-  /// Coerces integers (`0`/non-zero) and strings (`"true"`/`"false"`/`"1"`/`"0"`).
+  /// Coerces integers (`0`/non-zero) and strings
+  /// (`"true"`/`"false"`/`"1"`/`"0"`).
   static bool parseBool(Map<String, dynamic> json, String key) {
     final value = json[key];
     if (value == null) {
@@ -226,16 +233,130 @@ abstract final class JsonParser {
 
   /// Returns the bool at [key], or null if absent / null in the payload.
   ///
-  /// Unlike [parseBool], this does **not** coerce integers or strings —
-  /// the value must be an actual JSON boolean or null.
-  static bool? parseBoolNullable(Map<String, dynamic> json, String key) {
+  /// Uses the same int/string coercion as [parseBool].
+  static bool? parseBoolOptional(Map<String, dynamic> json, String key) {
     final value = json[key];
     if (value == null) return null;
-    if (value is bool) return value;
-    throw DataMismatchException(
-      message: 'Expected boolean for "$key" but got ${value.runtimeType}.',
-      fieldName: key,
-    );
+    try {
+      return parseBool({key: value}, key);
+    } on DataMismatchException {
+      return null;
+    }
+  }
+
+  // ── Typed lists ────────────────────────────────────────────────────────────
+
+  /// Decodes a list of strings at [key].
+  ///
+  /// Non-string scalars are coerced via `toString()`.
+  static List<String> parseStringList(
+    Map<String, dynamic> json,
+    String key,
+  ) {
+    final raw = _requireList(json, key);
+    final result = <String>[];
+    for (var i = 0; i < raw.length; i++) {
+      final item = raw[i];
+      if (item == null) {
+        throw DataMismatchException(
+          message: 'Null value at "$key[$i]".',
+          fieldName: '$key[$i]',
+        );
+      }
+      result.add(item is String ? item : item.toString());
+    }
+    return result;
+  }
+
+  /// Returns the string list at [key], or null if absent / null.
+  static List<String>? parseStringListOptional(
+    Map<String, dynamic> json,
+    String key,
+  ) {
+    if (json[key] == null) return null;
+    try {
+      return parseStringList(json, key);
+    } on DataMismatchException {
+      return null;
+    }
+  }
+
+  /// Decodes a list of ints at [key].
+  ///
+  /// Applies the same coercion as [parseInt].
+  static List<int> parseIntList(Map<String, dynamic> json, String key) {
+    final raw = _requireList(json, key);
+    final result = <int>[];
+    for (var i = 0; i < raw.length; i++) {
+      result.add(parseInt({'v': raw[i]}, 'v'));
+    }
+    return result;
+  }
+
+  /// Returns the int list at [key], or null if absent / null.
+  static List<int>? parseIntListOptional(
+    Map<String, dynamic> json,
+    String key,
+  ) {
+    if (json[key] == null) return null;
+    try {
+      return parseIntList(json, key);
+    } on DataMismatchException {
+      return null;
+    }
+  }
+
+  /// Decodes a list of doubles at [key].
+  ///
+  /// Applies the same coercion as [parseDouble].
+  static List<double> parseDoubleList(
+    Map<String, dynamic> json,
+    String key,
+  ) {
+    final raw = _requireList(json, key);
+    final result = <double>[];
+    for (var i = 0; i < raw.length; i++) {
+      result.add(parseDouble({'v': raw[i]}, 'v'));
+    }
+    return result;
+  }
+
+  /// Returns the double list at [key], or null if absent / null.
+  static List<double>? parseDoubleListOptional(
+    Map<String, dynamic> json,
+    String key,
+  ) {
+    if (json[key] == null) return null;
+    try {
+      return parseDoubleList(json, key);
+    } on DataMismatchException {
+      return null;
+    }
+  }
+
+  /// Decodes a list of bools at [key].
+  ///
+  /// Applies the same coercion as [parseBool].
+  static List<bool> parseBoolList(Map<String, dynamic> json, String key) {
+    final raw = _requireList(json, key);
+    final result = <bool>[];
+    for (var i = 0; i < raw.length; i++) {
+      result.add(parseBool({'v': raw[i]}, 'v'));
+    }
+    return result;
+  }
+
+  /// Returns the bool list at [key], or null if absent / null.
+  static List<bool>? parseBoolListOptional(
+    Map<String, dynamic> json,
+    String key,
+  ) {
+    if (json[key] == null) return null;
+    try {
+      return parseBoolList(json, key);
+    } on DataMismatchException {
+      return null;
+    }
   }
 
   // ── Map ────────────────────────────────────────────────────────────────────
@@ -254,7 +375,7 @@ abstract final class JsonParser {
   }
 
   /// Returns the nested object at [key], or null if absent / null.
-  static Map<String, dynamic>? parseMapNullable(
+  static Map<String, dynamic>? parseMapOptional(
     Map<String, dynamic> json,
     String key,
   ) {
@@ -302,7 +423,7 @@ abstract final class JsonParser {
   }
 
   /// Decodes a nested object at [key] using [fromJson], or returns null.
-  static T? parseObjectNullable<T>(
+  static T? parseObjectOptional<T>(
     Map<String, dynamic> json,
     String key,
     T Function(Map<String, dynamic>) fromJson,
@@ -329,8 +450,8 @@ abstract final class JsonParser {
 
   /// Decodes a list of objects at [key] using [fromJson].
   ///
-  /// Each element must be a JSON object (`Map<String, dynamic>`). Throws
-  /// `DataMismatchException` with the element index in `fieldName` if any item
+  /// Each element must be a `Map<String, dynamic>`. Throws
+  /// [DataMismatchException] with the element index in `fieldName` if any item
   /// fails to decode.
   static List<T> parseList<T>(
     Map<String, dynamic> json,
@@ -373,7 +494,7 @@ abstract final class JsonParser {
   }
 
   /// Decodes a list of objects at [key] using [fromJson], or returns null.
-  static List<T>? parseListNullable<T>(
+  static List<T>? parseListOptional<T>(
     Map<String, dynamic> json,
     String key,
     T Function(Map<String, dynamic>) fromJson,
@@ -382,6 +503,15 @@ abstract final class JsonParser {
     if (value == null) return null;
     return parseList(json, key, fromJson);
   }
+
+  // ── Lookup helpers ─────────────────────────────────────────────────────────
+
+  /// Returns true if [key] is present in [json] (value may be null).
+  static bool hasKey(Map<String, dynamic> json, String key) =>
+      json.containsKey(key);
+
+  /// Returns all top-level keys of [json] as a set.
+  static Set<String> getKeys(Map<String, dynamic> json) => json.keys.toSet();
 
   // ── Validation ─────────────────────────────────────────────────────────────
 
@@ -429,6 +559,28 @@ abstract final class JsonParser {
       }
     }
     return result;
+  }
+
+  // ── Private helpers ────────────────────────────────────────────────────────
+
+  static List<dynamic> _requireList(
+    Map<String, dynamic> json,
+    String key,
+  ) {
+    final value = json[key];
+    if (value == null) {
+      throw DataMismatchException(
+        message: 'Missing required list for "$key".',
+        fieldName: key,
+      );
+    }
+    if (value is! List) {
+      throw DataMismatchException(
+        message: 'Expected list for "$key" but got ${value.runtimeType}.',
+        fieldName: key,
+      );
+    }
+    return value;
   }
 
   static dynamic _serialize(dynamic value) {
