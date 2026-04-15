@@ -53,3 +53,7 @@ final class ForgotPasswordSent extends AuthState {
 final class ResetPasswordSuccess extends AuthState {
   const ResetPasswordSuccess();
 }
+
+final class AuthLoggedOut extends AuthState {
+  const AuthLoggedOut();
+}

@@ -40,4 +40,7 @@ abstract interface class AuthRepository {
   /// Runs the native Apple Sign-In flow then exchanges the idToken
   /// with the backend. Both steps are handled in the data layer.
   Future<Either<AppException, AuthToken>> loginWithApple();
+
+  /// Revokes the current session on the server and clears local tokens.
+  Future<Either<AppException, EmptyResponse>> logout();
 }

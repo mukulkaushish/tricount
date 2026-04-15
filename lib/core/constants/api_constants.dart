@@ -15,6 +15,7 @@ const String authRegisterPath = '/v1/auth/register';
 const String authRefreshPath = '/v1/auth/refresh';
 const String authForgotPasswordPath = '/v1/auth/forgot-password';
 const String authResetPasswordPath = '/v1/auth/reset-password';
+const String authLogoutPath = '/v1/auth/logout';
 const String authGooglePath = '/v1/auth/google';
 const String authApplePath = '/v1/auth/apple';
 const String authPasskeysAuthOptionsPath =

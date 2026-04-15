@@ -1,16 +1,17 @@
 import 'dart:async';
 
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
 import 'package:tricount/core/core.dart';
-import 'package:tricount/features/auth/presentation/pages/login_page.dart';
+import 'package:tricount/router/router.dart';
 
 /// Entry-point screen shown while the app decides where to navigate.
 ///
-/// Checks stored tokens and redirects to [LoginPage] (unauthenticated)
-/// or the home screen (authenticated). Token persistence is a Phase 2 task —
-/// for now the splash always lands on the login page.
+/// Checks stored tokens synchronously — tokens are pre-loaded into memory
+/// by [SecureTokenProvider.initialize] during app bootstrap.
+@RoutePage()
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
 
@@ -22,25 +23,23 @@ class _SplashPageState extends State<SplashPage> {
   @override
   void initState() {
     super.initState();
+    // Fire-and-forget; the splash page is transient.
     unawaited(_redirect());
   }
 
   Future<void> _redirect() async {
-    final tokenProvider = sl<TokenProvider>();
-    await Future<void>.delayed(const Duration(milliseconds: 800));
+    // Brief delay to let the branded splash animate.
+    await Future<void>.delayed(const Duration(milliseconds: 700));
     if (!mounted) return;
 
-    if (tokenProvider.accessToken != null) {
-      // TODO(auth): navigate to home when token is valid
-    }
-
-    await Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const LoginPage()),
-    );
+    final hasToken = sl<TokenProvider>().accessToken != null;
+    await context.router.replaceAll([
+      if (hasToken) const HomeRoute() else const LoginRoute(),
+    ]);
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(final BuildContext context) {
     final scheme = context.colorScheme;
 
     return Scaffold(
@@ -51,7 +50,7 @@ class _SplashPageState extends State<SplashPage> {
           children: [
             Icon(
               Icons.receipt_long_rounded,
-              size: AppDimensions.s40 * 2,
+              size: AppDimensions.s64,
               color: scheme.onPrimary,
             ),
             const Gap(AppDimensions.s16),
@@ -60,6 +59,13 @@ class _SplashPageState extends State<SplashPage> {
               style: context.textTheme.headlineLarge?.copyWith(
                 color: scheme.onPrimary,
                 fontWeight: FontWeight.w700,
+              ),
+            ),
+            const Gap(AppDimensions.s8),
+            Text(
+              'Split bills, stay friends',
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: scheme.onPrimary.withValues(alpha: 0.75),
               ),
             ),
           ],

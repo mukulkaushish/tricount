@@ -1,3 +1,4 @@
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tricount/features/auth/domain/usecases/usecases.dart';
 import 'package:tricount/features/auth/presentation/bloc/auth_event.dart';
@@ -14,19 +15,23 @@ final class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required final ResetPasswordUseCase resetPasswordUseCase,
     required final LoginWithGoogleUseCase loginWithGoogleUseCase,
     required final LoginWithAppleUseCase loginWithAppleUseCase,
+    required final LogoutUseCase logoutUseCase,
   }) : _loginUseCase = loginUseCase,
        _registerUseCase = registerUseCase,
        _forgotPasswordUseCase = forgotPasswordUseCase,
        _resetPasswordUseCase = resetPasswordUseCase,
        _loginWithGoogleUseCase = loginWithGoogleUseCase,
        _loginWithAppleUseCase = loginWithAppleUseCase,
+       _logoutUseCase = logoutUseCase,
        super(const AuthInitial()) {
-    on<LoginWithEmailRequested>(_onEmailLogin);
-    on<LoginWithGoogleRequested>(_onGoogleLogin);
-    on<LoginWithAppleRequested>(_onAppleLogin);
-    on<RegisterRequested>(_onRegister);
-    on<ForgotPasswordRequested>(_onForgotPassword);
-    on<ResetPasswordRequested>(_onResetPassword);
+    // droppable: ignores new login requests while one is in flight.
+    on<LoginWithEmailRequested>(_onEmailLogin, transformer: droppable());
+    on<LoginWithGoogleRequested>(_onGoogleLogin, transformer: droppable());
+    on<LoginWithAppleRequested>(_onAppleLogin, transformer: droppable());
+    on<RegisterRequested>(_onRegister, transformer: droppable());
+    on<ForgotPasswordRequested>(_onForgotPassword, transformer: droppable());
+    on<ResetPasswordRequested>(_onResetPassword, transformer: droppable());
+    on<LogoutRequested>(_onLogout, transformer: droppable());
   }
 
   final LoginUseCase _loginUseCase;
@@ -35,6 +40,7 @@ final class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final ResetPasswordUseCase _resetPasswordUseCase;
   final LoginWithGoogleUseCase _loginWithGoogleUseCase;
   final LoginWithAppleUseCase _loginWithAppleUseCase;
+  final LogoutUseCase _logoutUseCase;
 
   Future<void> _onEmailLogin(
     final LoginWithEmailRequested event,
@@ -117,5 +123,15 @@ final class AuthBloc extends Bloc<AuthEvent, AuthState> {
       (exception) => emit(AuthFailure(exception: exception)),
       (_) => emit(const ResetPasswordSuccess()),
     );
+  }
+
+  Future<void> _onLogout(
+    final LogoutRequested event,
+    final Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading());
+    // Always emit logged-out even if the server call fails (best-effort).
+    await _logoutUseCase();
+    emit(const AuthLoggedOut());
   }
 }

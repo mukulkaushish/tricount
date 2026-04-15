@@ -43,6 +43,8 @@ Before adding anything, compare this document with:
 | Images | `cached_network_image` | Disk-backed image loading for remote media | Planned |
 | SVG | `flutter_svg` | Vector rendering for icons and illustrations | **[ADOPTED]** |
 | Social auth | `flutter_appauth` | Single OAuth2/OIDC library for Google, Apple, and future SSO providers via authorization-code + PKCE flow | **[ADOPTED]** |
+| Animations | `flutter_animate` | Declarative animation chaining for UI transitions and micro-interactions | **[ADOPTED]** |
+| Spacing | `gap` | Semantic spacing widget; replaces magic-number `SizedBox` gaps in layouts | **[ADOPTED]** |
 
 ### Optional Production Dependencies
 

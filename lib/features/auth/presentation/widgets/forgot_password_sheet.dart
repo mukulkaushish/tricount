@@ -68,7 +68,7 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
 
   void _submitEmail() {
     final email = _emailController.text.trim();
-    if (email.isEmpty || !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
+    if (email.isEmpty || !email.isValidEmail) {
       setState(() => _emailError = 'Enter a valid email address');
       unawaited(HapticFeedback.heavyImpact());
       return;
@@ -268,9 +268,9 @@ class _EmailStep extends StatelessWidget {
             onPressed: isLoading ? null : onSubmit,
             child: isLoading
                 ? SizedBox.square(
-                    dimension: 22,
+                    dimension: AppDimensions.spinnerSize,
                     child: CircularProgressIndicator.adaptive(
-                      strokeWidth: 2.5,
+                      strokeWidth: AppDimensions.spinnerStroke,
                       valueColor: AlwaysStoppedAnimation<Color>(
                         scheme.onPrimary,
                       ),
@@ -397,9 +397,9 @@ class _OtpStep extends StatelessWidget {
             onPressed: isLoading ? null : onSubmit,
             child: isLoading
                 ? SizedBox.square(
-                    dimension: 22,
+                    dimension: AppDimensions.spinnerSize,
                     child: CircularProgressIndicator.adaptive(
-                      strokeWidth: 2.5,
+                      strokeWidth: AppDimensions.spinnerStroke,
                       valueColor: AlwaysStoppedAnimation<Color>(
                         scheme.onPrimary,
                       ),

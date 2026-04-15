@@ -40,6 +40,8 @@ abstract interface class AuthRemoteDataSource {
   Future<Either<AppException, AuthTokenModel>> loginWithApple({
     required final String idToken,
   });
+
+  Future<Either<AppException, EmptyResponse>> logout();
 }
 
 /// Dio-backed implementation of [AuthRemoteDataSource].
@@ -124,4 +126,8 @@ final class DioAuthDataSource implements AuthRemoteDataSource {
     body: {'idToken': idToken},
     fromJson: AuthTokenModel.fromJson,
   );
+
+  @override
+  Future<Either<AppException, EmptyResponse>> logout() =>
+      _client.requestEmpty(authLogoutPath, method: RequestMethod.post);
 }

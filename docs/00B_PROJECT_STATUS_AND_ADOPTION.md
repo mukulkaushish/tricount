@@ -2,9 +2,9 @@
 
 ## Why This Document Exists
 
-The repository docs describe a production-ready Flutter architecture, but the codebase is currently much smaller than that target. This file keeps contributors aligned on what exists today, what is planned, and how to adopt the architecture safely.
+The repository docs describe a production-ready Flutter architecture. This file keeps contributors aligned on what exists today, what is planned, and how to adopt the architecture safely.
 
-## Current Repository State (Phase 3 complete + production-hardened)
+## Current Repository State (Phase 4 complete)
 
 Phases 1–3 are complete and the auth subsystem has been production-hardened. The following layers are fully in place:
 
@@ -25,6 +25,15 @@ Phases 1–3 are complete and the auth subsystem has been production-hardened. T
 | Auth BLoC | `lib/features/auth/presentation/bloc/` — full `AuthBloc` using use cases + `Either` folding | ✅ Done |
 | Auth screens | `lib/features/auth/presentation/pages/` — `LoginPage`, `RegisterPage`, `SplashPage` with adaptive layouts | ✅ Done |
 | Shared widgets | `lib/shared/widgets/` — `AdaptiveLayout`, `KeyboardDismisser` | ✅ Done |
+| Navigation | `lib/router/` — `AppRouter` (auto_route v11), `AuthGuard`, `SplashRoute → Login/Home` | ✅ Done |
+| Home tab shell | `lib/features/home/presentation/pages/home_page.dart` — `AutoTabsScaffold` with Feed + Profile tabs | ✅ Done |
+| Feed tab | `lib/features/home/presentation/pages/feed_page.dart` — summary card, empty-state placeholder | ✅ Done |
+| Profile tab | `lib/features/home/presentation/pages/profile_page.dart` — avatar, name/email, palette/mode/font pickers, sign-out | ✅ Done |
+| `LogoutUseCase` + `POST /v1/auth/logout` | Full chain: datasource → repository → usecase → bloc event/state | ✅ Done |
+| Token persistence after login/register | `RemoteAuthRepository` saves tokens + user info via `TokenProvider` | ✅ Done |
+| `bloc_concurrency` event transformers | `droppable()` on all `AuthBloc` handlers | ✅ Done |
+| 8 color palettes | Teal, Indigo, Slate, Rose, Emerald, Amber, Purple, Cyan | ✅ Done |
+| Missing barrel files | `core/constants/`, `core/di/`, `core/network/interceptors/`, `auth/data/models/`, `auth/domain/entities/` | ✅ Done |
 
 **Auth API endpoints wired (from Postman collection):**
 
@@ -37,10 +46,21 @@ Phases 1–3 are complete and the auth subsystem has been production-hardened. T
 | `POST /v1/auth/refresh` | `RefreshTokenUseCase` + `AuthInterceptor` callback | ✅ |
 | `POST /v1/auth/google` | `LoginWithGoogleUseCase` → `NativeSocialAuthDataSource` | ✅ fully wired |
 | `POST /v1/auth/apple` | `LoginWithAppleUseCase` → `NativeSocialAuthDataSource` | ✅ fully wired |
+| `POST /v1/auth/logout` | `LogoutUseCase` | ❌ Not implemented — token revocation missing; `HomePage` clears navigation manually without clearing stored tokens |
 | `POST /v1/auth/passkeys/authenticate/options` | — | Planned Phase 4 |
 | `POST /v1/auth/passkeys/authenticate/verify` | — | Planned Phase 4 |
 
 **Social sign-in architecture note**: Native SDK calls (Google / Apple) live in `SocialAuthDataSource` (data layer). `RemoteAuthRepository` orchestrates native SDK → backend exchange. BLoC and widgets dispatch parameterless events — they never touch Google/Apple SDKs directly.
+
+## Known Gaps (Phase 4 → Phase 5)
+
+| Gap | Impact | Priority |
+|-----|--------|----------|
+| `ProductionAppLogger` not implemented; only `PrettyAppLogger` exists | No structured logging in release builds | Medium |
+| No unit or widget tests | Regressions undetected | High |
+| No GitHub Actions CI | No automated quality gates | Medium |
+| Passkeys endpoints not wired | Feature gap | Low |
+| Local database (Drift) not added | Offline support blocked | Low |
 
 ## Target Architecture
 

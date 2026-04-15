@@ -53,3 +53,7 @@ final class ResetPasswordRequested extends AuthEvent {
   final String code;
   final String newPassword;
 }
+
+final class LogoutRequested extends AuthEvent {
+  const LogoutRequested();
+}

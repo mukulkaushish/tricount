@@ -105,6 +105,7 @@ void _registerAuth() {
       () => RemoteAuthRepository(
         sl<AuthRemoteDataSource>(),
         sl<SocialAuthDataSource>(),
+        sl<TokenProvider>(),
       ),
     )
     ..registerLazySingleton(() => LoginUseCase(sl<AuthRepository>()))
@@ -124,6 +125,7 @@ void _registerAuth() {
     ..registerLazySingleton(
       () => LoginWithAppleUseCase(sl<AuthRepository>()),
     )
+    ..registerLazySingleton(() => LogoutUseCase(sl<AuthRepository>()))
     ..registerFactory(
       () => AuthBloc(
         loginUseCase: sl<LoginUseCase>(),
@@ -132,6 +134,7 @@ void _registerAuth() {
         resetPasswordUseCase: sl<ResetPasswordUseCase>(),
         loginWithGoogleUseCase: sl<LoginWithGoogleUseCase>(),
         loginWithAppleUseCase: sl<LoginWithAppleUseCase>(),
+        logoutUseCase: sl<LogoutUseCase>(),
       ),
     );
 }

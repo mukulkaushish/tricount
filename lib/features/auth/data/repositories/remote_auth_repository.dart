@@ -1,22 +1,31 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:tricount/core/error/app_exception.dart';
 import 'package:tricount/core/network/empty_response.dart';
+import 'package:tricount/core/security/token_provider.dart';
 import 'package:tricount/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:tricount/features/auth/data/datasources/social_auth_datasource.dart';
+import 'package:tricount/features/auth/data/models/auth_token_model.dart';
 import 'package:tricount/features/auth/domain/entities/auth_token.dart';
 import 'package:tricount/features/auth/domain/repositories/auth_repository.dart';
 
 /// Remote-only implementation of [AuthRepository].
 ///
 /// Maps data-layer DTOs to domain entities via `.toDomain()`.
+/// Persists tokens and basic user info to [TokenProvider] after every
+/// successful auth operation.
 /// Social sign-in methods orchestrate both the native SDK call
 /// (via [SocialAuthDataSource]) and the backend exchange
 /// (via [AuthRemoteDataSource]) in sequence.
 final class RemoteAuthRepository implements AuthRepository {
-  const RemoteAuthRepository(this._dataSource, this._socialAuth);
+  const RemoteAuthRepository(
+    this._dataSource,
+    this._socialAuth,
+    this._tokenProvider,
+  );
 
   final AuthRemoteDataSource _dataSource;
   final SocialAuthDataSource _socialAuth;
+  final TokenProvider _tokenProvider;
 
   @override
   Future<Either<AppException, AuthToken>> login({
@@ -24,7 +33,13 @@ final class RemoteAuthRepository implements AuthRepository {
     required final String password,
   }) async {
     final result = await _dataSource.login(email: email, password: password);
-    return result.map((model) => model.toDomain());
+    return switch (result) {
+      Left(:final value) => left(value),
+      Right(:final value) => _persistSession(
+        model: value,
+        email: email,
+      ),
+    };
   }
 
   @override
@@ -38,7 +53,14 @@ final class RemoteAuthRepository implements AuthRepository {
       password: password,
       displayName: displayName,
     );
-    return result.map((model) => model.toDomain());
+    return switch (result) {
+      Left(:final value) => left(value),
+      Right(:final value) => _persistSession(
+        model: value,
+        email: email,
+        displayName: displayName,
+      ),
+    };
   }
 
   @override
@@ -67,27 +89,51 @@ final class RemoteAuthRepository implements AuthRepository {
 
   @override
   Future<Either<AppException, AuthToken>> loginWithGoogle() async {
-    // Step 1: Run native Google Sign-In to get the idToken.
     final idTokenResult = await _socialAuth.getGoogleIdToken();
-    // Step 2: Exchange idToken with the backend or propagate native error.
-    return switch (idTokenResult) {
+    if (idTokenResult case Left(:final value)) return left(value);
+    final idToken = (idTokenResult as Right<AppException, String>).value;
+    final backendResult = await _dataSource.loginWithGoogle(idToken: idToken);
+    return switch (backendResult) {
       Left(:final value) => left(value),
-      Right(:final value) => (await _dataSource.loginWithGoogle(
-        idToken: value,
-      )).map((final model) => model.toDomain()),
+      Right(:final value) => _persistSession(model: value, email: ''),
     };
   }
 
   @override
   Future<Either<AppException, AuthToken>> loginWithApple() async {
-    // Step 1: Run native Apple Sign-In to get the identityToken.
     final idTokenResult = await _socialAuth.getAppleIdToken();
-    // Step 2: Exchange idToken with the backend or propagate native error.
-    return switch (idTokenResult) {
+    if (idTokenResult case Left(:final value)) return left(value);
+    final idToken = (idTokenResult as Right<AppException, String>).value;
+    final backendResult = await _dataSource.loginWithApple(idToken: idToken);
+    return switch (backendResult) {
       Left(:final value) => left(value),
-      Right(:final value) => (await _dataSource.loginWithApple(
-        idToken: value,
-      )).map((final model) => model.toDomain()),
+      Right(:final value) => _persistSession(model: value, email: ''),
     };
+  }
+
+  @override
+  Future<Either<AppException, EmptyResponse>> logout() async {
+    final result = await _dataSource.logout();
+    await _tokenProvider.clearTokens();
+    return result;
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  Future<Either<AppException, AuthToken>> _persistSession({
+    required final AuthTokenModel model,
+    required final String email,
+    final String? displayName,
+  }) async {
+    final token = model.toDomain();
+    await Future.wait([
+      _tokenProvider.saveTokens(
+        accessToken: token.accessToken,
+        refreshToken: token.refreshToken,
+      ),
+      if (email.isNotEmpty)
+        _tokenProvider.saveUserInfo(email: email, displayName: displayName),
+    ]);
+    return right(token);
   }
 }
