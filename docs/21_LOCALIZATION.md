@@ -1,17 +1,10 @@
-# 21 - Localization & Internationalization
+# 21 — Localization & Internationalization
 
-## Overview
-
-The app uses Flutter's built-in `gen-l10n` code generation for type-safe localized strings. No third-party i18n package is needed.
-
----
+Uses Flutter's built-in `gen-l10n`. No third-party i18n package.
 
 ## Setup
 
-### Dependencies
-
-Already in `pubspec.yaml`:
-
+**Dependencies (`pubspec.yaml`):**
 ```yaml
 dependencies:
   flutter_localizations:
@@ -19,40 +12,28 @@ dependencies:
   intl: any
 ```
 
-### Enable Code Generation
-
-**pubspec.yaml** (add under `flutter:` section):
-
+**Enable codegen** (under `flutter:`):
 ```yaml
 flutter:
   generate: true
 ```
 
-### l10n Configuration
-
-**File**: `l10n.yaml` (project root)
-
+**`l10n.yaml` (project root):**
 ```yaml
 arb-dir: lib/l10n
 template-arb-file: app_en.arb
 output-localization-file: app_localizations.dart
 ```
 
----
+## ARB files
 
-## ARB Files
-
-### Template (English)
-
-**File**: `lib/l10n/app_en.arb`
+### Template — `lib/l10n/app_en.arb`
 
 ```json
 {
   "@@locale": "en",
   "appTitle": "<app_name>",
-  "@appTitle": {
-    "description": "The application title"
-  },
+  "@appTitle": {"description": "The application title"},
   "loginTitle": "Sign In",
   "loginEmailLabel": "Email",
   "loginPasswordLabel": "Password",
@@ -76,48 +57,31 @@ output-localization-file: app_localizations.dart
       "amount": {
         "type": "double",
         "format": "currency",
-        "optionalParameters": {
-          "symbol": "$",
-          "decimalDigits": 2
-        }
+        "optionalParameters": {"symbol": "$", "decimalDigits": 2}
       }
     }
   },
   "itemCount": "{count, plural, =0{No items} =1{1 item} other{{count} items}}",
   "@itemCount": {
     "description": "Pluralized item count",
-    "placeholders": {
-      "count": {
-        "type": "num"
-      }
-    }
+    "placeholders": {"count": {"type": "num"}}
   },
   "lastUpdated": "Last updated {date}",
   "@lastUpdated": {
     "description": "Shows when data was last updated",
-    "placeholders": {
-      "date": {
-        "type": "DateTime",
-        "format": "yMd"
-      }
-    }
+    "placeholders": {"date": {"type": "DateTime", "format": "yMd"}}
   }
 }
 ```
 
-### Adding a New Language
+### Adding a new language
+1. Create `lib/l10n/app_<locale>.arb` (e.g. `app_fr.arb`).
+2. Translate all keys from the template.
+3. Add the `Locale` to `supportedLocales` in `app.dart`.
+4. Run `flutter gen-l10n` to regenerate.
+5. **iOS** — add language in Xcode (Runner > Info > Localizations) **only when** the locale is actually being shipped.
 
-1. Create `lib/l10n/app_<locale>.arb` (e.g., `app_fr.arb`)
-2. Translate all keys from the template file
-3. Add the `Locale` to `supportedLocales` in `app.dart`
-4. Run `flutter gen-l10n` to regenerate
-5. For iOS: add the language in Xcode under Runner > Info > Localizations when that locale is actually being shipped
-
----
-
-## App Integration
-
-In `app.dart` (`MaterialApp.router`):
+## App integration
 
 ```dart
 MaterialApp.router(
@@ -127,57 +91,45 @@ MaterialApp.router(
     GlobalWidgetsLocalizations.delegate,
     GlobalCupertinoLocalizations.delegate,
   ],
-  supportedLocales: const [
-    Locale('en'),
-  ],
+  supportedLocales: const [Locale('en')],
   // ...
 )
 ```
 
-### Usage in Widgets
+### Usage in widgets
 
 ```dart
-// Import:
 import 'l10n/app_localizations.dart';
 
-// Access:
 Text(AppLocalizations.of(context)!.loginTitle)
-
-// With parameters:
 Text(AppLocalizations.of(context)!.itemCount(3))
 Text(AppLocalizations.of(context)!.lastUpdated(DateTime.now()))
 ```
 
-### Context Extension (optional convenience)
+### Context extension (optional)
 
-In `build_context_extensions.dart`, add:
-
+In `build_context_extensions.dart`:
 ```dart
 extension LocalizationX on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this)!;
 }
-
 // Usage: context.l10n.loginTitle
 ```
 
-Use your real app name in ARB values. If you keep docs generic elsewhere, replace `<app_name>` with the product name for the current repository.
-
----
+Replace `<app_name>` with the real product name in ARB values.
 
 ## Rules
 
 | Rule | Detail |
-|------|--------|
-| No hardcoded user-facing strings | Every visible string goes through `AppLocalizations` |
-| Template file is the source of truth | `app_en.arb` defines all keys; other locales translate them |
-| Use `@key` metadata | Every key should have a `description` for translators |
-| Placeholders are typed | Use `type`, `format`, and `optionalParameters` for dates, numbers, currency |
-| Plural forms use ICU syntax | `{count, plural, =0{...} =1{...} other{...}}` |
-| No string concatenation for sentences | Use placeholders instead of `'Hello ' + name` |
-| Error messages are localized | `AppException.userMessage` should return localization keys or pre-localized strings |
+|---|---|
+| No hardcoded user-facing strings | every visible string via `AppLocalizations` |
+| Template is the source of truth | `app_en.arb` defines all keys; other locales translate |
+| Use `@key` metadata | every key has `description` for translators |
+| Placeholders are typed | use `type`, `format`, `optionalParameters` for dates/numbers/currency |
+| Plurals use ICU | `{count, plural, =0{...} =1{...} other{...}}` |
+| No string concatenation for sentences | use placeholders, not `'Hello ' + name` |
+| Error messages localized | `AppException.userMessage` returns localization keys / pre-localized strings |
 
----
+## Testing
 
-## Testing with Localization
-
-Widget tests must include `AppLocalizations` delegates. Use the `pumpApp` test helper → [17_TESTING_STRATEGY.md](17_TESTING_STRATEGY.md#widget-test-helpers-with-localization)
+Widget tests must include `AppLocalizations` delegates — use `pumpApp` helper → `17_TESTING_STRATEGY.md`.

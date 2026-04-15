@@ -1,210 +1,141 @@
-# 10 - Local Storage
+# 10 — Local Storage
 
-> Table names, DAO examples, and cached entities in this document are samples that demonstrate the storage pattern.
+> Table names and examples are illustrative.
 
-## Storage Strategy Overview
+## Strategy
 
-| Storage Type | Technology | Purpose |
-|-------------|-----------|---------|
-| Structured relational data | **Drift** (SQLite) | Books, chapters, bookmarks, reading progress |
-| Sensitive secrets | **flutter_secure_storage** | Auth tokens, API keys |
-| Simple preferences | **SharedPreferences** | Theme settings, font scale, flags |
-| HTTP cache | In-memory + Drift table | API response caching |
+| Storage type | Tech | Purpose |
+|---|---|---|
+| Structured relational | **Drift** (SQLite) | books, chapters, bookmarks, reading progress |
+| Sensitive secrets | **flutter_secure_storage** | tokens, API keys |
+| Simple prefs | **SharedPreferences** | theme, font, flags |
+| HTTP cache | in-memory + Drift table | API response caching |
 
----
+## Drift
 
-## Drift Database
+### No abstract interface
 
-### Design: No Abstract Interface
+`AppDatabase` used directly — no `LocalDatabase` wrapper.
 
-Drift's `AppDatabase` is used directly — no `LocalDatabase` abstract interface wrapping it.
+**Why:** unlike HTTP, Drift already provides:
+- `.watch()` reactive streams on any query
+- DAO pattern via `@DriftAccessor`
+- In-memory test DB (`NativeDatabase.memory()`)
+- `transaction(() async {...})`
+- `UpdateCompanion` for partial row updates
+- `SchemaVerifier` for migration testing
 
-**Why**: Unlike HTTP (where we swap `DioHttpClient` for mocks), Drift already provides:
-- `.watch()` reactive streams on any query (built-in)
-- DAO pattern via `@DriftAccessor` annotation (built-in)
-- In-memory database for tests (`NativeDatabase.memory()`)
-- Transactions via `transaction(() async { ... })` (built-in)
-- `UpdateCompanion` for partial row updates (built-in)
-- `SchemaVerifier` for migration testing (built-in)
+An abstract interface would duplicate every DAO signature for zero benefit. **DAOs are the interface** — mock with mocktail.
 
-An abstract interface would duplicate every DAO method signature for zero benefit. DAOs **are** the interface — mock them in tests with `mocktail`.
-
-### Drift Annotations
-
+### Annotations
 | Annotation | Purpose |
-|-----------|---------|
-| `@DriftDatabase(tables: [...], daos: [...])` | Declares the database class with its tables and DAOs |
-| `@DriftAccessor(tables: [...])` | Declares a DAO class scoped to specific tables |
+|---|---|
+| `@DriftDatabase(tables: [...], daos: [...])` | DB class |
+| `@DriftAccessor(tables: [...])` | DAO scoped to tables |
 
-### Drift Built-in Patterns
+### Built-in patterns
 
-| Feature | API | Use For |
-|---------|-----|---------|
-| Reactive queries | `dao.watchBooks()` returns `Stream<List<Book>>` | Auto-updating UI when cache changes |
-| Transactions | `database.transaction(() async { ... })` | Atomic multi-table writes |
-| Partial updates | `UpdateCompanion({field: Value(newVal)})` | Update specific columns without full row |
-| Batch inserts | `database.batch((b) => b.insertAll(...))` | Efficient bulk writes |
-| Custom SQL | `customSelect(sql, variables: [...])` | Complex queries beyond the expression API |
-| Migration testing | `SchemaVerifier(database)` | Verify schema migrations in unit tests |
+| Feature | API | Use for |
+|---|---|---|
+| Reactive queries | `dao.watchBooks()` → `Stream<List<Book>>` | auto-updating UI |
+| Transactions | `database.transaction(() async {...})` | atomic multi-table writes |
+| Partial updates | `UpdateCompanion({field: Value(newVal)})` | update specific columns |
+| Batch inserts | `database.batch((b) => b.insertAll(...))` | bulk writes |
+| Custom SQL | `customSelect(sql, variables: [...])` | complex queries |
+| Migration testing | `SchemaVerifier(database)` | verify in unit tests |
 
-### Database Definition
+### DB definition (`lib/core/storage/drift/app_database.dart`)
 
-**File**: `lib/core/storage/drift/app_database.dart`
+`AppDatabase extends GeneratedDatabase`.
 
-**Database class**: `AppDatabase extends GeneratedDatabase`
+**BooksTable:**
+| Column | Type | SQL | Constraints |
+|---|---|---|---|
+| `id` | `String` | TEXT | PK |
+| `title` | `String` | TEXT | not null |
+| `author` | `String` | TEXT | not null |
+| `coverUrl` | `String?` | TEXT | nullable |
+| `description` | `String?` | TEXT | nullable |
+| `pageCount` | `int` | INTEGER | not null |
+| `rating` | `double?` | REAL | nullable |
+| `categories` | `String` | TEXT | JSON-encoded list |
+| `publishedAt` | `DateTime` | INTEGER | epoch ms |
+| `isPremium` | `bool` | INTEGER | 0/1 |
+| `cachedAt` | `DateTime` | INTEGER | stored timestamp |
 
-**Tables**:
+**ChaptersTable:** `id` (PK TEXT), `bookId` (FK→Books), `index` (INT), `title` (TEXT), `content` (TEXT), `cachedAt` (INT).
 
-#### BooksTable
+**BookmarksTable:** `id` (PK UUID TEXT), `bookId` (FK), `chapterId` (FK), `position` (INT char offset), `note` (TEXT nullable), `createdAt` (INT).
 
-| Column | Dart Type | SQL Type | Constraints |
-|--------|-----------|----------|-------------|
-| `id` | `String` | `TEXT` | Primary key |
-| `title` | `String` | `TEXT` | Not null |
-| `author` | `String` | `TEXT` | Not null |
-| `coverUrl` | `String?` | `TEXT` | Nullable |
-| `description` | `String?` | `TEXT` | Nullable |
-| `pageCount` | `int` | `INTEGER` | Not null |
-| `rating` | `double?` | `REAL` | Nullable |
-| `categories` | `String` | `TEXT` | JSON-encoded list |
-| `publishedAt` | `DateTime` | `INTEGER` | Epoch millis |
-| `isPremium` | `bool` | `INTEGER` | 0/1 |
-| `cachedAt` | `DateTime` | `INTEGER` | When stored locally |
+**ReadingProgressTable:** `bookId` (PK), `chapterIndex` (INT), `scrollPosition` (REAL), `percentage` (REAL 0-1), `updatedAt` (INT).
 
-#### ChaptersTable
+**ApiCacheTable:** `url` (PK full URL+params), `responseBody` (TEXT JSON), `etag` (TEXT nullable), `lastModified` (TEXT nullable), `cachedAt` (INT), `ttlSeconds` (INT).
 
-| Column | Dart Type | SQL Type | Constraints |
-|--------|-----------|----------|-------------|
-| `id` | `String` | `TEXT` | Primary key |
-| `bookId` | `String` | `TEXT` | Foreign key → BooksTable |
-| `index` | `int` | `INTEGER` | Not null |
-| `title` | `String` | `TEXT` | Not null |
-| `content` | `String` | `TEXT` | Full chapter text |
-| `cachedAt` | `DateTime` | `INTEGER` | When stored locally |
+## DAOs
 
-#### BookmarksTable
-
-| Column | Dart Type | SQL Type | Constraints |
-|--------|-----------|----------|-------------|
-| `id` | `String` | `TEXT` | Primary key (UUID) |
-| `bookId` | `String` | `TEXT` | Foreign key → BooksTable |
-| `chapterId` | `String` | `TEXT` | Foreign key → ChaptersTable |
-| `position` | `int` | `INTEGER` | Character offset in chapter |
-| `note` | `String?` | `TEXT` | Optional user note |
-| `createdAt` | `DateTime` | `INTEGER` | Epoch millis |
-
-#### ReadingProgressTable
-
-| Column | Dart Type | SQL Type | Constraints |
-|--------|-----------|----------|-------------|
-| `bookId` | `String` | `TEXT` | Primary key |
-| `chapterIndex` | `int` | `INTEGER` | Last read chapter |
-| `scrollPosition` | `double` | `REAL` | Scroll offset in chapter |
-| `percentage` | `double` | `REAL` | Overall book progress (0.0-1.0) |
-| `updatedAt` | `DateTime` | `INTEGER` | Last update timestamp |
-
-#### ApiCacheTable
-
-| Column | Dart Type | SQL Type | Constraints |
-|--------|-----------|----------|-------------|
-| `url` | `String` | `TEXT` | Primary key (full URL with params) |
-| `responseBody` | `String` | `TEXT` | JSON response body |
-| `etag` | `String?` | `TEXT` | ETag header value |
-| `lastModified` | `String?` | `TEXT` | Last-Modified header |
-| `cachedAt` | `DateTime` | `INTEGER` | When cached |
-| `ttlSeconds` | `int` | `INTEGER` | Time-to-live |
-
----
-
-## DAOs (Data Access Objects)
-
-### BookDao
-
-**File**: `lib/core/storage/drift/daos/book_dao.dart`
-
+### `BookDao`
 | Method | Returns | Description |
-|--------|---------|-------------|
-| `getAllBooks()` | `Future<List<Book>>` | All cached books |
-| `getBookById(String id)` | `Future<Book?>` | Single book by ID |
-| `insertBook(Book book)` | `Future<void>` | Insert or replace |
-| `insertBooks(List<Book> books)` | `Future<void>` | Batch insert |
-| `deleteBook(String id)` | `Future<void>` | Remove from cache |
-| `deleteStaleBooks(Duration maxAge)` | `Future<int>` | Clean old entries |
-| `watchBooks()` | `Stream<List<Book>>` | Reactive stream of books |
+|---|---|---|
+| `getAllBooks()` | `Future<List<Book>>` | all cached |
+| `getBookById(id)` | `Future<Book?>` | single |
+| `insertBook(book)` | `Future<void>` | insert or replace |
+| `insertBooks(books)` | `Future<void>` | batch |
+| `deleteBook(id)` | `Future<void>` | remove |
+| `deleteStaleBooks(maxAge)` | `Future<int>` | clean old entries |
+| `watchBooks()` | `Stream<List<Book>>` | reactive |
 
-### ReadingDao
-
-**File**: `lib/core/storage/drift/daos/reading_dao.dart`
-
+### `ReadingDao`
 | Method | Returns | Description |
-|--------|---------|-------------|
-| `getProgress(String bookId)` | `Future<ReadingProgress?>` | Progress for a book |
-| `saveProgress(ReadingProgress)` | `Future<void>` | Insert or update |
-| `getBookmarks(String bookId)` | `Future<List<Bookmark>>` | All bookmarks for a book |
-| `addBookmark(Bookmark)` | `Future<void>` | Add bookmark |
-| `removeBookmark(String id)` | `Future<void>` | Delete bookmark |
-| `watchProgress(String bookId)` | `Stream<ReadingProgress?>` | Reactive progress |
+|---|---|---|
+| `getProgress(bookId)` | `Future<ReadingProgress?>` | progress for book |
+| `saveProgress(p)` | `Future<void>` | insert or update |
+| `getBookmarks(bookId)` | `Future<List<Bookmark>>` | all for book |
+| `addBookmark(b)` | `Future<void>` | add |
+| `removeBookmark(id)` | `Future<void>` | delete |
+| `watchProgress(bookId)` | `Stream<ReadingProgress?>` | reactive |
 
----
+## Secure storage
 
-## Secure Storage
-
-**File**: `lib/core/security/secure_store.dart` (interface)
-**File**: `lib/core/security/secure_storage_adapter.dart` (implementation)
-
-### SecureStore Interface
+**`lib/core/security/secure_store.dart`** (iface), **`secure_storage_adapter.dart`** (impl).
 
 | Method | Returns | Purpose |
-|--------|---------|---------|
-| `read(String key)` | `Future<String?>` | Read encrypted value |
-| `write(String key, String value)` | `Future<void>` | Write encrypted value |
-| `delete(String key)` | `Future<void>` | Delete a key |
-| `deleteAll()` | `Future<void>` | Clear all (logout) |
-| `containsKey(String key)` | `Future<bool>` | Check existence |
+|---|---|---|
+| `read(key)` | `Future<String?>` | read encrypted |
+| `write(key, value)` | `Future<void>` | write encrypted |
+| `delete(key)` | `Future<void>` | remove |
+| `deleteAll()` | `Future<void>` | clear all (logout) |
+| `containsKey(key)` | `Future<bool>` | check |
 
-### Stored Keys, Platform Security & Token Lifecycle
-
-Token storage keys, platform encryption details, and the full token lifecycle -> [20_SECURITY.md](20_SECURITY.md#secure-token-management)
-
----
+Token keys, platform encryption, lifecycle → `20_SECURITY.md#secure-token-management`.
 
 ## SharedPreferences
 
-Used for non-sensitive, simple key-value data:
-
 | Key | Type | Default | Purpose |
-|-----|------|---------|---------|
-| `theme_palette_id` | `String` | `"blue"` | Selected color palette |
-| `theme_mode` | `String` | `"system"` | Light/dark/system |
-| `font_scale` | `double` | `1.0` | Text size multiplier |
-| `onboarding_complete` | `bool` | `false` | First-run flag |
-| `last_sync_timestamp` | `String` | `null` | Last server sync time |
+|---|---|---|---|
+| `theme_palette_id` | `String` | `"blue"` | selected palette |
+| `theme_mode` | `String` | `"system"` | light/dark/system |
+| `font_scale` | `double` | `1.0` | text size multiplier |
+| `onboarding_complete` | `bool` | `false` | first-run flag |
+| `last_sync_timestamp` | `String` | `null` | last server sync |
 
----
-
-## Migration Strategy (Drift)
-
-Drift supports schema migrations:
+## Migrations (Drift)
 
 | Version | Changes |
-|---------|---------|
-| 1 | Initial schema: books, chapters, bookmarks, reading_progress |
-| 2+ | Add new tables/columns as features grow |
+|---|---|
+| 1 | initial: books, chapters, bookmarks, reading_progress |
+| 2+ | add new tables/columns |
 
-**Migration rules**:
-- Never delete columns in production - mark deprecated
-- Add new columns as nullable or with defaults
-- Test migrations with `SchemaVerifier` in tests
-- Keep migration code in `app_database.dart` `migration` getter
+**Rules:**
+- Never delete columns in production — mark deprecated.
+- New columns as nullable or with defaults.
+- Test with `SchemaVerifier`.
+- Migration code in `app_database.dart` `migration` getter.
 
----
+## Concurrency & transactions
 
-## Concurrency & Transactions
-
-Drift serializes database operations automatically — concurrent reads and writes are safe. Use explicit transactions when multiple writes must be atomic:
+Drift serializes DB ops automatically — concurrent reads/writes safe. Use explicit transactions when multiple writes must be atomic:
 
 ```dart
-// Atomic: either all succeed or all roll back
 await database.transaction(() async {
   await bookmarkDao.deleteByBookId(bookId);
   await bookmarkDao.insertAll(newBookmarks);
@@ -213,22 +144,20 @@ await database.transaction(() async {
 ```
 
 | Scenario | Pattern |
-|----------|---------|
-| Sync queue flush (delete old + insert new) | `transaction()` |
-| Single row insert/update | No transaction needed |
-| Batch insert (100+ rows) | `batch((b) => b.insertAll(...))` for performance |
+|---|---|
+| Sync queue flush (delete+insert) | `transaction()` |
+| Single row insert/update | no transaction needed |
+| Batch insert (100+) | `batch((b) => b.insertAll(...))` |
 | Read-then-write | `transaction()` to prevent stale reads |
 
----
+## Cache invalidation
 
-## Cache Invalidation
+| Data | TTL | Invalidate on |
+|---|---|---|
+| Book list | 5 min | pull-to-refresh, app foreground |
+| Book detail | 30 min | manual refresh |
+| Chapter content | 24 h | never auto (large payload) |
+| Reading progress | — | synced on app foreground |
+| API responses | per `Cache-Control` | ETag/Last-Modified revalidation |
 
-| Data Type | TTL | Invalidation Trigger |
-|-----------|-----|---------------------|
-| Book list | 5 minutes | Pull-to-refresh, app foreground |
-| Book detail | 30 minutes | Manual refresh |
-| Chapter content | 24 hours | Never auto-invalidate (large payload) |
-| Reading progress | No TTL | Synced on app foreground |
-| API responses | Per Cache-Control header | ETag/Last-Modified revalidation |
-
-**Stale data policy**: Show stale data immediately, refresh in background, update UI when fresh data arrives (stale-while-revalidate pattern).
+**Stale policy:** show stale immediately, refresh in background, update UI when fresh arrives (stale-while-revalidate).

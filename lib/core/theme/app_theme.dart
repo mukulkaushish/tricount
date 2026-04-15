@@ -19,8 +19,7 @@ abstract final class AppTheme {
     Brightness brightness,
     double fontScale,
     TargetPlatform platform,
-  ) =>
-      '${palette.id}_${brightness.name}_${fontScale}_${platform.name}';
+  ) => '${palette.id}_${brightness.name}_${fontScale}_${platform.name}';
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -35,8 +34,8 @@ abstract final class AppTheme {
     if (_cache.containsKey(key)) return _cache[key]!;
 
     final tokens = palette.tokensFor(brightness);
-    final isIOS = platform == TargetPlatform.iOS ||
-        platform == TargetPlatform.macOS;
+    final isIOS =
+        platform == TargetPlatform.iOS || platform == TargetPlatform.macOS;
 
     final textTheme = AppTextStyles.scaled(
       primaryColor: tokens.onSurface,
@@ -44,23 +43,24 @@ abstract final class AppTheme {
       scale: fontScale,
     );
 
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: tokens.primary,
-      brightness: brightness,
-    ).copyWith(
-      primary: tokens.primary,
-      onPrimary: tokens.onPrimary,
-      secondary: tokens.secondary,
-      onSecondary: tokens.onSecondary,
-      surface: tokens.surface,
-      onSurface: tokens.onSurface,
-      surfaceContainerHighest: tokens.surfaceVariant,
-      onSurfaceVariant: tokens.onSurfaceVariant,
-      error: tokens.error,
-      onError: tokens.onError,
-      outline: tokens.outline,
-      shadow: tokens.shadow,
-    );
+    final colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: tokens.primary,
+          brightness: brightness,
+        ).copyWith(
+          primary: tokens.primary,
+          onPrimary: tokens.onPrimary,
+          secondary: tokens.secondary,
+          onSecondary: tokens.onSecondary,
+          surface: tokens.surface,
+          onSurface: tokens.onSurface,
+          surfaceContainerHighest: tokens.surfaceVariant,
+          onSurfaceVariant: tokens.onSurfaceVariant,
+          error: tokens.error,
+          onError: tokens.onError,
+          outline: tokens.outline,
+          shadow: tokens.shadow,
+        );
 
     final theme = ThemeData(
       useMaterial3: true,
@@ -244,8 +244,9 @@ abstract final class AppTheme {
       // ── Divider ───────────────────────────────────────────────────────────
       dividerTheme: DividerThemeData(
         color: tokens.outline,
-        thickness:
-            isIOS ? AppDimensions.dividerIOS : AppDimensions.dividerAndroid,
+        thickness: isIOS
+            ? AppDimensions.dividerIOS
+            : AppDimensions.dividerAndroid,
         space: 0,
         indent: AppDimensions.s16,
         endIndent: AppDimensions.s16,
@@ -326,8 +327,9 @@ abstract final class AppTheme {
         ),
         minVerticalPadding: AppDimensions.s12,
         titleTextStyle: textTheme.bodyLarge,
-        subtitleTextStyle: textTheme.bodyMedium
-            ?.copyWith(color: tokens.onSurfaceVariant),
+        subtitleTextStyle: textTheme.bodyMedium?.copyWith(
+          color: tokens.onSurfaceVariant,
+        ),
       ),
 
       // ── Chip ──────────────────────────────────────────────────────────────
@@ -384,8 +386,9 @@ abstract final class AppTheme {
         overlayColor: tokens.primary.withValues(alpha: 0.12),
         trackHeight: 4,
         valueIndicatorColor: tokens.primary,
-        valueIndicatorTextStyle: textTheme.labelMedium
-            ?.copyWith(color: tokens.onPrimary),
+        valueIndicatorTextStyle: textTheme.labelMedium?.copyWith(
+          color: tokens.onPrimary,
+        ),
       ),
 
       // ── Segmented button ──────────────────────────────────────────────────

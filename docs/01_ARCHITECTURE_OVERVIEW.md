@@ -1,199 +1,88 @@
-# 01 - Architecture Overview
+# 01 — Architecture Overview
 
-## Guiding Philosophy
+**Clean Architecture + feature-first.** Priorities: testability, modularity, decoupling via interfaces, zero boilerplate.
 
-This application follows **Clean Architecture** with **feature-first organization**. Every decision prioritizes:
+## SOLID application
 
-1. **Testability** - every layer can be tested in isolation
-2. **Modularity** - features are self-contained; removing one never breaks another
-3. **Decoupling** - layers communicate through interfaces, never concrete implementations
-4. **Zero boilerplate** - extensions, mixins, and code generation eliminate repetition
+- **S** — each class one reason to change. BLoCs = state only (no API calls); repositories = sole data owner; use cases = one operation.
+- **O** — theming open for new `AppColorPalette`, closed on `AppTheme.build()` contract. Stackable interceptors. Pluggable analytics adapters.
+- **L** — any `AnalyticsService` impl (Sentry/Mixpanel/Firebase/NoOp) interchangeable. Any repository impl (remote/local/cached) satisfies the contract. Mocks honor invariants.
+- **I** — `AnalyticsService` split into `EventTracker`/`CrashReporter`/`UserIdentifier`. Auth split: `TokenProvider` (token CRUD) vs `AuthBloc` (session).
+- **D** — domain defines interfaces; data implements. Presentation depends on domain never data. GetIt binds abstract→concrete. Widgets never import `data/`.
 
----
+## Patterns used
 
-## SOLID Principles Applied
+| Pattern | Purpose | Location / rule |
+|---|---|---|
+| Repository | Abstract data sources | `domain/repositories/` interface; `data/repositories/` impl; returns domain models, not DTOs |
+| BLoC | Events→states, no UI logic in BLoC / no business logic in widgets | `presentation/bloc/` |
+| Use Case | One business op, single `call()` | `domain/usecases/`; may compose other use cases, not cross-feature repos |
+| Adapter | Wrap third-party behind app interface | Analytics adapters, `DioHttpClient` → `HttpClient`. If a package appears in `import`, it belongs behind an interface in `core/` |
+| Observer | Connectivity / auth / theme streams | Core services expose streams |
+| Strategy | Cache, retry, theme strategies | `core/network/interceptors/`, `core/theme/` |
+| Factory | Complex object creation | `core/di/`, `AppTheme.build()` |
 
-### Single Responsibility (S)
-- Each class has exactly one reason to change
-- BLoCs handle state logic only; they never call APIs directly
-- Repositories are the sole owners of data access
-- Use cases encapsulate one business operation
-
-### Open/Closed (O)
-- The theming system is open for new color palettes (add a new `AppColorPalette`) but closed for modification (the `AppTheme.build()` contract never changes)
-- Interceptors are stackable - add new ones without modifying `DioHttpClient`
-- Analytics adapters plug in without changing the `AnalyticsService` interface
-
-### Liskov Substitution (L)
-- Any `AnalyticsService` implementation (Sentry, Mixpanel, Firebase, NoOp) is interchangeable
-- Any `BookRepository` (remote, local, cached) satisfies the same contract
-- Mock implementations used in tests honor the same invariants
-
-### Interface Segregation (I)
-- `AnalyticsService` is split: `EventTracker`, `CrashReporter`, `UserIdentifier`
-- Auth concerns are split: `TokenProvider` (token CRUD), `AuthBloc` (session state)
-- Consumers depend only on the slice they need
-
-### Dependency Inversion (D)
-- Domain layer defines interfaces; data layer implements them
-- Presentation depends on domain, never on data
-- `GetIt` registers concrete implementations against abstract types
-- No widget ever imports from `data/` directly
-
----
-
-## Design Patterns
-
-### Repository Pattern
-- **Purpose**: Abstract data sources behind a unified interface
-- **Where**: Every feature's `domain/repositories/` defines the contract; `data/repositories/` implements it
-- **Rule**: Repositories return domain models, never DTOs or raw JSON
-
-### BLoC Pattern (Business Logic Component)
-- **Purpose**: Separate presentation from business logic via streams of events and states
-- **Where**: `presentation/bloc/` within each feature
-- **Rule**: BLoCs receive events, call use cases, emit states. No UI logic in BLoCs; no business logic in widgets.
-
-### Use Case Pattern
-- **Purpose**: Encapsulate a single business operation
-- **Where**: `domain/usecases/` within each feature
-- **Rule**: One public `call()` method. Use cases may compose other use cases but never call repositories from other features directly.
-
-### Adapter Pattern
-- **Purpose**: Wrap third-party libraries behind app-owned interfaces
-- **Where**: Analytics adapters, storage adapters, `DioHttpClient` implementing `HttpClient`
-- **Rule**: If a package appears in an `import`, it should be behind an interface or adapter in `core/`
-
-### Observer Pattern
-- **Purpose**: Connectivity changes, auth state changes, theme changes
-- **Where**: Streams exposed by core services, consumed by BLoCs or global listeners
-
-### Strategy Pattern
-- **Purpose**: Interchangeable algorithms for caching, retry policies, theme generation
-- **Where**: `core/network/interceptors/`, `core/theme/`
-
-### Factory Pattern
-- **Purpose**: Create complex objects (interceptors, theme data, database instances)
-- **Where**: `core/di/`, `core/theme/app_theme.dart`
-
----
-
-## Layer Architecture
+## Layers
 
 ```
-┌─────────────────────────────────────────┐
-│            PRESENTATION                  │
-│  Widgets, Pages, BLoCs, Routes           │
-│  Depends on: Domain                      │
-├─────────────────────────────────────────┤
-│              DOMAIN                      │
-│  Entities, Use Cases, Repository         │
-│  Interfaces, Value Objects               │
-│  Depends on: Pure Dart + pure-Dart Core  │
-├─────────────────────────────────────────┤
-│               DATA                       │
-│  Repository Impls, DTOs, Data Sources,   │
-│  API Services, Local DB (Drift)          │
-│  Depends on: Domain (implements its      │
-│  interfaces)                             │
-├─────────────────────────────────────────┤
-│               CORE                       │
-│  Network, Theme, DI, Extensions,         │
-│  Error Handling, Analytics, Logging,     │
-│  JSON Parsing, Secure Storage            │
-│  Shared across all features              │
-└─────────────────────────────────────────┘
+PRESENTATION (widgets, pages, BLoCs, routes)        → Domain, Core
+DOMAIN       (entities, use cases, repo interfaces) → pure Dart + pure-Dart Core
+DATA         (impls, DTOs, data sources, Drift)     → Domain, Core  (implements domain ifaces)
+CORE         (network, theme, DI, error, log, sec)  → SDK + packages only
 ```
 
-### Dependency Rules (Strict)
-
-| Layer | Can Import | Cannot Import |
-|-------|-----------|---------------|
+| Layer | Can import | Cannot import |
+|---|---|---|
 | Presentation | Domain, Core | Data |
 | Domain | Core (pure-Dart only: `AppException`, value helpers, non-Flutter extensions) | Presentation, Data, Flutter |
 | Data | Domain, Core | Presentation |
 | Core | Dart/Flutter SDK, pub packages | Domain, Data, Presentation |
 
----
-
-## Feature Module Structure
-
-Every feature follows this internal structure:
+## Feature module layout
 
 ```
-feature_name/
-├── data/
-│   ├── datasources/        # Remote and local data sources
-│   ├── models/             # DTOs that implement JsonCodable
-│   └── repositories/       # Concrete repository implementations
-├── domain/
-│   ├── entities/           # Pure domain objects
-│   ├── repositories/       # Abstract repository interfaces
-│   └── usecases/           # Single-purpose business operations
-└── presentation/
-    ├── bloc/               # BLoC/Cubit + Events + States
-    ├── pages/              # Full-screen page widgets
-    └── widgets/            # Feature-specific widgets
+feature/
+├── data/        datasources/  models/  repositories/
+├── domain/      entities/     repositories/  usecases/
+└── presentation/ bloc/        pages/  widgets/
 ```
 
----
+## `shared/` rule
 
-## Shared Presentation Primitives
+`shared/` is **not** a fifth layer and **not** a misc folder. Presentation-only reusable building blocks:
+- `shared/widgets/` — app-wide reusable widgets
+- `shared/mixins/` — UI lifecycle helpers
+- Keep infrastructure in `core/`; keep repos/use cases/DTOs/networking **out** of `shared/`.
 
-`shared/` is not a fifth architecture layer and not a general-purpose
-"miscellaneous" folder. It exists for reusable presentation-only building
-blocks that are shared across features.
+## Cross-cutting concerns (in `core/`, injected via GetIt)
 
-- Put app-wide reusable widgets in `shared/widgets/`
-- Put UI lifecycle helpers in `shared/mixins/`
-- Keep infrastructure in `core/`
-- Keep repositories, use cases, DTOs, and networking types out of `shared/`
+Feature-scoped BLoCs are provided per-route via auto_route `WrappedRoute` → `09_NAVIGATION_DEEP_LINKING.md`.
 
----
-
-## Cross-Cutting Concerns
-
-These live in `core/` and are injected via GetIt. Feature-scoped BLoCs are provided per-route using auto_route's `WrappedRoute` mixin -> [09_NAVIGATION_DEEP_LINKING.md](09_NAVIGATION_DEEP_LINKING.md#per-route-di-with-wrappedroute)
-
-| Concern | Interface | Default Implementation |
-|---------|-----------|----------------------|
-| HTTP Client | `HttpClient` (abstract) | `DioHttpClient` |
+| Concern | Interface | Default impl |
+|---|---|---|
+| HTTP | `HttpClient` | `DioHttpClient` |
 | Local DB | `AppDatabase` (Drift) + DAOs | `BookDao`, `ReadingDao` |
-| Secure Storage | `SecureStore` (abstract) | `FlutterSecureStorageAdapter` |
-| Analytics | `AnalyticsService` (abstract) | `CompositeAnalyticsService` |
-| Logging | `AppLogger` (abstract) | `PrettyAppLogger` (dev), `ProductionAppLogger` (prod) |
-| Connectivity | `ConnectivityService` (concrete) | Wraps `connectivity_plus` directly — no abstract interface |
-| Theme | `ThemeBloc` | Manages palette, mode, font scale via BLoC events |
-| Token Management | `TokenProvider` (abstract) | `SecureTokenProvider` (wraps `SecureStore`) |
+| Secure store | `SecureStore` | `FlutterSecureStorageAdapter` |
+| Analytics | `AnalyticsService` | `CompositeAnalyticsService` |
+| Logging | `AppLogger` | `PrettyAppLogger` (dev), `ProductionAppLogger` (prod) |
+| Connectivity | `ConnectivityService` (concrete, no abstract) | wraps `connectivity_plus` |
+| Theme | `ThemeBloc` | palette + mode + font scale |
+| Tokens | `TokenProvider` | `SecureTokenProvider` (wraps `SecureStore`) |
 
----
+## Extensions
 
-## Extension Strategy
+Use only where they remove real friction. Keep **read-only**, **thin**, **local to repeated pain points**. Never hide state mutation / navigation / analytics / package APIs behind an extension.
 
-Extensions are used **only** when they add real value. Do not wrap APIs that packages already provide.
+**Create for:**
+1. Theme shortcuts on `BuildContext`: `colorScheme`, `textTheme`, `appColors`.
+2. Domain methods on primitives: `String.toBookId()`, `DateTime.toReadableDate()`, `String.capitalize()`.
+3. Collection helpers: `Iterable.separatedBy()`, `groupBy()`.
 
-### What We Create Extensions For
+**Do NOT wrap** (already provided by packages):
 
-1. **Theme shortcuts** on BuildContext: `context.colorScheme`, `context.textTheme`, `context.appColors` (saves nested access)
-2. **Domain methods** on primitives: `String.toBookId()`, `DateTime.toReadableDate()`, `String.capitalize()`
-3. **Collection utilities**: `Iterable.separatedBy()`, `Iterable.groupBy()`
+| Don't wrap | Provided by |
+|---|---|
+| `context.pushRoute()`, `context.router` | auto_route |
+| `context.read<T>()`, `watch<T>()`, `select<T,V>()` | flutter_bloc |
 
-Extensions should stay:
-- **read-only** when possible
-- **thin** convenience helpers, not hidden business logic
-- **local to repeated pain points**, not speculative abstractions
-
-### What We Do NOT Create Extensions For
-
-| Don't Wrap | Already Provided By |
-|-----------|-------------------|
-| `context.pushRoute()` | auto_route (built-in) |
-| `context.router` | auto_route (built-in) |
-| `context.read<T>()` / `context.watch<T>()` | flutter_bloc (built-in) |
-| `context.select<T, V>()` | flutter_bloc (built-in) |
-
-**Rule**: If a package already provides a context extension, use it directly. Don't wrap it.
-
-**Rule**: If an extension starts mutating state, triggering navigation, dispatching analytics, or hiding a package API, it is probably the wrong abstraction.
-
-Extensions live in `core/extensions/` and are organized by the type they extend.
+If an extension mutates state, navigates, dispatches analytics, or hides a package API — it's the wrong abstraction. Extensions live in `core/extensions/`, organized by extended type.

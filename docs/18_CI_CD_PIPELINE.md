@@ -1,34 +1,30 @@
-# 18 - CI/CD Pipeline
+# 18 — CI/CD Pipeline
 
-## Purpose
+> Recommended setup for target architecture. Add as the codebase matures.
 
-This document describes the recommended CI/CD setup for the target architecture. The repository does not currently include these workflows; add them as the codebase matures.
+## Minimum first step
 
-## Minimum First Step
-
-Before introducing release automation, add a simple CI workflow in `.github/workflows/ci.yml` that:
-
-- checks out the code
+Before release automation, add `.github/workflows/ci.yml` that:
+- checkouts code
 - installs Flutter
 - runs `flutter pub get`
 - runs `dart format --set-exit-if-changed .`
 - runs `flutter analyze`
 - runs `flutter test`
 
-This is the first workflow the repository should adopt.
+This is the first workflow the repo should adopt.
 
-## Recommended Workflow Set
+## Recommended workflow set
 
 | Workflow | Trigger | Purpose |
-|----------|---------|---------|
-| `ci.yml` | Push and pull request | Formatting, analysis, tests, and build verification |
-| `release.yml` | Version tag or manual dispatch | Release builds and optional store deployment |
-| `nightly.yml` | Scheduled run | Longer-running checks, outdated dependencies, optional profiling |
+|---|---|---|
+| `ci.yml` | push + PR | formatting, analysis, tests, build verification |
+| `release.yml` | version tag / manual dispatch | release builds, optional store deployment |
+| `nightly.yml` | scheduled | longer checks, outdated deps, profiling |
 
-## CI Workflow Guidance
+## CI workflow guidance
 
-### Recommended Triggers
-
+### Triggers
 ```yaml
 on:
   push:
@@ -36,45 +32,41 @@ on:
   pull_request:
     branches: [main]
 ```
+Expand only when the team needs it.
 
-Expand branch patterns only when the team needs them.
-
-### Recommended Jobs
-
+### Jobs
 1. `format-and-analyze`
 2. `test`
 3. `build-android`
 4. `build-ios` when macOS runners are justified
 
-### Recommended Checks
-
+### Checks
 - formatting
 - static analysis
-- unit and widget tests
+- unit + widget tests
 - integration tests once they exist
-- at least one release-mode or release-like build verification job before shipping
+- at least one release-mode (or release-like) build verification before shipping
 
-## Workflow Hygiene
+## Workflow hygiene
 
-### Concurrency
+**Concurrency** — cancel stale runs on new commits to the same branch:
+```yaml
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+```
 
-Use workflow or job concurrency so stale runs are cancelled when a branch receives new commits. This keeps feedback fast and prevents wasting CI minutes on obsolete runs.
+**Dependency caching** — use GitHub Actions caching where it meaningfully reduces setup. Scope keys predictably.
 
-### Dependency Caching
+**Artifact handling:**
+- Upload coverage / test reports when useful for review.
+- Upload release artifacts only from trusted branches, tags, or protected envs.
+- Keep retention conservative.
 
-Use GitHub Actions dependency caching where it meaningfully reduces setup time, but keep cache keys scoped and predictable.
-
-### Artifact Handling
-
-- upload coverage or test reports when they help review
-- upload release artifacts only from trusted branches, tags, or protected environments
-- keep retention conservative to avoid unnecessary storage growth
-
-## Suggested CI Shape
+## Suggested CI shape
 
 ```yaml
 name: CI
-
 on:
   push:
     branches: [main]
@@ -85,48 +77,43 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 ```
+Define jobs for checkout, Flutter setup, deps install, analysis, tests, build verification.
 
-Then define jobs for checkout, Flutter setup, dependency install, analysis, tests, and build verification.
-
-## Release Workflow Guidance
+## Release workflow guidance
 
 Add `release.yml` only after:
+- App produces meaningful release artifacts.
+- Signing strategy documented.
+- Secrets management ready.
+- Rollback expectations clear.
 
-- the app produces meaningful release artifacts
-- signing strategy is documented
-- secrets management is ready
-- rollback expectations are clear
+**Recommended release checks:**
+- Tagged version matches `pubspec.yaml`.
+- Release build succeeds.
+- Required secrets present.
+- Optional deployment steps limited to protected environments.
 
-Recommended release checks:
-
-- tagged version matches `pubspec.yaml`
-- release build succeeds
-- required secrets are present
-- optional deployment steps are limited to protected environments
-
-## Nightly Workflow Guidance
+## Nightly workflow guidance
 
 Use a scheduled workflow for:
+- Full test suite runs too expensive for every PR.
+- `flutter pub outdated`.
+- Release smoke builds.
+- Optional performance / benchmark runs once stable.
 
-- full test suite runs that are too expensive for every PR
-- `flutter pub outdated`
-- release smoke builds
-- optional performance or benchmark runs once the app has stable critical paths
+## Branch protection
 
-## Branch Protection Recommendations
+- Require PRs for `main`.
+- Require passing CI.
+- Require ≥ 1 review when team size justifies.
+- Dismiss stale approvals on new pushes for important branches.
 
-- require pull requests for `main`
-- require passing CI checks
-- require at least one review when the team size justifies it
-- dismiss stale approvals on new pushes for important branches
+## Local parity
 
-## Local Parity
-
-Document local equivalents for CI checks in `README.md` or a future `Makefile` / `scripts/` directory:
-
+Document local equivalents in `README.md` or a `Makefile`/`scripts/`:
 - `format`
 - `analyze`
 - `test`
 - `build`
 
-Local parity reduces “works on my machine” drift and makes CI failures easier to reproduce.
+Local parity reduces "works on my machine" drift and makes CI failures reproducible.

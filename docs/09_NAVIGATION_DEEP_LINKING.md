@@ -1,125 +1,99 @@
-# 09 - Navigation & Deep Linking (auto_route)
+# 09 — Navigation & Deep Linking (auto_route)
 
-> Route names, deep-link schemes, and example paths in this document are illustrative. Replace them with the real navigation model for your app.
->
-> This document describes the target navigation architecture once the app
-> adopts `auto_route`. The current repository does not yet include that
-> package, so treat the examples here as planned structure rather than current
-> code.
+> Route names and deep-link schemes below are illustrative.
+> This doc describes the **target** auto_route architecture. When this package is not yet in the project, treat examples as planned.
 
 ## Overview
 
-Navigation uses `auto_route` exclusively. auto_route provides:
-- Declarative route definitions with code generation
-- Type-safe route arguments with `@PathParam()` and `@QueryParam()`
-- Deep linking with path parameters and `DeepLinkBuilder`
+Navigation uses `auto_route` exclusively. It provides:
+- Declarative routes + code generation
+- Typed args via `@PathParam` / `@QueryParam`
+- Deep linking with path params + `DeepLinkBuilder`
 - Route guards via `AutoRouteGuard`
-- Reactive guard re-checks via `reevaluateListenable` or `router.reevaluateGuards()`
-- Per-route DI injection via `WrappedRoute` mixin
-- Nested tab navigation via `AutoTabsRouter` / `AutoTabsScaffold`
-- Built-in context extensions (`context.router`, `context.pushRoute()`, etc.)
-- Built-in transition library via `TransitionsBuilders`
-- `AutoRouteObserver` for route-aware widgets and `AutoRouterObserver` for global tracking
-- Custom page transitions per route via `CustomRoute`
+- Reactive guard re-checks (`reevaluateListenable` or `router.reevaluateGuards()`)
+- Per-route DI via `WrappedRoute` mixin
+- Nested tabs via `AutoTabsRouter` / `AutoTabsScaffold`
+- Built-in `context.router`/`context.pushRoute()` extensions
+- `TransitionsBuilders` library + `CustomRoute`
+- `AutoRouteObserver` (per-page) + `AutoRouterObserver` (global)
 
-**No custom navigation extensions needed.** auto_route provides everything.
+**No custom nav extensions needed.** auto_route provides everything.
 
----
+## Route definitions (`lib/router/app_router.dart`)
 
-## Route Definitions
+| Route | Path | Page | Guard | Deep link |
+|---|---|---|---|---|
+| `SplashRoute` | `/` | `SplashPage` | — | — |
+| `LoginRoute` | `/login` | `LoginPage` | — | — |
+| `HomeRoute` | `/home` | `HomePage` (tab shell) | `AuthGuard` | — |
+| `LibraryRoute` | `/home/library` | `LibraryPage` | `AuthGuard` | ✓ |
+| `BookDetailRoute` | `/home/library/:bookId` | `BookDetailPage` | `AuthGuard` | `<scheme>://books/:bookId` |
+| `ReaderRoute` | `/reader/:bookId/:chapterIndex` | `ReaderPage` | `AuthGuard` | `<scheme>://read/:bookId/:chapterIndex` |
+| `SettingsRoute` | `/home/settings` | `SettingsPage` | `AuthGuard` | — |
+| `ErrorRoute` | `/error` | `AppErrorPage` | — | — |
 
-**File**: `lib/router/app_router.dart`
-
-### Route Table
-
-| Route Name | Path | Page | Guard | Deep Link |
-|------------|------|------|-------|-----------|
-| `SplashRoute` | `/` | `SplashPage` | None | No |
-| `LoginRoute` | `/login` | `LoginPage` | None | No |
-| `HomeRoute` | `/home` | `HomePage` (tab shell) | `AuthGuard` | No |
-| `LibraryRoute` | `/home/library` | `LibraryPage` | `AuthGuard` | Yes |
-| `BookDetailRoute` | `/home/library/:bookId` | `BookDetailPage` | `AuthGuard` | Yes: `<app_scheme>://books/:bookId` |
-| `ReaderRoute` | `/reader/:bookId/:chapterIndex` | `ReaderPage` | `AuthGuard` | Yes: `<app_scheme>://read/:bookId/:chapterIndex` |
-| `SettingsRoute` | `/home/settings` | `SettingsPage` | `AuthGuard` | No |
-| `ErrorRoute` | `/error` | `AppErrorPage` | None | No |
-
-### Typed Parameter Extraction
-
-auto_route generates typed arguments from path/query parameters:
+### Typed param extraction
 
 | Annotation | Purpose | Example |
-|-----------|---------|---------|
-| `@PathParam('bookId')` | Extract from URL path segment | `/books/:bookId` -> `String bookId` |
-| `@QueryParam('page')` | Extract from query string | `?page=2` -> `int? page` |
+|---|---|---|
+| `@PathParam('bookId')` | URL path segment | `/books/:bookId` → `String bookId` |
+| `@QueryParam('page')` | query string | `?page=2` → `int? page` |
 
-Parameters are declared on the page constructor. auto_route generates the corresponding `Args` class automatically.
+Declared on page constructor; auto_route generates `Args` class automatically.
 
-### Nested Navigation (Tabs)
+### Nested navigation (tabs)
 
-Uses `AutoTabsScaffold` or `AutoTabsRouter` (both built into auto_route):
-
+Uses `AutoTabsScaffold`/`AutoTabsRouter`:
 ```
 HomeRoute (AutoTabsScaffold)
-|- Tab 0: LibraryRoute
-|   +-- BookDetailRoute (pushed on top)
-|- Tab 1: SearchRoute (future)
-+-- Tab 2: SettingsRoute
+├─ Tab 0: LibraryRoute  └─ BookDetailRoute (pushed on top)
+├─ Tab 1: SearchRoute (future)
+└─ Tab 2: SettingsRoute
 ```
 
-#### Tab Variants
+| Widget | Use |
+|---|---|
+| `AutoTabsScaffold` | standard bottom nav / app bar |
+| `AutoTabsRouter` | custom layout, full builder callback |
+| `AutoTabsRouter.pageView` | swipeable |
+| `AutoTabsRouter.tabBar` | TabBarView style |
 
-| Widget | Use When |
-|--------|----------|
-| `AutoTabsScaffold` | Standard tab layout with bottom nav / app bar |
-| `AutoTabsRouter` | Custom tab layout — full control via builder callback |
-| `AutoTabsRouter.pageView` | Swipeable tabs (PageView-style) |
-| `AutoTabsRouter.tabBar` | TabBarView-style tabs |
+`AutoTabsScaffold` accepts `bottomNavigationBuilder` + `appBarBuilder`. Handles tab persistence, state retention, nested stacks automatically.
 
-`AutoTabsScaffold` accepts `bottomNavigationBuilder` and `appBarBuilder` directly. It handles tab persistence, state retention, and nested navigation stacks automatically.
+## Navigation API (built-in)
 
----
+**Do NOT create custom extensions.**
 
-## Navigation API (Built into auto_route)
+| Method | Purpose |
+|---|---|
+| `context.router` | nearest `StackRouter` |
+| `context.pushRoute(route)` | push typed route |
+| `context.replaceRoute(route)` | replace current |
+| `context.maybePop()` | pop if possible (returns `bool`) |
+| `context.popRoute()` | unconditional pop |
+| `context.navigateTo(route)` | declarative (push or activate existing) |
+| `context.navigateNamedTo(path)` | navigate by URL string |
+| `context.tabsRouter` | nearest `TabsRouter` (tab switch) |
+| `context.routeData` | current route data/params |
+| `context.topRoute` | topmost stack data |
+| `context.innerRouterOf<T>()` | nested router by type |
+| `context.watchRouter` | rebuild on router state change |
 
-**Do NOT create custom navigation extensions.** Use auto_route's built-in context extensions directly:
-
-| Built-in Method | Purpose |
-|-----------------|---------|
-| `context.router` | Access the nearest `StackRouter` |
-| `context.pushRoute(route)` | Push a typed route onto the stack |
-| `context.replaceRoute(route)` | Replace current route |
-| `context.maybePop()` | Pop if possible (returns `bool`) |
-| `context.popRoute()` | Unconditional pop |
-| `context.navigateTo(route)` | Declarative navigate (push or activate existing) |
-| `context.navigateNamedTo(path)` | Navigate by URL string |
-| `context.tabsRouter` | Access nearest `TabsRouter` (for tab switching) |
-| `context.routeData` | Access current route's data, params, query params |
-| `context.topRoute` | Topmost route data in the stack |
-| `context.innerRouterOf<T>()` | Access a specific nested router by type |
-| `context.watchRouter` | Rebuilds widget when router state changes |
-
-### Why No Custom Extensions
-
+**Why no wrappers:**
 ```dart
-// WRONG - unnecessary wrapper:
-extension NavigationX on BuildContext {
-  void navigateToBook(String bookId) =>
-    pushRoute(BookDetailRoute(bookId: bookId));
+// ❌ unnecessary indirection
+extension NavX on BuildContext {
+  void navigateToBook(String bookId) => pushRoute(BookDetailRoute(bookId: bookId));
 }
 
-// RIGHT - just use auto_route directly:
+// ✅
 context.pushRoute(BookDetailRoute(bookId: bookId));
 ```
+Wrappers hide actual destinations, make searching for route usages harder. Typed routes are self-documenting.
 
-Custom navigation wrappers add indirection, hide the actual route being navigated to, and make searching for route usages harder. auto_route's typed routes are already self-documenting.
+## Per-route DI with `WrappedRoute`
 
----
-
-## Per-Route DI with WrappedRoute
-
-**`WrappedRoute`** is auto_route's built-in mixin for injecting dependencies (BlocProviders, RepositoryProviders) at the route level. This is how scoped BLoCs are provided — not via manual `BlocProvider` wrappers in the router config.
-
-### Usage Pattern
+auto_route's built-in mixin for injecting `BlocProvider`/`RepositoryProvider` at route level. **How scoped BLoCs are provided** — not via manual wrappers in router config.
 
 ```dart
 @RoutePage()
@@ -127,79 +101,55 @@ class LibraryPage extends StatelessWidget implements AutoRouteWrapper {
   const LibraryPage({super.key});
 
   @override
-  Widget wrappedRoute(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<LibraryBloc>()..add(const LibraryBooksRequested(page: 1)),
-      child: this,
-    );
-  }
+  Widget wrappedRoute(BuildContext context) => BlocProvider(
+    create: (_) => sl<LibraryBloc>()..add(const LibraryBooksRequested(page: 1)),
+    child: this,
+  );
 
   @override
   Widget build(BuildContext context) {
-    // LibraryBloc is available here via context.read<LibraryBloc>()
+    // LibraryBloc accessible via context.read<LibraryBloc>()
   }
 }
 ```
 
-### When to Use WrappedRoute
-
 | Scenario | Approach |
-|----------|----------|
-| Global BLoCs (Auth, Theme, Connectivity) | `MultiBlocProvider` at app root in `app.dart` |
-| Feature BLoCs (Library, Reader, Settings) | `WrappedRoute` on the page — BLoC lifecycle ties to route lifecycle |
-| Shared repositories needed by child routes | `RepositoryProvider` inside `wrappedRoute` |
+|---|---|
+| Global BLoCs (Auth/Theme/Connectivity) | `MultiBlocProvider` at app root |
+| Feature BLoCs (Library/Reader/Settings) | `WrappedRoute` — BLoC lifecycle ties to route |
+| Shared repos for child routes | `RepositoryProvider` inside `wrappedRoute` |
 
-**Why WrappedRoute**: The BLoC is created when the route is entered and disposed when popped. No manual lifecycle management. The wrapping lives with the page class itself, keeping DI visible at the point of use.
+**Why:** BLoC created on route entry, disposed on pop. No manual lifecycle. Wrapping lives with the page — DI visible at use point.
 
----
+## Route guards
 
-## Route Guards
+### `AuthGuard` (`AutoRouteGuard`) — `lib/router/guards/auth_guard.dart`
 
-### AuthGuard (using AutoRouteGuard)
+Use `AutoRouteGuard.onNavigation(...)` for auth flows. For auth changes after navigation, trigger re-checks via `reevaluateListenable` in `router.config(...)` or `router.reevaluateGuards()` from an auth listener.
 
-**File**: `lib/router/guards/auth_guard.dart`
+**Deps:** `TokenProvider` (GetIt), optional auth state listener.
 
-Use `AutoRouteGuard` with `onNavigation(...)` for auth flows. For auth
-changes after navigation has already happened, trigger re-checks with either
-`reevaluateListenable` in `router.config(...)` or `router.reevaluateGuards()`
-from your auth state listener.
-
-**Dependencies**: `TokenProvider` (via GetIt), optional auth state listener
-
-**Setup**:
 ```dart
 class AuthGuard extends AutoRouteGuard {
   final TokenProvider _tokenProvider;
-
   AuthGuard(this._tokenProvider);
 
   @override
-  Future<void> onNavigation(
-    NavigationResolver resolver,
-    StackRouter router,
-  ) async {
+  Future<void> onNavigation(NavigationResolver resolver, StackRouter router) async {
     if (await _tokenProvider.hasValidToken()) {
       resolver.next();
       return;
     }
-
     resolver.redirectUntil(
-      LoginRoute(
-        onResult: (didLogin) {
-          resolver.resolveNext(didLogin, reevaluateNext: false);
-        },
-      ),
+      LoginRoute(onResult: (didLogin) {
+        resolver.resolveNext(didLogin, reevaluateNext: false);
+      }),
     );
   }
 }
 ```
 
-**Reactive re-check options**:
-- Preferred when you already have a `Listenable` or auth stream: pass
-  `reevaluateListenable` into `router.config(...)`
-- Alternative: call `appRouter.reevaluateGuards()` from an auth listener or
-  `AuthBloc` subscription when login/logout/token state changes
-
+**Reactive re-check options:**
 ```dart
 MaterialApp.router(
   routerConfig: appRouter.config(
@@ -207,76 +157,54 @@ MaterialApp.router(
   ),
 )
 ```
-
+or
 ```dart
-authBloc.stream.listen((_) {
-  appRouter.reevaluateGuards();
-});
+authBloc.stream.listen((_) => appRouter.reevaluateGuards());
 ```
 
-**Applied to**: All routes except `SplashRoute`, `LoginRoute`, `ErrorRoute`
+**Applied to:** all routes except `SplashRoute`, `LoginRoute`, `ErrorRoute`.
 
-### Guard Comparison
+## Deep link config
 
-| Guard Type | When to Use |
-|-----------|-------------|
-| `AutoRouteGuard` | Route protection, including auth checks that may later be re-evaluated via `reevaluateListenable` or `router.reevaluateGuards()` |
-
----
-
-## Deep Link Configuration
-
-### URI Scheme
-
+### Schemes
 | Platform | Scheme | Example |
-|----------|--------|---------|
+|---|---|---|
 | Both | `<app_scheme>://` | `<app_scheme>://books/abc123` |
 | Android | `https://<app_domain>/` | `https://<app_domain>/books/abc123` |
 | iOS | `https://<app_domain>/` | Universal link |
 
-### Deep Link Builder
-
-auto_route provides `DeepLinkBuilder` to intercept and validate deep links:
-
+### `DeepLinkBuilder`
 ```dart
 // In AppRouter config:
 deepLinkBuilder: (deepLink) {
-  // Validate, transform, or reject deep links
   if (deepLink.path.startsWith('/books')) return deepLink;
-  return DeepLink.defaultPath; // fallback to home
+  return DeepLink.defaultPath; // fallback
 }
 ```
 
-### Supported Deep Links
+### Supported links
+| Pattern | Resolves | Params |
+|---|---|---|
+| `<scheme>://books/:bookId` | `BookDetailRoute` | `bookId: String` |
+| `<scheme>://read/:bookId/:chapterIndex` | `ReaderRoute` | `bookId: String, chapterIndex: int` |
+| `<scheme>://library` | `LibraryRoute` | — |
 
-| Pattern | Resolves To | Parameters |
-|---------|-------------|------------|
-| `<app_scheme>://books/:bookId` | `BookDetailRoute` | `bookId: String` |
-| `<app_scheme>://read/:bookId/:chapterIndex` | `ReaderRoute` | `bookId: String, chapterIndex: int` |
-| `<app_scheme>://library` | `LibraryRoute` | None |
+### Platform config
+- **Android** — `AndroidManifest.xml` intent filters (custom scheme + app links).
+- **iOS** — Associated Domains entitlement + `apple-app-site-association` on server.
 
-### Platform Configuration
+**Only add this when the product is actually shipping deep links/app links.** Don't front-load native config the app doesn't use.
 
-**Android**: `AndroidManifest.xml` intent filters for both custom scheme and app links
-**iOS**: Associated Domains entitlement + `apple-app-site-association` file on server
+## Screen tracking
 
-Only add this platform-specific setup when the product is actually shipping deep links or app links. Do not front-load native configuration that the current app does not use.
-
----
-
-## Screen Tracking with AutoRouteObserver
-
-auto_route has **two** observer types — they serve different purposes:
+Two observer types:
 
 | Type | Purpose | Scope |
-|------|---------|-------|
-| `AutoRouterObserver` | Global route tracking (analytics, logging) | Registered on the router |
-| `AutoRouteObserver` | Route-aware widgets (pause/resume behavior) | Mixin on individual pages |
+|---|---|---|
+| `AutoRouterObserver` | global route tracking (analytics/logging) | registered on router |
+| `AutoRouteObserver` (+ `AutoRouteAwareStateMixin`) | route-aware widgets (pause/resume) | mixin on pages |
 
-### Global Screen Tracking (AutoRouterObserver)
-
-For analytics integration, extend `AutoRouterObserver`:
-
+### Global (analytics)
 ```dart
 class AnalyticsRouteObserver extends AutoRouterObserver {
   @override
@@ -285,58 +213,27 @@ class AnalyticsRouteObserver extends AutoRouterObserver {
   }
 }
 ```
+Register in `navigatorObservers`. Builder **must return fresh instances** (an observer can only be used by one router).
 
-Register in `navigatorObservers`. The builder returns **fresh instances** (required — an observer can only be used by a single router).
-
-### Route-Aware Widgets (AutoRouteObserver)
-
-For pages that need to react to being shown/hidden (e.g., pause video, refresh data):
-
+### Route-aware widgets
 ```dart
-class ReaderPage extends StatefulWidget {
-  const ReaderPage({super.key});
-
-  @override
-  State<ReaderPage> createState() => _ReaderPageState();
-}
-
-class _ReaderPageState extends State<ReaderPage>
-    with AutoRouteAwareStateMixin<ReaderPage> {
+class _ReaderPageState extends State<ReaderPage> with AutoRouteAwareStateMixin<ReaderPage> {
   @override
   void didChangeTabRoute(TabPageRoute previousRoute) {
-    // Tab became active again — refresh if stale
+    // Tab active again — refresh if stale
   }
 }
 ```
+Hooks: `didInitTabRoute`, `didChangeTabRoute`, `didPush`, `didPopNext`.
 
-Hooks: `didInitTabRoute`, `didChangeTabRoute`, `didPush`, `didPopNext`
+## Page transitions
 
----
+Default per-platform transitions in `AppTheme.build()` → `pageTransitionsTheme` (→ `05_THEMING_SYSTEM.md`). Performance budgets → `16_ANIMATIONS_TRANSITIONS.md`.
 
-## Page Transitions
+### Built-in `TransitionsBuilders`
+`fadeIn`, `slideBottom`, `slideLeft`, `slideRight`, `slideTop`, `zoomIn`, `noTransition`, `slideLeftWithFade`, `slideRightWithFade`.
 
-Default per-platform transitions are configured in `AppTheme.build()` via `pageTransitionsTheme` -> [05_THEMING_SYSTEM.md](05_THEMING_SYSTEM.md). Performance budgets for transitions -> [16_ANIMATIONS_TRANSITIONS.md](16_ANIMATIONS_TRANSITIONS.md).
-
-### Built-in TransitionsBuilders Library
-
-auto_route provides `TransitionsBuilders` with ready-made transitions — use these instead of writing custom ones:
-
-| Builder | Effect |
-|---------|--------|
-| `TransitionsBuilders.fadeIn` | Fade in |
-| `TransitionsBuilders.slideBottom` | Slide up from bottom |
-| `TransitionsBuilders.slideLeft` | Slide from left |
-| `TransitionsBuilders.slideRight` | Slide from right |
-| `TransitionsBuilders.slideTop` | Slide from top |
-| `TransitionsBuilders.zoomIn` | Zoom in |
-| `TransitionsBuilders.noTransition` | Instant, no animation |
-| `TransitionsBuilders.slideLeftWithFade` | Slide left + fade |
-| `TransitionsBuilders.slideRightWithFade` | Slide right + fade |
-
-### Per-Route Overrides with CustomRoute
-
-Use `CustomRoute` in route definitions for route-specific transitions:
-
+### Per-route overrides with `CustomRoute`
 ```dart
 CustomRoute(
   page: ReaderRoute.page,
@@ -346,48 +243,40 @@ CustomRoute(
 ```
 
 | Route | Transition | Reason |
-|-------|-----------|--------|
-| `ReaderRoute` | `TransitionsBuilders.fadeIn` | Seamless content entry |
-| Modal dialogs | `TransitionsBuilders.slideBottom` | Platform convention |
-| Tab switches | `TransitionsBuilders.noTransition` | Tabs should feel instant |
+|---|---|---|
+| `ReaderRoute` | `fadeIn` | seamless content entry |
+| modal dialogs | `slideBottom` | platform convention |
+| tab switches | `noTransition` | tabs feel instant |
 
----
-
-## Built-in Utility Widgets
-
-auto_route provides utility widgets — use them instead of custom implementations:
+## Built-in utility widgets
 
 | Widget | Purpose |
-|--------|---------|
-| `AutoLeadingButton` | Context-aware back/close button — adapts to stack depth and dialog context |
-| `AutoBackButton` | Simple back button |
-| `AutoRouter()` | Outlet widget for rendering nested child routes |
-| `EmptyRouterPage` | Placeholder shell for nested route groups that need no UI |
+|---|---|
+| `AutoLeadingButton` | context-aware back/close, adapts to stack depth + dialog |
+| `AutoBackButton` | simple back button |
+| `AutoRouter()` | outlet for nested child routes |
+| `EmptyRouterPage` | placeholder shell for nested route groups |
 
----
+## Flow diagrams
 
-## Navigation Flow Diagrams
-
-### App Launch
+**App launch:**
 ```
 SplashRoute
-  |- Has valid token? -> HomeRoute (LibraryTab)
-  +-- No token? -> LoginRoute
-                    +-- Login success -> HomeRoute (LibraryTab)
+ ├─ token valid → HomeRoute(LibraryTab)
+ └─ no token   → LoginRoute → success → HomeRoute(LibraryTab)
 ```
 
-### Reading Flow
+**Reading flow:**
 ```
-LibraryRoute
-  -> tap book -> context.pushRoute(BookDetailRoute(bookId: id))
-    -> tap "Read" -> context.pushRoute(ReaderRoute(bookId: id, chapterIndex: 0))
-    -> tap "Continue" -> context.pushRoute(ReaderRoute(bookId: id, chapterIndex: saved))
+LibraryRoute → tap book → pushRoute(BookDetailRoute(bookId))
+  → tap Read → pushRoute(ReaderRoute(bookId, chapterIndex: 0))
+  → tap Continue → pushRoute(ReaderRoute(bookId, chapterIndex: saved))
 ```
 
-### Deep Link Flow
+**Deep link:**
 ```
-<app_scheme>://books/abc123
-  -> AuthGuard.onNavigation()
-    |- Token valid -> BookDetailRoute(bookId: "abc123")
-    +-- No token -> redirectUntil(LoginRoute()) -> after login -> BookDetailRoute(bookId: "abc123")
+<scheme>://books/abc123
+  → AuthGuard.onNavigation()
+     ├─ token valid → BookDetailRoute('abc123')
+     └─ no token    → redirectUntil(LoginRoute) → after login → BookDetailRoute('abc123')
 ```

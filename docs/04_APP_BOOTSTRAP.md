@@ -1,179 +1,108 @@
-# 04 - App Bootstrap & main.dart
+# 04 — App Bootstrap & main.dart
 
-> Environment names, URLs, and module names in this document are examples of the pattern, not fixed values for this repository.
+> Env names and URLs below are pattern examples, not fixed values.
 
-## Initialization Sequence
-
-The app starts through a strict, ordered bootstrap sequence. This ensures all services are available before any widget renders.
+## Initialization sequence
 
 ```
-main.dart
-  └── bootstrap()
-        ├── 1. WidgetsFlutterBinding.ensureInitialized()
-        ├── 2. Load environment config (.env or compile-time)
-        ├── 3. Initialize GetIt (injection_container.dart)
-        │     ├── Register AppLogger (first - everything else may log)
-        │     ├── Register SecureStore
-        │     ├── Register Dio + Interceptors
-        │     ├── Register HttpClient (DioHttpClient)
-        │     ├── Register Drift Database
-        │     ├── Register ConnectivityService
-        │     ├── Register AnalyticsService
-        │     ├── Register Repositories
-        │     ├── Register Use Cases
-        │     └── Register BLoCs
-        ├── 4. Initialize analytics (Sentry.init, etc.)
-        ├── 5. Set up global error handlers
-        │     ├── FlutterError.onError → CrashReporter
-        │     └── PlatformDispatcher.onError → CrashReporter
-        ├── 6. Set Bloc.observer = AppBlocObserver()
-        ├── 7. Register AppLifecycleObserver
-        └── 8. runApp(App())
+main.dart → bootstrap()
+  1. WidgetsFlutterBinding.ensureInitialized()
+  2. Load environment config (.env or --dart-define)
+  3. Initialize GetIt (injection_container.dart) — in dependency order:
+       AppLogger → SecureStore → Dio + interceptors → HttpClient →
+       Drift DB → ConnectivityService → AnalyticsService →
+       Repositories → Use cases → BLoCs
+  4. Initialize analytics SDKs (Sentry.init, etc.)
+  5. Global error handlers:
+       FlutterError.onError      → CrashReporter
+       PlatformDispatcher.onError → CrashReporter
+  6. Bloc.observer = AppBlocObserver()
+  7. Register AppLifecycleObserver
+  8. runApp(App())
 ```
 
----
+## `main.dart`
 
-## main.dart Specification
+Minimal. Calls `WidgetsFlutterBinding.ensureInitialized()`, `await bootstrap()`, sets `FlutterError.onError` + `PlatformDispatcher.instance.onError`, `runApp(App())`.
 
-**File**: `lib/main.dart`
+**Must NOT contain:** business logic, DI setup, themes, routes.
 
-**Responsibility**: Minimal entry point. Calls `bootstrap()` and runs the app.
+## `bootstrap.dart`
 
-**Behavior**:
-- Calls `WidgetsFlutterBinding.ensureInitialized()`
-- Calls `await bootstrap()` which sets up all DI
-- Sets `FlutterError.onError` to report to analytics
-- Sets `PlatformDispatcher.instance.onError` for async errors
-- Calls `runApp()` with the root `App` widget
+Single entry: `Future<void> bootstrap()`. Order:
+1. Logger — first so subsequent init can log
+2. Environment — URLs, feature flags
+3. Secure storage — needed for tokens
+4. Network — Dio + interceptors
+5. Database — Drift connection
+6. Connectivity — start monitoring
+7. Analytics — SDK init
+8. Feature deps — repos, use cases, BLoCs
+9. `Bloc.observer = AppBlocObserver()` — global state logging + error reporting
+10. `WidgetsBinding.instance.addObserver(AppLifecycleObserver())` — resume/pause
 
-**Must NOT contain**: Business logic, DI setup, theme definitions, or route configuration.
+**Error strategy:** any init failure → log + throw. No partial-init startup.
 
----
+## Environments
 
-## bootstrap.dart Specification
+**File:** `lib/core/constants/api_constants.dart`
 
-**File**: `lib/bootstrap.dart`
+| Env | Base URL | Logging | Analytics |
+|---|---|---|---|
+| development | `https://dev-api.<domain>/v1` | Verbose | NoOp |
+| staging | `https://staging-api.<domain>/v1` | Debug | Sentry only |
+| production | `https://api.<domain>/v1` | Error only | All providers |
 
-**Responsibility**: Orchestrate all initialization in the correct order.
+**Select:** `--dart-define=ENV=production`.
+**Access:** `const String.fromEnvironment('ENV', defaultValue: 'development')`.
 
-**Public API**:
-- `Future<void> bootstrap()` - the single entry point
+## `injection_container.dart`
 
-**Initialization Order**:
-1. **Logger** - first, so all subsequent init can log
-2. **Environment** - determines API URLs, feature flags
-3. **Secure Storage** - needed for token retrieval
-4. **Network** - Dio instance with all interceptors
-5. **Database** - Drift database connection
-6. **Connectivity** - start monitoring network state
-7. **Analytics** - Sentry/Mixpanel/Firebase SDK init
-8. **Feature Dependencies** - repositories, use cases, BLoCs
-9. **BLoC Observer** - `Bloc.observer = AppBlocObserver()` for global state logging/error reporting
-10. **App Lifecycle Observer** - `WidgetsBinding.instance.addObserver(AppLifecycleObserver())` for resume/pause handling
+**Access:** `final sl = GetIt.instance;` (sl = service locator).
+**Registration order matters** — deps before dependents.
 
-**Error Strategy**: If any init step fails, log the error and throw. The app should not start in a partially initialized state.
-
----
-
-## Environment Configuration
-
-**File**: `lib/core/constants/api_constants.dart`
-
-Three environments are supported:
-
-| Environment | Base URL | Logging | Analytics |
-|-------------|----------|---------|-----------|
-| `development` | `https://dev-api.<domain>/v1` | Verbose | NoOp |
-| `staging` | `https://staging-api.<domain>/v1` | Debug | Sentry only |
-| `production` | `https://api.<domain>/v1` | Error only | All providers |
-
-**Selection**: Via `--dart-define=ENV=production` at build time.
-
-**Access**: `const String.fromEnvironment('ENV', defaultValue: 'development')`
-
----
-
-## injection_container.dart Specification
-
-**File**: `lib/core/di/injection_container.dart`
-
-**Responsibility**: Single file that registers ALL dependencies with GetIt.
-
-**Access pattern**:
-```
-final sl = GetIt.instance;  // 'sl' = service locator
-```
-
-**Registration order matters** - dependencies must be registered before dependents.
-
-### Registration Modules
-
-Each module is a separate file with a `void register()` function:
+Split into modules, each exposing `void register()`:
 
 | Module | Registers |
-|--------|-----------|
-| `network_module.dart` | Dio, interceptors, HttpClient (DioHttpClient) |
-| `storage_module.dart` | Drift DB, SecureStore, SharedPreferences |
-| `analytics_module.dart` | AnalyticsService + adapters |
+|---|---|
+| `network_module.dart` | Dio, interceptors, `HttpClient` → `DioHttpClient` |
+| `storage_module.dart` | Drift DB, `SecureStore`, `SharedPreferences` |
+| `analytics_module.dart` | `AnalyticsService` + adapters |
 | `feature_module.dart` | All feature repos, use cases, BLoCs |
 
-### Singleton vs Factory
-
 | Type | When |
-|------|------|
-| `registerLazySingleton` | Services: HttpClient, Database, Analytics, Repositories |
+|---|---|
+| `registerLazySingleton` | Services: HttpClient, DB, Analytics, Repositories |
 | `registerFactory` | BLoCs (new instance per screen) |
-| `registerSingletonAsync` | Services requiring async init (Database) |
+| `registerSingletonAsync` | Services with async init (Database) |
 
----
+## `app.dart`
 
-## app.dart Specification
+Root widget = global providers + theme + router.
 
-**File**: `lib/app.dart`
-
-**Responsibility**: Root widget providing global BLoCs, theme, and router.
-
-**Structure**:
 ```
 MultiBlocProvider
-  ├── ThemeBloc (global - manages theme mode, palette, font scale)
-  ├── ConnectivityBloc (global - monitors network state)
-  └── AuthBloc (global - manages authentication state)
+  ├── ThemeBloc          (global: mode + palette + font scale)
+  ├── ConnectivityBloc   (global: network state)
+  └── AuthBloc           (global: session state)
       └── BlocBuilder<ThemeBloc, ThemeState>
             └── MaterialApp.router
-                  ├── theme: ThemeState → ThemeData (light)
-                  ├── darkTheme: ThemeState → ThemeData (dark)
-                  ├── themeMode: ThemeState → ThemeMode
-                  ├── routerConfig: AppRouter().config()
-                  └── builder: (context, child) →
-                        ConnectivityBanner(child: child)
+                  ├── theme / darkTheme  ← ThemeState → ThemeData via AppTheme.build
+                  ├── themeMode          ← ThemeState.themeMode
+                  ├── routerConfig       ← AppRouter().config()
+                  └── builder            ← ConnectivityBanner(child: child)
 ```
 
-**Rules**:
-- `MaterialApp.router` is used (not `MaterialApp`) because auto_route provides the router config
-- Theme is built from `ThemeState`, never hardcoded
-- `ConnectivityBanner` wraps the entire app as a `builder` overlay
-- No inline `ThemeData` construction - always delegate to `AppTheme.build()`
-- Locale and localization delegates are configured here
+Rules:
+- `MaterialApp.router`, not `MaterialApp` (auto_route).
+- `ThemeData` is **always** built via `AppTheme.build()` — never inline.
+- `ConnectivityBanner` wraps via `builder` overlay.
+- Locale + localization delegates configured here.
 
----
+## Global error handlers
 
-## Global Error Handling Setup
+**`FlutterError.onError`** — framework errors (layout/render/gesture); `AppLogger.error()` + `CrashReporter.recordError()`; debug mode also prints.
 
-Two global error handlers are set in `main.dart`:
+**`PlatformDispatcher.instance.onError`** — uncaught async errors; same handling; return `true`.
 
-### FlutterError.onError
-- Catches framework errors (layout, rendering, gestures)
-- Logs to `AppLogger.error()`
-- Reports to `CrashReporter.recordError()`
-- In debug mode: also prints to console
-
-### PlatformDispatcher.instance.onError
-- Catches uncaught async errors
-- Same handling as above
-- Returns `true` to indicate the error was handled
-
-### BLoC Observer
-- A custom `AppBlocObserver` is set via `Bloc.observer`
-- Logs all state transitions in debug mode
-- Reports BLoC errors to `CrashReporter`
+**`AppBlocObserver`** — set via `Bloc.observer`; logs state transitions in debug; reports BLoC errors to `CrashReporter`.

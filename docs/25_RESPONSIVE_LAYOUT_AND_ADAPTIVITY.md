@@ -1,146 +1,155 @@
-# 25 - Responsive Layout & Adaptivity
+# 25 — Responsive Layout & Adaptivity
 
-## Design Goals
+## Goals
 
-1. **Single codebase, multiple forms** - the same widget tree adapts from a 5" phone to a 13" iPad and 8" foldable
-2. **Postural awareness** - respond to foldable device states (half-opened, tabletop, book)
-3. **Content prioritization** - use extra space to show more context, not just scale up UI elements
-4. **Ergonomic input** - adjust touch targets and navigation for thumb-reach on large screens
-5. **Platform-native multitasking** - support iPad Split View, Slide Over, and window resizing gracefully
-
----
+1. **Single codebase, multiple forms** — same tree adapts from 5″ phone → 13″ iPad → 8″ foldable.
+2. **Postural awareness** — respond to foldable states (half-opened, tabletop, book).
+3. **Content prioritization** — use extra space for more context, not larger UI.
+4. **Ergonomic input** — adjust touch targets + nav for thumb-reach on large screens.
+5. **Platform multitasking** — support iPad Split View, Slide Over, window resize.
 
 ## Breakpoints
 
-We use a standard 3-tier breakpoint system based on logical pixels (dp).
+Standard 3-tier system (logical px / dp):
 
-| Tier | Range (Width) | Target Devices | Layout Strategy |
-|------|---------------|----------------|-----------------|
-| **Compact** | < 600dp | All phones (Portrait) | Single column, Bottom nav |
-| **Medium** | 600 - 840dp | Small tablets, Foldables (Unfolded), Large phones (Landscape) | List-Detail (collapsed), Side rail |
-| **Expanded** | > 840dp | iPads, Tablets, Desktop | List-Detail (fixed), Side navigation |
+| Tier | Width | Target devices | Layout |
+|---|---|---|---|
+| **Compact** | < 600dp | phones (portrait) | single column, bottom nav |
+| **Medium** | 600–840dp | small tablets, foldables unfolded, large phones landscape | list-detail (collapsed), side rail |
+| **Expanded** | > 840dp | iPads, tablets, desktop | list-detail (fixed), side nav |
 
-### Foldable Specifics
+**Foldables** transition between Compact (folded) and Medium (unfolded). Adaptive code must handle transitions without losing state or scroll position.
 
-Foldables often transition between **Compact** (folded) and **Medium** (unfolded) tiers. Adaptive code must handle these transitions without losing state or scroll position.
+## Adaptive patterns
 
----
+### 1. List-Detail (master-detail)
+Most common for tablets/foldables.
+- **Compact** — list pushes to detail screen.
+- **Medium/Expanded** — list + detail side-by-side.
+- **Rule** — if width > 600dp, use `Row` for both panels. Handle "no selection" state gracefully.
 
-## Adaptive Design Patterns
+### 2. Side navigation (Rail vs Drawer)
+- **Compact** — `NavigationBar` (bottom) or `Drawer`.
+- **Medium** — `NavigationRail` (slim).
+- **Expanded** — permanent `NavigationDrawer` or wide `NavigationRail`.
 
-### 1. List-Detail (Master-Detail)
-The most common pattern for tablets and foldables.
+### 3. Modal → side panel
+- **Compact** — full-screen modal / bottom sheet.
+- **Expanded** — side panel (right-anchored) or centered dialog.
 
-- **Compact**: List screen pushes to Detail screen.
-- **Medium/Expanded**: List and Detail are shown side-by-side.
-- **Rule**: If the screen width is > 600dp, use a `Row` to display both panels. Ensure the Detail panel handles "no selection" states gracefully.
+## Foldable support
 
-### 2. Side Navigation (Rail vs. Drawer)
-- **Compact**: `NavigationBar` (bottom) or `Drawer`.
-- **Medium**: `NavigationRail` (slim side bar).
-- **Expanded**: Permanent `NavigationDrawer` or wide `NavigationRail`.
+Use `MediaQuery.displayFeatures` to detect hardware features (hinges/folds).
 
-### 3. Modal to Side Panel
-- **Compact**: Full-screen modal or Bottom Sheet.
-- **Expanded**: Side panel (anchored right) or centered Dialog.
-
----
-
-## Foldable Support
-
-Use `MediaQuery.displayFeatures` to detect physical hardware features like hinges or folds.
-
-### Display Features
-
+### Display features
 | Feature | Description | Handling |
-|---------|-------------|----------|
-| **Hinge** | Physical gap between screens | Avoid placing text or buttons directly under the hinge. Split content into two panes. |
-| **Fold** | Seamless crease in a flexible display | Can be used as a logical separator. |
+|---|---|---|
+| **Hinge** | physical gap between screens | don't place text/buttons under hinge; split into two panes |
+| **Fold** | seamless crease in flexible display | use as logical separator |
 
-### Device Postures
+### Postures
+- **Tabletop** — half-opened horizontally (like laptop). Top = content (video/image), bottom = controls (keyboard/playback).
+- **Book** — half-opened vertically. Left + right panes for reading/comparison.
 
-Detection via `displayFeatures` and aspect ratio:
-
-- **Tabletop Posture**: Device is half-opened horizontally (like a laptop).
-  - *Strategy*: Top half for content (video, image), bottom half for controls (keyboard, playback).
-- **Book Posture**: Device is half-opened vertically.
-  - *Strategy*: Left and right panes for reading or comparison.
-
-### Implementation Snippet (Fold-Aware)
-
+### Detection
 ```dart
 final displayFeatures = MediaQuery.of(context).displayFeatures;
 final hinge = displayFeatures.firstWhereOrNull(
   (f) => f.type == DisplayFeatureType.hinge || f.type == DisplayFeatureType.fold,
 );
-
 if (hinge != null && hinge.state == DisplayFeatureState.halfOpened) {
-  // Handle posture-specific layout (Tabletop or Book)
+  // posture-specific layout (Tabletop or Book)
 }
 ```
 
----
+## iPad & tablet optimization
 
-## iPad & Tablet Optimization
+### Multitasking (Split View / Slide Over)
+iPads resize windows. **Do not assume full width.**
+- **Rule** — always use `LayoutBuilder` or `MediaQuery.size` at page level.
+- **Behavior** — dragging into 33% Split View → auto-switch Expanded → Compact.
 
-### Multitasking (Split View & Slide Over)
-iPads allow users to resize the app window. Do not assume the app always has the full screen width.
+### Hover & pointer support
+iPadOS supports trackpads/mice:
+- Wrap interactive elements in `MouseRegion` or use `InkWell.onHover`.
+- Cursor — `SystemMouseCursors.click` for buttons.
+- Theme's `highlightColor` responds to hover.
 
-- **Rule**: Always use `LayoutBuilder` or `MediaQuery.size` at the page level.
-- **Behavior**: If a user drags your app into a 33% Split View, it should automatically switch from **Expanded** to **Compact** layout.
+### High-density layouts
+Large screens have "whitespace debt."
+- **Grids** — increase `crossAxisCount` as width grows (2 mobile, 4 tablet, 6 desktop).
+- **Max width** — for readable text, wrap in `ConstrainedBox(maxWidth: ~800dp)`, centered.
 
-### Hover & Pointer Support
-iPadOS supports trackpads and mice.
+## Implementation strategy
 
-- **Implementation**: Wrap interactive elements in `MouseRegion` or use `InkWell.onHover`.
-- **Cursor**: Use `SystemMouseCursors.click` for buttons.
-- **Highlight**: The theme's `highlightColor` should respond to hover states.
+### `AdaptiveLayout` (`lib/shared/widgets/adaptive_layout.dart`)
 
-### High-Density Layouts
-Large screens have more "whitespace debt." 
-
-- **Grids**: Increase `crossAxisCount` as width increases (e.g., 2 columns on Mobile, 4 on Tablet, 6 on Desktop).
-- **Max Width**: For readable text (like a blog post), wrap content in a `ConstrainedBox` with a `maxWidth` of ~800dp, centered on the screen.
-
----
-
-## Implementation Strategy
-
-### The `AdaptiveLayout` Widget
-(Reference: `lib/shared/widgets/adaptive_layout.dart`)
-
-Use this widget to branch your UI high in the tree:
-
+Branch UI high in the tree:
 ```dart
 AdaptiveLayout(
   mobile: MobileDashboard(),
-  tablet: TabletDashboard(), // 600 - 840dp
+  tablet: TabletDashboard(),   // 600 – 840dp
   desktop: DesktopDashboard(), // > 840dp
 )
 ```
 
-### Avoid "Magic Numbers"
-Do not hardcode pixel checks like `if (width > 500)`. Use semantic getters from a central breakpoint class or extension.
+### No magic numbers
 
+Don't hardcode `if (width > 500)`. Use semantic getters:
 ```dart
 extension ResponsiveContext on BuildContext {
   bool get isMobile => MediaQuery.sizeOf(this).width < 600;
-  bool get isTablet => MediaQuery.sizeOf(this).width >= 600 && MediaQuery.sizeOf(this).width < 840;
+  bool get isTablet => MediaQuery.sizeOf(this).width >= 600
+                    && MediaQuery.sizeOf(this).width < 840;
   bool get isDesktop => MediaQuery.sizeOf(this).width >= 840;
 }
 ```
 
----
+## Current implementation
 
-## Testing & Validation
+### Existing adaptive screens
+| Screen | Compact | Medium/Expanded |
+|---|---|---|
+| `LoginPage` | single-column: gradient top half, form card slides up | two-column: gradient + branding left, form card right |
+| `RegisterPage` | single-column scrollable form | centered form with max-width (560dp) |
+| `SplashPage` | centered logo | same |
 
-### Simulators / Emulators
-- **iPad**: Test on 12.9" (Expanded) and 11" (Medium) models. Test Split View (1/3, 1/2, 2/3).
-- **Android Foldable**: Use the "7.6 Fold-in with outer display" emulator. Test transition from folded to unfolded.
+### Adaptive layout widget
+`lib/shared/widgets/adaptive_layout.dart` — top-level page branching:
+```dart
+AdaptiveLayout(
+  compact: const _PhoneLayout(),
+  expanded: const _TabletLayout(), // optional — falls back to compact
+)
+```
 
-### Checklist
-- [ ] No "stretched" buttons or full-width text lines on large screens
-- [ ] Keyboard appears without overlapping primary action buttons
-- [ ] Content is not cut off by the hinge on dual-screen devices
-- [ ] App state (text in fields, scroll position) is preserved during resize/unfold
-- [ ] Navigation is reachable with one hand on larger devices (e.g., avoid top-left menus on iPads)
+### Responsive extensions (`lib/core/extensions/responsive_extensions.dart`)
+
+| Extension | Returns | Condition |
+|---|---|---|
+| `context.isCompact` | `bool` | width < 600dp |
+| `context.isMedium` | `bool` | 600 ≤ width < 840dp |
+| `context.isExpanded` | `bool` | width ≥ 840dp |
+| `context.isLargeScreen` | `bool` | width ≥ 600dp |
+| `context.hingeFeature` | `DisplayFeature?` | physical hinge/fold |
+| `context.isHalfOpened` | `bool` | foldable half-opened posture |
+
+### Rules for new screens
+
+1. Wrap body with `AdaptiveLayout` when phone vs tablet differ meaningfully.
+2. Forms (login/register/settings) on expanded screens: center with `ConstrainedBox(maxWidth: AppDimensions.contentMaxWidth)`.
+3. Never let text lines exceed `AppDimensions.contentMaxWidth` (560dp).
+4. Detect hinge with `context.hingeFeature` — avoid interactive elements or dividers directly over it.
+
+## Testing & validation
+
+**Simulators:**
+- **iPad** — test on 12.9″ (Expanded) + 11″ (Medium). Test Split View (1/3, 1/2, 2/3).
+- **Android foldable** — use "7.6 Fold-in with outer display" emulator. Test folded ↔ unfolded transition.
+
+**Checklist:**
+- [ ] No "stretched" buttons or full-width text lines on large screens.
+- [ ] Keyboard appears without overlapping primary action buttons.
+- [ ] Content not cut off by hinge on dual-screen devices.
+- [ ] App state (text, scroll) preserved during resize/unfold.
+- [ ] One-hand nav reachable on larger devices (avoid top-left menus on iPads).

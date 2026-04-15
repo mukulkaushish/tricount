@@ -1,15 +1,24 @@
-/// Token pair returned by a successful login or token refresh.
-class AuthToken {
-  const AuthToken({
+import 'package:tricount/core/network/network.dart';
+import 'package:tricount/features/auth/domain/entities/auth_token.dart';
+
+/// Data-layer DTO for the token pair returned by all auth endpoints.
+final class AuthTokenModel {
+  const AuthTokenModel({
     required this.accessToken,
     required this.refreshToken,
   });
 
-  factory AuthToken.fromJson(Map<String, dynamic> json) => AuthToken(
-        accessToken: json['accessToken'] as String,
-        refreshToken: json['refreshToken'] as String,
+  factory AuthTokenModel.fromJson(final Map<String, dynamic> json) =>
+      AuthTokenModel(
+        accessToken: JsonParser.parseString(json, 'accessToken'),
+        refreshToken: JsonParser.parseString(json, 'refreshToken'),
       );
 
   final String accessToken;
   final String refreshToken;
+
+  AuthToken toDomain() => AuthToken(
+    accessToken: accessToken,
+    refreshToken: refreshToken,
+  );
 }

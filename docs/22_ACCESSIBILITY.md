@@ -1,74 +1,56 @@
-# 22 - Accessibility
+# 22 — Accessibility
 
-## Design Targets
+## Design targets
 
 | Criterion | Target | Standard |
-|-----------|--------|----------|
-| Color contrast (normal text) | 4.5:1 minimum | WCAG AA |
-| Color contrast (large text 18pt+) | 3.0:1 minimum | WCAG AA |
-| Tap target size | 48x48 logical pixels minimum | Material guidelines |
-| Font scaling | Layouts must not clip at max OS font size | System accessibility settings |
-| Screen reader traversal | Logical, ordered, no dead ends | VoiceOver / TalkBack |
-
----
+|---|---|---|
+| Color contrast (normal text) | 4.5:1 min | WCAG AA |
+| Color contrast (large text 18pt+) | 3.0:1 min | WCAG AA |
+| Tap target | 48×48 logical px min | Material |
+| Font scaling | no clipping at max OS font size | system a11y settings |
+| Screen reader traversal | logical, ordered, no dead ends | VoiceOver / TalkBack |
 
 ## Semantics
 
-### When to Add Explicit Semantics
-
+### When to add explicit semantics
 | Scenario | Widget | Action |
-|----------|--------|--------|
-| Custom interactive widget | `GestureDetector`, `InkWell` on non-button | Wrap in `Semantics(button: true, label: '...')` |
-| Decorative image | `Image`, `Icon` with no meaning | Wrap in `ExcludeSemantics` |
-| Meaningful image | Book cover, user avatar | Add `Semantics(label: 'Cover of $title')` |
-| Composite widget | Icon + text acting as one unit | Wrap in `MergeSemantics` |
-| Live region | Connectivity banner, toast | Add `Semantics(liveRegion: true)` |
-| Custom role | Non-standard interactive element | Use `Semantics(role: SemanticsRole.listItem)` |
+|---|---|---|
+| Custom interactive | `GestureDetector`/`InkWell` on non-button | `Semantics(button: true, label: '...')` |
+| Decorative image | `Image`/`Icon` with no meaning | `ExcludeSemantics` |
+| Meaningful image | book cover, avatar | `Semantics(label: 'Cover of $title')` |
+| Composite unit | icon + text acting as one | `MergeSemantics` |
+| Live region | connectivity banner, toast | `Semantics(liveRegion: true)` |
+| Custom role | non-standard interactive | `Semantics(role: SemanticsRole.listItem)` |
 
-### What Flutter Handles Automatically
+**Flutter handles automatically:** `FilledButton`, `TextField`, `Switch`, `Checkbox`, `Slider`, `ListTile`, `AppBar` already expose correct semantics. **Do not add redundant `Semantics` wrappers.**
 
-Standard Material widgets (`FilledButton`, `TextField`, `Switch`, `Checkbox`, `Slider`, `ListTile`, `AppBar`) already expose correct semantics. Do not add redundant `Semantics` wrappers to these.
+## Color contrast
 
----
+Validate in `AppColorPalette`:
 
-## Color Contrast
-
-### Validation
-
-Before finalizing any palette in `AppColorPalette`, validate contrast ratios:
-
-| Combination | Minimum Ratio |
-|-------------|---------------|
+| Combination | Min ratio |
+|---|---|
 | `onPrimary` on `primary` | 4.5:1 |
 | `onSurface` on `surface` | 4.5:1 |
 | `onBackground` on `background` | 4.5:1 |
 | `onError` on `error` | 4.5:1 |
-| `primary` on `surface` (icons, links) | 3.0:1 |
-| Disabled text on `surface` | Not required, but aim for 2.5:1 |
+| `primary` on `surface` (icons/links) | 3.0:1 |
+| Disabled text on `surface` | aim 2.5:1 (not required) |
 
-**Dark mode**: Reduced saturation palettes must still meet these ratios. Test each palette variant independently.
+**Dark mode:** reduced-saturation palettes must still meet these. Test each palette variant independently.
 
-### Tools
+**Tools:** Chrome DevTools a11y panel, macOS Accessibility Inspector, Flutter DevTools Semantics debugger.
 
-- Chrome DevTools Accessibility panel
-- macOS Accessibility Inspector
-- Flutter DevTools > Semantics debugger
+## Font scaling
 
----
+**Layout rules:**
+- Never use fixed-height containers for text. Use constraints or let content size itself.
+- Test at 1.0× AND 2.0× (max iOS setting).
+- `AppDimensions` spacing must accommodate text growth.
+- If text overflows at large scale, use `maxLines` + `overflow: TextOverflow.ellipsis` + `Tooltip` for full text.
 
-## Font Scaling
-
-### Layout Rules
-
-- Never use fixed-height containers for text. Use `constraints` or let content size itself.
-- Test layouts at font scale 1.0x AND 2.0x (max iOS setting).
-- `AppDimensions` spacing values should accommodate text growth.
-- If text overflows at large scale, use `maxLines` + `overflow: TextOverflow.ellipsis` with a `Tooltip` for the full text.
-
-### Testing
-
+**Testing:**
 ```dart
-// In widget tests, simulate large text:
 await tester.pumpWidget(
   MediaQuery(
     data: const MediaQueryData(textScaler: TextScaler.linear(2.0)),
@@ -77,79 +59,55 @@ await tester.pumpWidget(
 );
 ```
 
----
+## Tap targets
 
-## Tap Targets
+| Widget | Default compliant? | Notes |
+|---|---|---|
+| `FilledButton` | ✓ | `minimumSize: Size(64, 48)` in theme |
+| `IconButton` | ✓ | padding 12 + icon 24 = 48px |
+| `ListTile` | ✓ | default min height 56px |
+| `Checkbox`/`Radio` | ✓ | Material 48px hit area |
+| `Switch` | ✓ | Material 48px hit area |
+| Custom `GestureDetector` | ✗ | must add `SizedBox(48×48)` or padding |
+| Small text links | ✗ | wrap in `InkWell` with padding |
 
-Every interactive element must have at minimum 48x48 logical pixels of tappable area:
+## Screen reader
 
-| Widget | Default Compliant? | Notes |
-|--------|--------------------|-------|
-| `FilledButton` | Yes | `minimumSize: Size(64, 48)` in theme |
-| `IconButton` | Yes | `padding: 12` + 24px icon = 48px |
-| `ListTile` | Yes | Default min height 56px |
-| `Checkbox` / `Radio` | Yes | Material 48px hit area |
-| `Switch` | Yes | Material 48px hit area |
-| Custom `GestureDetector` | **No** | Must add `SizedBox(width: 48, height: 48)` or equivalent padding |
-| Small text links | **No** | Wrap in `InkWell` with sufficient padding |
+| Test | How | Pass |
+|---|---|---|
+| VoiceOver (iOS) | Settings > Accessibility > VoiceOver | every interactive element announced with role + label |
+| TalkBack (Android) | Settings > Accessibility > TalkBack | same |
+| Focus order | swipe through | logical order, no trapped focus |
+| Connectivity banner | toggle airplane mode | "No internet connection" announced as live region |
+| Error states | trigger API error | error message announced |
+| Loading states | trigger load | "Loading" announced, then content |
+| Dialogs | open | focus moves to dialog, escape/back dismisses |
 
----
+**Navigation hints:**
+- `AppBar` back button — automatic "Back" semantics.
+- Tab bar — automatic "Tab N of M" semantics.
+- Bottom sheet drag handle — add `Semantics(label: 'Drag handle, double-tap to dismiss')`.
 
-## Screen Reader
+## Platform notes
 
-### Testing Checklist
+**iOS** — VoiceOver uses swipe gestures; avoid conflicts with reader controls. `CupertinoAlertDialog` (via `showAdaptiveDialog`) has built-in a11y.
 
-| Test | How | Pass Criteria |
-|------|-----|---------------|
-| VoiceOver (iOS) | Settings > Accessibility > VoiceOver | Every interactive element is announced with role and label |
-| TalkBack (Android) | Settings > Accessibility > TalkBack | Same as above |
-| Focus order | Swipe through elements | Logical reading order, no trapped focus |
-| Connectivity banner | Toggle airplane mode | "No internet connection" announced as live region |
-| Error states | Trigger API error | Error message announced |
-| Loading states | Trigger data load | "Loading" announced, then content |
-| Dialogs | Open dialog | Focus moves to dialog, escape/back dismisses |
+**Android** — TalkBack uses explore-by-touch; ensure adequate spacing. `MaterialBanner` has built-in semantics.
 
-### Navigation Hints
+**Web (future)** — Flutter web renders on canvas; semantics DOM is a separate overlay. Enable at startup:
+```dart
+if (kIsWeb) {
+  SemanticsBinding.instance.ensureSemantics();
+}
+```
 
-- `AppBar` back button: Flutter provides automatic "Back" semantics
-- Tab bar: Flutter provides automatic "Tab N of M" semantics
-- Bottom sheet drag handle: Add `Semantics(label: 'Drag handle, double-tap to dismiss')`
+## Checklist for every new screen
 
----
-
-## Platform-Specific Notes
-
-### iOS
-
-- VoiceOver uses swipe gestures — ensure no gesture conflicts with reader controls
-- `CupertinoAlertDialog` (via `showAdaptiveDialog`) has built-in accessibility
-
-### Android
-
-- TalkBack uses explore-by-touch — ensure all elements have adequate spacing
-- `MaterialBanner` has built-in semantics
-
-### Web (Future)
-
-- Flutter web renders on canvas — semantics DOM is a separate overlay
-- Enable semantics at startup if web accessibility is required:
-  ```dart
-  if (kIsWeb) {
-    SemanticsBinding.instance.ensureSemantics();
-  }
-  ```
-
----
-
-## Checklist for Every New Screen
-
-Before marking a screen as complete:
-
-- [ ] All interactive elements have 48x48 minimum tap targets
-- [ ] No text clips or overflows at 2.0x font scale
-- [ ] Color contrast meets 4.5:1 for body text, 3.0:1 for large text
-- [ ] Custom widgets have appropriate `Semantics` annotations
-- [ ] Decorative elements excluded from semantics tree
-- [ ] Screen reader traversal is logical and complete
-- [ ] Error and loading states are announced
-- [ ] Dialogs and bottom sheets trap and restore focus correctly
+- [ ] All interactive elements ≥ 48×48 tap targets.
+- [ ] No text clips/overflows at 2.0× font scale.
+- [ ] Color contrast meets 4.5:1 body / 3.0:1 large.
+- [ ] Custom widgets have appropriate `Semantics`.
+- [ ] Decorative elements excluded from semantics tree.
+- [ ] Screen reader traversal logical and complete.
+- [ ] Error + loading states announced.
+- [ ] Dialogs + bottom sheets trap and restore focus.

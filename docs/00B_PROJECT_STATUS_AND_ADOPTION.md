@@ -2,26 +2,65 @@
 
 ## Why This Document Exists
 
-The repository docs describe a production-ready Flutter architecture, but the codebase is currently much smaller than that target. This file keeps contributors aligned on what exists today, what is planned, and how to adopt the architecture safely.
+The repository docs describe a production-ready Flutter architecture. This file keeps contributors aligned on what exists today, what is planned, and how to adopt the architecture safely.
 
-## Current Repository State
+## Current Repository State (Phase 4 complete)
 
-- `lib/` only contains `main.dart`
-- `pubspec.yaml` is still close to the default Flutter starter configuration
-- no documented feature modules, networking stack, or CI workflows have been implemented yet
+Phases 1–3 are complete and the auth subsystem has been production-hardened. The following layers are fully in place:
 
-**Active work (Phase 1 + partial Phase 2):**
+| Area | Location | Status |
+|------|----------|--------|
+| Core theme layer | `lib/core/theme/` | ✅ Done |
+| Context extensions | `lib/core/extensions/` — theme + responsive extensions | ✅ Done |
+| Core error | `lib/core/error/app_exception.dart` — 11 `AppException` subtypes, `userMessage` getter, `mapDioException` | ✅ Done |
+| JSON parsing | `lib/core/network/json_parser.dart` — `JsonParser` mixin (co-located with network; `JsonCodable` removed) | ✅ Done |
+| Logging | `lib/core/logging/` — `AppLogger` abstract, `PrettyAppLogger`, global `logger` | ✅ Done |
+| Networking | `lib/core/network/` — `HttpClient`, `DioHttpClient`, `RequestMethod`, `EmptyResponse` | ✅ Done |
+| Auth interceptor | `lib/core/network/interceptors/auth_interceptor.dart` — `QueuedInterceptorsWrapper`, Bearer attach, 401 refresh + retry | ✅ Done |
+| Security | `lib/core/security/` — `TokenProvider` interface, `SecureTokenProvider` (flutter_secure_storage), `SecureStore` | ✅ Done |
+| Constants | `lib/core/constants/api_constants.dart` — base URL, all auth endpoints | ✅ Done |
+| Dependency injection | `lib/core/di/injection_container.dart` — full GetIt wiring, refresh callback, social auth | ✅ Done |
+| Auth domain | `lib/features/auth/domain/` — `AuthToken`, `User` entities; `AuthRepository`; 7 use cases | ✅ Done |
+| Auth data | `lib/features/auth/data/` — `DioAuthDataSource`, `SocialAuthDataSource` (Google + Apple native), `RemoteAuthRepository` | ✅ Done |
+| Auth BLoC | `lib/features/auth/presentation/bloc/` — full `AuthBloc` using use cases + `Either` folding | ✅ Done |
+| Auth screens | `lib/features/auth/presentation/pages/` — `LoginPage`, `RegisterPage`, `SplashPage` with adaptive layouts | ✅ Done |
+| Shared widgets | `lib/shared/widgets/` — `AdaptiveLayout`, `KeyboardDismisser` | ✅ Done |
+| Navigation | `lib/router/` — `AppRouter` (auto_route v11), `AuthGuard`, `SplashRoute → Login/Home` | ✅ Done |
+| Home tab shell | `lib/features/home/presentation/pages/home_page.dart` — `AutoTabsScaffold` with Feed + Profile tabs | ✅ Done |
+| Feed tab | `lib/features/home/presentation/pages/feed_page.dart` — summary card, empty-state placeholder | ✅ Done |
+| Profile tab | `lib/features/home/presentation/pages/profile_page.dart` — avatar, name/email, palette/mode/font pickers, sign-out | ✅ Done |
+| `LogoutUseCase` + `POST /v1/auth/logout` | Full chain: datasource → repository → usecase → bloc event/state | ✅ Done |
+| Token persistence after login/register | `RemoteAuthRepository` saves tokens + user info via `TokenProvider` | ✅ Done |
+| `bloc_concurrency` event transformers | `droppable()` on all `AuthBloc` handlers | ✅ Done |
+| 8 color palettes | Teal, Indigo, Slate, Rose, Emerald, Amber, Purple, Cyan | ✅ Done |
+| Missing barrel files | `core/constants/`, `core/di/`, `core/network/interceptors/`, `auth/data/models/`, `auth/domain/entities/` | ✅ Done |
 
-The following is being built now as the first implementation slice:
+**Auth API endpoints wired (from Postman collection):**
 
-| Area | Files being created | Status |
-|------|---------------------|--------|
-| Core theme layer | `lib/core/theme/` — `app_color_palette.dart`, `app_colors.dart` (3 palettes: teal, indigo, slate), `app_text_styles.dart`, `app_dimensions.dart`, `app_theme.dart`, `theme_extensions.dart`, `theme_bloc/` | In progress |
-| Context extensions | `lib/core/extensions/build_context_extensions.dart` | In progress |
-| App wiring | `lib/app.dart`, updated `lib/main.dart` | In progress |
-| Auth — login screen | `lib/features/auth/presentation/pages/login_page.dart`, `auth_form.dart`, `auth_bloc/` (stub) | In progress |
+| Endpoint | Use Case | Status |
+|----------|----------|--------|
+| `POST /v1/auth/login` | `LoginUseCase` | ✅ |
+| `POST /v1/auth/register` | `RegisterUseCase` | ✅ |
+| `POST /v1/auth/forgot-password` | `ForgotPasswordUseCase` | ✅ |
+| `POST /v1/auth/reset-password` | `ResetPasswordUseCase` | ✅ |
+| `POST /v1/auth/refresh` | `RefreshTokenUseCase` + `AuthInterceptor` callback | ✅ |
+| `POST /v1/auth/google` | `LoginWithGoogleUseCase` → `NativeSocialAuthDataSource` | ✅ fully wired |
+| `POST /v1/auth/apple` | `LoginWithAppleUseCase` → `NativeSocialAuthDataSource` | ✅ fully wired |
+| `POST /v1/auth/logout` | `LogoutUseCase` | ❌ Not implemented — token revocation missing; `HomePage` clears navigation manually without clearing stored tokens |
+| `POST /v1/auth/passkeys/authenticate/options` | — | Planned Phase 4 |
+| `POST /v1/auth/passkeys/authenticate/verify` | — | Planned Phase 4 |
 
-This means many docs in this folder describe the intended architecture, not completed code. The theme system and login screen represent the first concrete adoption of these patterns.
+**Social sign-in architecture note**: Native SDK calls (Google / Apple) live in `SocialAuthDataSource` (data layer). `RemoteAuthRepository` orchestrates native SDK → backend exchange. BLoC and widgets dispatch parameterless events — they never touch Google/Apple SDKs directly.
+
+## Known Gaps (Phase 4 → Phase 5)
+
+| Gap | Impact | Priority |
+|-----|--------|----------|
+| `ProductionAppLogger` not implemented; only `PrettyAppLogger` exists | No structured logging in release builds | Medium |
+| No unit or widget tests | Regressions undetected | High |
+| No GitHub Actions CI | No automated quality gates | Medium |
+| Passkeys endpoints not wired | Feature gap | Low |
+| Local database (Drift) not added | Offline support blocked | Low |
 
 ## Target Architecture
 

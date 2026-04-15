@@ -2,7 +2,8 @@
 
 ## Purpose
 
-This document describes the recommended dependency set for the target architecture. It does not claim that every package listed here is already present in `pubspec.yaml`.
+This document describes the dependency set for the target architecture.
+Packages marked **[ADOPTED]** are already in `pubspec.yaml`.
 
 Before adding anything, compare this document with:
 
@@ -22,23 +23,28 @@ Before adding anything, compare this document with:
 
 | Area | Package | Why |
 |------|---------|-----|
-| State management | `flutter_bloc` | Predictable event/state flow for medium and large features |
-| Event transformers | `bloc_concurrency` | `droppable()`, `restartable()`, `sequential()` for BLoC event control |
-| Equality | `equatable` | Lightweight value equality for states and events |
-| Navigation | `auto_route` | Typed routes, guards, and nested routing when the app needs them |
-| Networking | `dio` | Mature interceptor model and flexible request handling |
-| Connectivity | `connectivity_plus` | Network-awareness signals for resilience features |
-| Local database | `drift` | Type-safe local persistence with migrations and DAOs |
-| SQLite support | `sqlite3_flutter_libs` | SQLite binaries for mobile targets when Drift is adopted |
-| Paths | `path_provider`, `path` | Database and file-path management |
-| Secure storage | `flutter_secure_storage` | Sensitive key-value storage |
-| Simple preferences | `shared_preferences` | Non-sensitive local preferences |
-| Dependency injection | `get_it` | Small, explicit DI for non-widget layers |
-| Functional error handling | `fpdart` | Typed `Either` support for async/data layers |
-| Localization | `intl` | Formatting and localization support |
-| Logging | `logger` | Structured local logging during development |
-| Images | `cached_network_image` | Disk-backed image loading for remote media |
-| SVG | `flutter_svg` | Vector rendering for icons and illustrations |
+| Area | Package | Why | Status |
+|------|---------|-----|--------|
+| State management | `flutter_bloc` | Predictable event/state flow for medium and large features | **[ADOPTED]** |
+| Event transformers | `bloc_concurrency` | `droppable()`, `restartable()`, `sequential()` for BLoC event control | Planned |
+| Equality | `equatable` | Lightweight value equality for states and events | **[ADOPTED]** |
+| Navigation | `auto_route` | Typed routes, guards, and nested routing when the app needs them | Planned |
+| Networking | `dio` | Mature interceptor model and flexible request handling | **[ADOPTED]** |
+| Connectivity | `connectivity_plus` | Network-awareness signals for resilience features | Planned |
+| Local database | `drift` | Type-safe local persistence with migrations and DAOs | Planned |
+| SQLite support | `sqlite3_flutter_libs` | SQLite binaries for mobile targets when Drift is adopted | Planned |
+| Paths | `path_provider`, `path` | Database and file-path management | Planned |
+| Secure storage | `flutter_secure_storage` | Sensitive key-value storage (replaces `InMemoryTokenProvider`) | **[ADOPTED]** |
+| Simple preferences | `shared_preferences` | Non-sensitive local preferences | **[ADOPTED]** |
+| Dependency injection | `get_it` | Small, explicit DI for non-widget layers | **[ADOPTED]** |
+| Functional error handling | `fpdart` | Typed `Either` for repositories and use cases | **[ADOPTED]** |
+| Localization | `intl` | Formatting and localization support | Planned |
+| Logging | `logger` | Structured local logging (`PrettyAppLogger`) | **[ADOPTED]** |
+| Images | `cached_network_image` | Disk-backed image loading for remote media | Planned |
+| SVG | `flutter_svg` | Vector rendering for icons and illustrations | **[ADOPTED]** |
+| Social auth | `flutter_appauth` | Single OAuth2/OIDC library for Google, Apple, and future SSO providers via authorization-code + PKCE flow | **[ADOPTED]** |
+| Animations | `flutter_animate` | Declarative animation chaining for UI transitions and micro-interactions | **[ADOPTED]** |
+| Spacing | `gap` | Semantic spacing widget; replaces magic-number `SizedBox` gaps in layouts | **[ADOPTED]** |
 
 ### Optional Production Dependencies
 

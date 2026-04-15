@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -10,14 +11,15 @@ import 'package:gap/gap.dart';
 import 'package:tricount/core/core.dart';
 import 'package:tricount/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:tricount/features/auth/presentation/widgets/forgot_password_sheet.dart';
+import 'package:tricount/router/router.dart';
 
 /// Credential form for the login screen.
 ///
 /// Handles: email + password fields, forgot-password link, login CTA,
-/// social login buttons, and sign-up link.
+/// social login buttons, and sign-up navigation.
 ///
-/// Adaptive behaviors: AutofillGroup, TextInputAction chain, HapticFeedback,
-/// CircularProgressIndicator.adaptive, keyboard-safe layout.
+/// Native Google and Apple SDK calls are delegated to the data layer
+/// via the BLoC — this widget only dispatches events.
 class AuthForm extends StatefulWidget {
   const AuthForm({super.key});
 
@@ -26,7 +28,6 @@ class AuthForm extends StatefulWidget {
 }
 
 class _AuthFormState extends State<AuthForm> {
-  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _emailFocus = FocusNode();
@@ -60,7 +61,7 @@ class _AuthFormState extends State<AuthForm> {
     if (email.isEmpty) {
       setState(() => _emailError = 'Email is required');
       valid = false;
-    } else if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
+    } else if (!email.isValidEmail) {
       setState(() => _emailError = 'Enter a valid email address');
       valid = false;
     }
@@ -83,11 +84,11 @@ class _AuthFormState extends State<AuthForm> {
     if (!_validate()) return;
     unawaited(HapticFeedback.lightImpact());
     context.read<AuthBloc>().add(
-          LoginWithEmailRequested(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          ),
-        );
+      LoginWithEmailRequested(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      ),
+    );
   }
 
   void _onGooglePressed() {
@@ -101,16 +102,22 @@ class _AuthFormState extends State<AuthForm> {
   }
 
   void _onForgotPasswordPressed() {
-    unawaited(showForgotPasswordSheet(
-      context,
-      prefillEmail: _emailController.text.trim(),
-    ));
+    unawaited(
+      showForgotPasswordSheet(
+        context,
+        prefillEmail: _emailController.text.trim(),
+      ),
+    );
+  }
+
+  void _onSignUpPressed() {
+    unawaited(context.pushRoute(const RegisterRoute()));
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(final BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthFailure) {
@@ -128,113 +135,127 @@ class _AuthFormState extends State<AuthForm> {
       builder: (context, state) {
         final isLoading = state is AuthLoading;
         return AutofillGroup(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _EmailField(
-                  controller: _emailController,
-                  focusNode: _emailFocus,
-                  nextFocus: _passwordFocus,
-                  errorText: _emailError,
-                  enabled: !isLoading,
-                  onChanged: (_) {
-                    if (_emailError != null) {
-                      setState(() => _emailError = null);
-                    }
-                  },
-                ).animate().fadeIn(delay: 100.ms, duration: 350.ms).slideY(
-                      begin: 0.08,
-                      end: 0,
-                      delay: 100.ms,
-                      duration: 350.ms,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _EmailField(
+                    controller: _emailController,
+                    focusNode: _emailFocus,
+                    nextFocus: _passwordFocus,
+                    errorText: _emailError,
+                    enabled: !isLoading,
+                    onChanged: (_) {
+                      if (_emailError != null) {
+                        setState(() => _emailError = null);
+                      }
+                    },
+                  )
+                  .animate()
+                  .fadeIn(delay: 100.ms, duration: 350.ms)
+                  .slideY(
+                    begin: 0.08,
+                    end: 0,
+                    delay: 100.ms,
+                    duration: 350.ms,
+                  ),
+              const Gap(AppDimensions.s12),
+              _PasswordField(
+                    controller: _passwordController,
+                    focusNode: _passwordFocus,
+                    obscure: _obscurePassword,
+                    errorText: _passwordError,
+                    enabled: !isLoading,
+                    onToggleObscure: () => setState(
+                      () => _obscurePassword = !_obscurePassword,
                     ),
-                const Gap(AppDimensions.s12),
-                _PasswordField(
-                  controller: _passwordController,
-                  focusNode: _passwordFocus,
-                  obscure: _obscurePassword,
-                  errorText: _passwordError,
-                  enabled: !isLoading,
-                  onToggleObscure: () =>
-                      setState(() => _obscurePassword = !_obscurePassword),
-                  onChanged: (_) {
-                    if (_passwordError != null) {
-                      setState(() => _passwordError = null);
-                    }
-                  },
-                  onSubmitted: (_) => _onLoginPressed(),
-                ).animate().fadeIn(delay: 150.ms, duration: 350.ms).slideY(
-                      begin: 0.08,
-                      end: 0,
-                      delay: 150.ms,
-                      duration: 350.ms,
+                    onChanged: (_) {
+                      if (_passwordError != null) {
+                        setState(() => _passwordError = null);
+                      }
+                    },
+                    onSubmitted: (_) => _onLoginPressed(),
+                  )
+                  .animate()
+                  .fadeIn(delay: 150.ms, duration: 350.ms)
+                  .slideY(
+                    begin: 0.08,
+                    end: 0,
+                    delay: 150.ms,
+                    duration: 350.ms,
+                  ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: isLoading ? null : _onForgotPasswordPressed,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppDimensions.s8,
+                      vertical: AppDimensions.s4,
                     ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: isLoading ? null : _onForgotPasswordPressed,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppDimensions.s8,
-                        vertical: AppDimensions.s4,
-                      ),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: Text(
-                      'Forgot Password?',
-                      style: context.textTheme.bodySmall?.copyWith(
-                        color: context.colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    'Forgot Password?',
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: context.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-                const Gap(AppDimensions.s20),
-                _LoginButton(
-                  isLoading: isLoading,
-                  onPressed: _onLoginPressed,
-                ).animate().fadeIn(delay: 200.ms, duration: 350.ms).slideY(
-                      begin: 0.08,
-                      end: 0,
-                      delay: 200.ms,
-                      duration: 350.ms,
-                    ),
-                const Gap(AppDimensions.s24),
-                _OrDivider()
-                    .animate()
-                    .fadeIn(delay: 250.ms, duration: 350.ms),
-                const Gap(AppDimensions.s20),
-                _SocialButton(
-                  iconAsset: 'assets/icons/ic_google.svg',
-                  label: 'Continue with Google',
-                  onPressed: isLoading ? null : _onGooglePressed,
-                ).animate().fadeIn(delay: 300.ms, duration: 350.ms).slideY(
-                      begin: 0.08,
-                      end: 0,
-                      delay: 300.ms,
-                      duration: 350.ms,
-                    ),
-                const Gap(AppDimensions.s10),
-                _SocialButton(
-                  iconAsset: 'assets/icons/ic_apple.svg',
-                  label: 'Continue with Apple',
-                  onPressed: isLoading ? null : _onApplePressed,
-                  colorize: false,
-                ).animate().fadeIn(delay: 350.ms, duration: 350.ms).slideY(
-                      begin: 0.08,
-                      end: 0,
-                      delay: 350.ms,
-                      duration: 350.ms,
-                    ),
-                const Gap(AppDimensions.s24),
-                _SignUpRow()
-                    .animate()
-                    .fadeIn(delay: 400.ms, duration: 350.ms),
-              ],
-            ),
+              ),
+              const Gap(AppDimensions.s20),
+              _LoginButton(
+                    isLoading: isLoading,
+                    onPressed: _onLoginPressed,
+                  )
+                  .animate()
+                  .fadeIn(delay: 200.ms, duration: 350.ms)
+                  .slideY(
+                    begin: 0.08,
+                    end: 0,
+                    delay: 200.ms,
+                    duration: 350.ms,
+                  ),
+              const Gap(AppDimensions.s24),
+              const _OrDivider().animate().fadeIn(
+                delay: 250.ms,
+                duration: 350.ms,
+              ),
+              const Gap(AppDimensions.s20),
+              _SocialButton(
+                    iconAsset: 'assets/icons/ic_google.svg',
+                    label: 'Continue with Google',
+                    onPressed: isLoading ? null : _onGooglePressed,
+                  )
+                  .animate()
+                  .fadeIn(delay: 300.ms, duration: 350.ms)
+                  .slideY(
+                    begin: 0.08,
+                    end: 0,
+                    delay: 300.ms,
+                    duration: 350.ms,
+                  ),
+              const Gap(AppDimensions.s10),
+              _SocialButton(
+                    iconAsset: 'assets/icons/ic_apple.svg',
+                    label: 'Continue with Apple',
+                    onPressed: isLoading ? null : _onApplePressed,
+                    colorize: false,
+                  )
+                  .animate()
+                  .fadeIn(delay: 350.ms, duration: 350.ms)
+                  .slideY(
+                    begin: 0.08,
+                    end: 0,
+                    delay: 350.ms,
+                    duration: 350.ms,
+                  ),
+              const Gap(AppDimensions.s24),
+              _SignUpRow(
+                onSignUp: _onSignUpPressed,
+              ).animate().fadeIn(delay: 400.ms, duration: 350.ms),
+            ],
           ),
         );
       },
@@ -262,7 +283,7 @@ class _EmailField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(final BuildContext context) {
     return Semantics(
       label: 'Email address',
       textField: true,
@@ -311,7 +332,7 @@ class _PasswordField extends StatelessWidget {
   final ValueChanged<String>? onSubmitted;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(final BuildContext context) {
     return Semantics(
       label: 'Password',
       obscured: true,
@@ -361,30 +382,32 @@ class _LoginButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(final BuildContext context) {
     return SizedBox(
       height: AppDimensions.buttonHeight,
       child: FilledButton(
         onPressed: isLoading ? null : onPressed,
         child: isLoading
             ? SizedBox.square(
-                dimension: 22,
+                dimension: AppDimensions.spinnerSize,
                 child: CircularProgressIndicator.adaptive(
-                  strokeWidth: 2.5,
+                  strokeWidth: AppDimensions.spinnerStroke,
                   valueColor: AlwaysStoppedAnimation<Color>(
                     context.colorScheme.onPrimary,
                   ),
                 ),
               )
-            : const Text('Login'),
+            : const Text('Sign in'),
       ),
     );
   }
 }
 
 class _OrDivider extends StatelessWidget {
+  const _OrDivider();
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(final BuildContext context) {
     return Row(
       children: [
         Expanded(
@@ -424,12 +447,11 @@ class _SocialButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
 
-  /// When false the SVG is drawn in [ColorScheme.onSurface] — used for the
-  /// Apple button which follows a monochrome HIG requirement.
+  /// When false the SVG is drawn in onSurface — for Apple's monochrome HIG.
   final bool colorize;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(final BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
       height: AppDimensions.buttonHeight,
@@ -465,8 +487,12 @@ class _SocialButton extends StatelessWidget {
 }
 
 class _SignUpRow extends StatelessWidget {
+  const _SignUpRow({required this.onSignUp});
+
+  final VoidCallback onSignUp;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(final BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -477,11 +503,11 @@ class _SignUpRow extends StatelessWidget {
           ),
         ),
         TextButton(
-          onPressed: () {
-            // TODO(auth): navigate to register screen
-          },
+          onPressed: onSignUp,
           style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: AppDimensions.s6),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppDimensions.s6,
+            ),
             minimumSize: Size.zero,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),

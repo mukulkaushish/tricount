@@ -1,100 +1,76 @@
-# 16 - Animations & Transitions
+# 16 — Animations & Transitions
 
-## Performance Budget
+## Performance budget
 
 | Metric | Target | How |
-|--------|--------|-----|
-| Frame rate | 60 fps constant | Profile with DevTools, fix jank |
-| Page transition | < 350ms | Platform-appropriate transitions |
-| Micro-interaction | < 200ms | Subtle, non-blocking |
-| Image fade-in | 300ms | `FadeInImage` or cached_network_image |
-| Skeleton → content | Instant swap | No animation on data arrival |
+|---|---|---|
+| Frame rate | constant 60 fps | DevTools profiling, fix jank |
+| Page transition | < 350 ms | platform-appropriate |
+| Micro-interaction | < 200 ms | subtle, non-blocking |
+| Image fade-in | 300 ms | `FadeInImage` / `cached_network_image` |
+| Skeleton → content | instant swap | no animation on data arrival |
 
----
+## Page transitions
 
-## Page Transitions
-
-### Default Per-Platform
-
+### Defaults per platform
 | Platform | Transition | Duration | Curve |
-|----------|-----------|----------|-------|
-| Android | Zoom (`ZoomPageTransitionsBuilder`) | 300ms | Material default |
-| iOS | Cupertino slide (`CupertinoPageTransitionsBuilder`) | 350ms | iOS default |
+|---|---|---|---|
+| Android | `ZoomPageTransitionsBuilder` | 300 ms | Material default |
+| iOS | `CupertinoPageTransitionsBuilder` | 350 ms | iOS default |
 
 Configured in `AppTheme.build()` via `pageTransitionsTheme`.
 
-### Route-Specific Overrides
+### Route-specific overrides
+Use auto_route's `CustomRoute` with `TransitionsBuilders` → `09_NAVIGATION_DEEP_LINKING.md#built-in-transitionsbuilders-library`.
 
-Use auto_route's `CustomRoute` with built-in `TransitionsBuilders` -> [09_NAVIGATION_DEEP_LINKING.md](09_NAVIGATION_DEEP_LINKING.md#built-in-transitionsbuilders-library)
+| Route | Builder | Duration | Reason |
+|---|---|---|---|
+| Reader | `fadeIn` | 250 ms | immersive entry |
+| Modal bottom sheet | `slideBottom` | 300 ms | platform convention |
+| Settings sub-pages | `fadeIn` | 200 ms | lightweight |
+| Tab switch | `noTransition` | 0 ms | feel instant |
 
-| Route | TransitionsBuilder | Duration | Reason |
-|-------|-------------------|----------|--------|
-| Reader page | `TransitionsBuilders.fadeIn` | 250ms | Immersive content entry |
-| Modal bottom sheet | `TransitionsBuilders.slideBottom` | 300ms | Platform convention |
-| Settings sub-pages | `TransitionsBuilders.fadeIn` | 200ms | Lightweight navigation |
-| Tab switch | `TransitionsBuilders.noTransition` | 0ms | Tabs should feel instant |
+## Micro-interactions
 
----
+**Bookmark button**
+- Tap: scale 0.9× (50 ms) → 1.0× (100 ms).
+- State: icon outlined ↔ filled via `AnimatedSwitcher` (200 ms).
+- Color: `onSurface` → `primary` via `ColorTween`.
 
-## Micro-Interactions
+**Pull-to-refresh** — Flutter's built-in `RefreshIndicator`. Color: `colorScheme.primary`. Displacement: 40.0.
 
-### Bookmark Button
-- **Tap**: Scale down to 0.9x (50ms) → scale up to 1.0x (100ms)
-- **State change**: Icon morphs from outlined to filled with `AnimatedSwitcher` (200ms)
-- **Color**: Transitions from `onSurface` to `primary` via `ColorTween`
+**Theme switch** — Flutter's built-in `AnimatedTheme` (200 ms). Night mode: smooth brightness transition via `MaterialApp` theme animation.
 
-### Pull-to-Refresh
-- Uses Flutter's built-in `RefreshIndicator`
-- Color: `colorScheme.primary`
-- Displacement: 40.0
+**Font size change** — text reflows instantly (animation would cause jank on large blocks). Slider shows live preview.
 
-### Theme Switch
-- Theme change: Flutter's built-in `AnimatedTheme` handles this (200ms)
-- Night mode toggle: smooth brightness transition via `MaterialApp`'s theme animation
+**Loading states**
+- Shimmer: continuous, 1.5 s cycle.
+- `CircularProgressIndicator`: platform default.
+- Button loading: cross-fade label → spinner (150 ms).
 
-### Font Size Change
-- Text reflows instantly (no animation - animation would cause jank on large text blocks)
-- Slider shows live preview
+## List animations
 
-### Loading States
-- Shimmer animation: continuous, 1.5s cycle
-- `CircularProgressIndicator`: platform default
-- Button loading: cross-fade label → spinner (150ms)
+**Book grid/list**
+- Initial load: staggered fade-in, 50 ms delay per item, max 8 items animated.
+- Pagination: new items slide in from bottom (200 ms).
+- Removal: `AnimatedList` slide-out (200 ms).
 
----
+**Impl:** `AnimatedList`/`SliverAnimatedList` for dynamic lists. For static lists with initial animation, custom `StaggeredAnimation`. **Stagger limit:** only animate first 8 visible (avoid jank on large lists).
 
-## List Animations
+## Performance rules
 
-### Book Grid/List
-- Initial load: staggered fade-in, 50ms delay per item, max 8 items animated
-- Pagination: new items slide in from bottom (200ms)
-- Removal: `AnimatedList` slide-out (200ms)
+1. **`const` widgets** wherever possible — avoid rebuild.
+2. **`RepaintBoundary`** around expensive widgets (book covers, reader content).
+3. **No heavy computation in `build()`** — pre-compute in BLoC.
+4. **Avoid `Opacity` for fading** — use `FadeTransition`/`AnimatedOpacity`.
+5. **Avoid `ClipRRect` on large surfaces** — use `Container` with `decoration` when possible.
+6. **Image sizing** — always specify `width`/`height` or `cacheWidth`/`cacheHeight` to avoid decoding full-res.
+7. **`ListView.builder`** for all scrollable lists (lazy).
+8. **Shallow tree** — extract widgets when depth > 5 levels.
 
-### Implementation
-- Use `AnimatedList` or `SliverAnimatedList` for dynamic lists
-- For static lists with initial animation: custom `StaggeredAnimation` widget
-- Stagger limit: only animate first 8 visible items (avoid jank on large lists)
+## Nav transition config
 
----
-
-## Performance Rules
-
-1. **Use `const` widgets** wherever possible to avoid rebuild
-2. **RepaintBoundary** around expensive widgets (book covers, reader content)
-3. **No heavy computation in build()** - pre-compute in BLoC/ViewModel
-4. **Avoid `Opacity` widget** for fading - use `FadeTransition` or `AnimatedOpacity`
-5. **Avoid `ClipRRect` on large surfaces** - use `Container` with `decoration` instead when possible
-6. **Image sizing**: always specify `width`/`height` or `cacheWidth`/`cacheHeight` to avoid decoding full-resolution images
-7. **ListView.builder** for all scrollable lists (lazy construction)
-8. **Keep widget tree shallow** - extract widgets into named components when depth > 5 levels
-
----
-
-## Navigation Transition Config
-
-Set in `AppTheme.build()`:
-
-```
+```dart
 pageTransitionsTheme: PageTransitionsTheme(
   builders: {
     TargetPlatform.android: ZoomPageTransitionsBuilder(),
@@ -102,5 +78,4 @@ pageTransitionsTheme: PageTransitionsTheme(
   },
 )
 ```
-
-For route-specific overrides, use auto_route's `@RoutePage(transitionsBuilder: ...)` annotation.
+For route-specific overrides, use `@RoutePage(transitionsBuilder: ...)` or `CustomRoute`.

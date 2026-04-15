@@ -5,11 +5,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:tricount/app.dart';
 import 'package:tricount/core/core.dart';
+import 'package:tricount/router/router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await configureDependencies();
+
   final prefs = await SharedPreferences.getInstance();
+  final router = AppRouter(sl<TokenProvider>());
 
   runApp(
     BlocProvider(
@@ -17,7 +21,7 @@ Future<void> main() async {
         prefs: prefs,
         platform: defaultTargetPlatform,
       )..add(const ThemeRestored()),
-      child: const App(),
+      child: App(router: router),
     ),
   );
 }

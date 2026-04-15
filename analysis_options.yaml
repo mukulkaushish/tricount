@@ -12,3 +12,9 @@ linter:
   rules:
     # App (not a published package) — no public API docs required.
     public_member_api_docs: false
+    # Project convention: all parameters are final (see docs/00A_CODING_RULES.md).
+    avoid_final_parameters: false
+    # runtimeType.toString() is intentional in AppException.toString().
+    no_runtimetype_tostring: false
+    # JsonCodable is a one-member interface by design (serialization contract).
+    one_member_abstracts: false

@@ -80,4 +80,50 @@ abstract final class AppDimensions {
   // ── Page padding ───────────────────────────────────────────────────────────
   static const double pagePaddingH = 24;
   static const double pagePaddingV = 16;
+
+  // ── Borders ────────────────────────────────────────────────────────────────
+  /// Thin border (iOS hairline equivalent for cards and inputs).
+  static const double borderThin = 1.5;
+
+  // ── Loading spinner (inside buttons and tiles) ────────────────────────────
+  static const double spinnerSize = 22;
+  static const double spinnerStroke = 2.5;
+
+  // ── Auth screen layout fractions ──────────────────────────────────────────
+  /// Gradient panel fills this fraction of screen height (compact layouts).
+  static const double authGradientFraction = 0.70;
+
+  /// Branding section occupies this fraction of screen height (compact).
+  static const double authBrandingFraction = 0.20;
+
+  // ── Animation durations (ms — use with flutter_animate's .ms extension) ──
+  static const int animInstant = 150;
+  static const int animFast = 200;
+  static const int animNormal = 350;
+  static const int animSlow = 450;
+  static const int animBranding = 500;
+
+  // ── Animation delays (ms) ─────────────────────────────────────────────────
+  static const int delayNone = 0;
+  static const int delay1 = 50;
+  static const int delay2 = 100;
+  static const int delay3 = 150;
+  static const int delay4 = 200;
+  static const int delay5 = 250;
+  static const int delay6 = 300;
+  static const int delay7 = 350;
+  static const int delay8 = 400;
+
+  // ── Responsive breakpoints ────────────────────────────────────────────────
+  /// Compact → Medium breakpoint (foldables unfolded, small tablets).
+  static const double breakpointMedium = 600;
+
+  /// Medium → Expanded breakpoint (iPads, large tablets, desktop).
+  static const double breakpointExpanded = 840;
+
+  /// Maximum content width on Expanded screens (readable line length).
+  static const double contentMaxWidth = 560;
+
+  /// Minimum panel width in List-Detail layout.
+  static const double panelMinWidth = 320;
 }

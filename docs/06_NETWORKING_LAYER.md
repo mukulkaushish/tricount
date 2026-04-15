@@ -1,429 +1,296 @@
-# 06 - Networking Layer
+# 06 — Networking Layer
 
-## Design Philosophy
+## Philosophy
 
-The networking layer follows **Dependency Inversion**: repositories depend on `HttpClient` (abstract interface), not on Dio directly. `DioHttpClient` is the concrete implementation, registered via GetIt.
+Dependency Inversion — repositories depend on `HttpClient` (abstract), never on Dio. `DioHttpClient` registered via GetIt.
 
-Three generic methods cover every API shape with zero boilerplate:
-- `request<T>` - single object response
-- `requestList<T>` - list response  
-- `requestEmpty` - no-body responses (DELETE, logout, etc.)
+Three generic methods cover every API shape:
+- `request<T>` — single object
+- `requestList<T>` — list
+- `requestEmpty` — no body (DELETE, logout)
 
-A `RequestMethod` enum replaces separate get/post/put/delete methods. A `keyPath` parameter handles nested JSON extraction. All methods return `Either<AppException, T>` via `fpdart`.
-
----
+`RequestMethod` enum replaces separate get/post/put/delete methods. `keyPath` handles nested JSON. All methods return `Either<AppException, T>` via `fpdart`.
 
 ## Architecture
 
 ```
-Widget → BLoC → UseCase → Repository → HttpClient (interface)
-                                              │
+Widget → BLoC → UseCase → Repository → HttpClient (iface)
                                         DioHttpClient (impl)
-                                              │
-                                         Dio instance
-                                              │
-                                   ┌──────────┼──────────┐
-                                   │          │          │
-                              AuthInterceptor  │   CacheInterceptor
-                                        RetryInterceptor
-                                     Dio LogInterceptor (built-in)
+                                        Dio
+                         Interceptors: LogInterceptor(built-in) → Auth → Cache → Retry
 ```
 
-- Repositories import only `HttpClient` (the interface)
-- `DioHttpClient` is registered against `HttpClient` in GetIt
-- Swappable for testing: mock `HttpClient` in repository tests, no Dio dependency leaks
+Repositories import only `HttpClient`. `DioHttpClient` bound to `HttpClient` in GetIt. Swappable — mock `HttpClient` in tests, no Dio leaks.
 
----
+## `RequestMethod` (`lib/core/network/request_method.dart`)
 
-## RequestMethod Enum
+Values: `get`, `post`, `put`, `delete`, `patch`. Extension getter `.name` returns uppercase for `Options(method:)`.
 
-**File**: `lib/core/network/request_method.dart`
+## `HttpClient` interface (`lib/core/network/http_client.dart`)
 
-| Value | HTTP String |
-|-------|-------------|
-| `RequestMethod.get` | `GET` |
-| `RequestMethod.post` | `POST` |
-| `RequestMethod.put` | `PUT` |
-| `RequestMethod.delete` | `DELETE` |
-| `RequestMethod.patch` | `PATCH` |
+### `request<T>` — single object
 
-Extension getter `name` returns the uppercase string for Dio's `Options(method:)`.
+| Param | Type | Req | Purpose |
+|---|---|---|---|
+| `path` | `String` | ✓ | endpoint |
+| `method` | `RequestMethod` | ✓ | verb |
+| `fromJson` | `T Function(Map<String, dynamic>)` | ✓ | model factory |
+| `queryParameters` | `Map<String, dynamic>?` | – | query |
+| `body` | `dynamic` | – | POST/PUT/PATCH |
+| `keyPath` | `String?` | – | dot-notation to nested data |
+| `cancelToken` | `CancelToken?` | – | cancellation |
 
----
+Returns `Future<Either<AppException, T>>`.
 
-## HttpClient Interface
+### `requestList<T>`
+Same params (incl. `cancelToken`). `fromJson` applied per item. Empty/null → `right(<T>[])` (graceful, not error). Returns `Future<Either<AppException, List<T>>>`.
 
-**File**: `lib/core/network/http_client.dart`
+### `requestEmpty`
+No `fromJson`. Only validates 2xx. Params: `path`, `method`, `queryParameters?`, `body?`, `cancelToken?`. Returns `Future<Either<AppException, EmptyResponse>>`.
 
-Abstract class defining the full HTTP contract. Three core methods plus optional parameters for Dio built-in features.
+### `EmptyResponse` (`core/network/empty_response.dart`)
+Const sentinel with no fields; type-safe "void" for `Either`. Lives in `core/network/` — part of `HttpClient` contract, not a shared presentation model.
 
-### `request<T>` - Single Object
+## `DioHttpClient` impl (`lib/core/network/dio_http_client.dart`)
 
-| Parameter | Type | Required | Purpose |
-|-----------|------|----------|---------|
-| `path` | `String` | Yes | API endpoint path |
-| `method` | `RequestMethod` | Yes | HTTP verb |
-| `fromJson` | `T Function(Map<String, dynamic>)` | Yes | Model factory (e.g., `BookModel.fromJson`) |
-| `queryParameters` | `Map<String, dynamic>?` | No | URL query params |
-| `body` | `dynamic` | No | Request body (POST/PUT/PATCH) |
-| `keyPath` | `String?` | No | Dot-notation path to extract nested data |
-| `cancelToken` | `CancelToken?` | No | Dio `CancelToken` for request cancellation |
+`final class DioHttpClient implements HttpClient`. Constructor takes a `Dio` (configured in DI with base URL + interceptors).
 
-**Returns**: `Future<Either<AppException, T>>`
-
-### `requestList<T>` - List Response
-
-Same parameters as `request<T>` (including `cancelToken`). Differences:
-- `fromJson` is applied to each item in the extracted list
-- Empty/null response returns `right(<T>[])` (not an error)
-- **Returns**: `Future<Either<AppException, List<T>>>`
-
-### `requestEmpty` - No Response Body
-
-| Parameter | Type | Required | Purpose |
-|-----------|------|----------|---------|
-| `path` | `String` | Yes | API endpoint path |
-| `method` | `RequestMethod` | Yes | HTTP verb |
-| `queryParameters` | `Map<String, dynamic>?` | No | URL query params |
-| `body` | `dynamic` | No | Request body |
-| `cancelToken` | `CancelToken?` | No | Dio `CancelToken` for request cancellation |
-
-**Returns**: `Future<Either<AppException, EmptyResponse>>`
-
-No `fromJson` needed. Only validates status code is 2xx.
-
-### EmptyResponse
-
-**File**: `lib/core/network/empty_response.dart`
-
-A `const` sentinel class with no fields. Type-safe "void" for `Either`.
-This lives in `core/network/` because it is part of the `HttpClient`
-contract, not a shared presentation model.
-
----
-
-## DioHttpClient Implementation
-
-**File**: `lib/core/network/dio_http_client.dart`
-
-`final class DioHttpClient implements HttpClient`
-
-### Constructor
-
-Takes a single `Dio` instance (already configured with base URL and interceptors via DI).
-
-### Dio Configuration (set in DI module, not in DioHttpClient)
+**Dio config (set in DI module, not in the class):**
 
 | Setting | Value | Reason |
-|---------|-------|--------|
-| `baseUrl` | From environment config | Per-environment API |
-| `connectTimeout` | 15 seconds | Reasonable for mobile |
-| `receiveTimeout` | 30 seconds | Large content payloads |
-| `sendTimeout` | 15 seconds | Upload protection |
-| `contentType` | `application/json` | Standard REST |
-| `responseType` | `ResponseType.json` | Auto-parse |
+|---|---|---|
+| `baseUrl` | env config | per-env API |
+| `connectTimeout` | 15s | mobile |
+| `receiveTimeout` | 30s | large payloads |
+| `sendTimeout` | 15s | upload protection |
+| `contentType` | `application/json` | REST |
+| `responseType` | `ResponseType.json` | auto-parse |
 
-### Implementation Details
+### `request<T>` flow
+1. `_dio.request()` with `Options(method: method.name)`, body, query.
+2. Guard: HTML response detection.
+3. Guard: 2xx.
+4. Extract via `keyPath` if provided (dot-notation traversal).
+5. Validate extracted data is `Map<String, dynamic>`.
+6. `fromJson(extracted)`.
+7. `right(parsed)` on success; `left(exception)` on any failure.
+8. Catch `DioException` → `_handleDioException`.
+9. Catch generic `Exception` → wrap `UnknownException`.
 
-#### request<T> Flow
-1. Call `_dio.request()` with `Options(method: method.name)`, data, query params
-2. Guard: check for HTML responses (bad gateway, proxy errors)
-3. Guard: check status code is 2xx
-4. Extract data via `keyPath` if provided (dot-notation traversal)
-5. Validate extracted data is `Map<String, dynamic>`
-6. Call `fromJson` on extracted data
-7. Return `right(parsed)` on success, `left(exception)` on any failure
-8. Catch `DioException` → delegate to `_handleDioException`
-9. Catch generic `Exception` → wrap in `UnknownException`
+### `requestList<T>` flow
+Same, but `keyPath` resolves to a `List`; each item cast to `Map<String, dynamic>` and `fromJson`'d. Empty/null body → `right(<T>[])`.
 
-#### requestList<T> Flow
-Same as `request<T>`, except:
-- `keyPath` resolves to a `List`, not a `Map`
-- Cast each item to `Map<String, dynamic>`, apply `fromJson`
-- Empty/null response body → `right(<T>[])` (graceful, not error)
+### `requestEmpty` flow
+Execute → HTML guard + 2xx → `right(const EmptyResponse())`. No JSON parsing.
 
-#### requestEmpty Flow
-- Execute request, check HTML guard and status code
-- Return `right(const EmptyResponse())` on success
-- No JSON parsing at all
+### `_extractByKeyPath(data, keyPath)`
 
-### keyPath Extraction
+| Response | keyPath | Extracted |
+|---|---|---|
+| `{"data": {"id": "1", ...}}` | `"data"` | `{"id": "1", ...}` |
+| `{"response": {"user": {...}}}` | `"response.user"` | `{...}` |
+| `{"id": "1", ...}` | `null` | whole response |
+| `{"data": [...]}` | `"data"` | `[...]` (list form) |
 
-Private helper `_extractByKeyPath(dynamic data, String keyPath)`:
+Split by `.`, traverse key-by-key. Missing → `null` → triggers `DataMismatchException`.
 
-| API Response | keyPath | Extracted Data |
-|-------------|---------|----------------|
-| `{ "data": { "id": "1", ... } }` | `"data"` | `{ "id": "1", ... }` |
-| `{ "response": { "user": { ... } } }` | `"response.user"` | `{ ... }` |
-| `{ "id": "1", "title": "..." }` | `null` | Entire response as-is |
-| `{ "data": [ {...}, {...} ] }` | `"data"` | `[ {...}, {...} ]` (for `requestList`) |
+### `_isHtmlResponse(Response)` — bad-gateway / proxy-error detection
 
-Split keyPath by `.`, traverse one key at a time. Return `null` if any key is missing → triggers `DataMismatchException`.
+Checks in order:
+1. `Content-Type` contains `text/html`.
+2. Body (if `String`) starts with `<!doctype html` or `<html`.
+3. Body contains gateway patterns (`bad gateway`, `502:`).
 
-### HTML Response Detection
+On detection: log warning, create `NetworkException` with cleared response data (forces user-friendly error, not HTML dump), return `left`.
 
-Private helper `_isHtmlResponse(Response response)`:
+### Error helpers
 
-**Detection checks** (in order):
-1. `Content-Type` header contains `text/html`
-2. Response body (if `String`) starts with `<!doctype html` or `<html`
-3. Response body contains gateway-error patterns (`bad gateway`, `502:`)
+**`_handleDioException(DioException e)`** — HTML → sanitized `NetworkException`; else `AppException.fromDioError(e)`; `left`.
+**`_handleGenericException(Exception e)`** — `left(UnknownException(e.toString()))`.
 
-**When HTML detected**:
-- Log a warning
-- Create a `NetworkException` with cleared response data (forces user-friendly error message instead of HTML dump)
-- Return `left(exception)`
+## `AppException.fromDioError` (`core/error/app_exception.dart`)
 
-### Error Handling (Private Methods)
+| Dio error | Maps to |
+|---|---|
+| `connectionTimeout` | `NetworkException` (timeout) |
+| `receiveTimeout` | `NetworkException` (timeout) |
+| `connectionError` | `NetworkException` (no connection) |
+| 400 | `BadRequestException` |
+| 401 | `UnauthorizedException` (usually `AuthInterceptor` first) |
+| 403 | `ForbiddenException` |
+| 404 | `NotFoundException` |
+| 422 | `ValidationException` (parses field errors from body) |
+| 429 | `RateLimitException` |
+| 500+ | `ServerException` |
+| unknown | `UnknownException` |
 
-#### `_handleDioException(DioException e)`
-1. Check if response is HTML → create sanitized `NetworkException`
-2. Otherwise → `AppException.fromDioError(e)`
-3. Return `left(exception)`
+## Interceptor stack (order matters)
 
-#### `_handleGenericException(Exception e)`
-- `left(UnknownException(e.toString()))`
-
----
-
-## AppException.fromDioError Factory
-
-**File**: `lib/core/error/app_exception.dart`
-
-`AppException.fromDioError(DioException e)` maps Dio errors to typed `AppException` subtypes:
-
-| Dio Error | Maps To |
-|-----------|---------|
-| `DioExceptionType.connectionTimeout` | `NetworkException` (timeout) |
-| `DioExceptionType.receiveTimeout` | `NetworkException` (timeout) |
-| `DioExceptionType.connectionError` | `NetworkException` (no connection) |
-| Status 400 | `BadRequestException` |
-| Status 401 | `UnauthorizedException` (usually handled by AuthInterceptor first) |
-| Status 403 | `ForbiddenException` |
-| Status 404 | `NotFoundException` |
-| Status 422 | `ValidationException` (parses field errors from body) |
-| Status 429 | `RateLimitException` |
-| Status 500+ | `ServerException` |
-| Unknown | `UnknownException` |
-
----
-
-## Interceptor Stack (Order Matters)
-
-Interceptors execute in registration order for requests, reverse order for responses:
-
+Requests go down, responses come back up:
 ```
-Request flow:  LogInterceptor → AuthInterceptor → CacheInterceptor → RetryInterceptor → Server
-Response flow: Server → RetryInterceptor → CacheInterceptor → AuthInterceptor → LogInterceptor
+Req:  Log → Auth → Cache → Retry → Server
+Resp: Server → Retry → Cache → Auth → Log
 ```
 
-| Order | Interceptor | Request Phase | Response Phase | Error Phase |
-|-------|-------------|---------------|----------------|-------------|
-| 1 | `LogInterceptor` (Dio built-in) | Log method, URL, headers | Log status, body | Log error details |
-| 2 | AuthInterceptor | Attach Bearer token | Pass through | Handle 401 |
-| 3 | CacheInterceptor | Check cache, add ETag | Store cacheable responses | Serve stale if offline |
-| 4 | RetryInterceptor | Pass through | Pass through | Retry on 5xx/timeout |
+| # | Interceptor | Req | Resp | Error |
+|---|---|---|---|---|
+| 1 | `LogInterceptor` (Dio built-in) | log method/URL/headers | log status/body | log error |
+| 2 | `AuthInterceptor` | attach Bearer | pass | handle 401 |
+| 3 | `CacheInterceptor` | check cache, add ETag | store cacheable | serve stale if offline |
+| 4 | `RetryInterceptor` | pass | pass | retry 5xx/timeout |
 
----
+## Interceptor specs
 
-## Interceptor Specifications
+### `AuthInterceptor` (`interceptors/auth_interceptor.dart`)
 
-### AuthInterceptor (extends QueuedInterceptorsWrapper)
+Base: **`QueuedInterceptorsWrapper`** — serializes all interceptor callbacks so concurrent 401s only trigger one refresh; waiting requests retry with the new token.
 
-**File**: `lib/core/network/interceptors/auth_interceptor.dart`
+**Deps:** `TokenProvider`, `Future<bool> Function() onRefreshToken` callback (DI-provided), `Dio` (for retry).
 
-**Base class**: `QueuedInterceptorsWrapper` (Dio built-in). This ensures requests are processed sequentially during token refresh — no race conditions. Concurrent requests are automatically queued until the lock is released.
+**`onRequest`:**
+1. Read `tokenProvider.accessToken` (sync — loaded at startup).
+2. If present, add `Authorization: Bearer <token>`.
+3. If null, proceed unauthenticated (login endpoint etc.).
 
-**Dependencies**: `TokenProvider`, `AuthBloc`
+**`onError`:**
+1. If status 401 AND request not already a retry (`extra['isRetry'] != true`):
+   a. Call `onRefreshToken()`.
+   b. Success → update header, set `extra['isRetry'] = true`, `dio.fetch(requestOptions)`, resolve with new response.
+   c. Failure → `tokenProvider.clearTokens()`, propagate original 401.
+2. Else propagate.
 
-**Request Phase** (`onRequest`):
-1. Read access token from `TokenProvider`
-2. If token exists, add header: `Authorization: Bearer <token>`
-3. If token is null, let request proceed without auth header
+**Refresh callback (defined in `injection_container.dart`):**
+- Calls `authRefreshPath` via same Dio, `extra['isRetry'] = true`.
+- Parses `AuthTokenModel.fromJson`.
+- `tokenProvider.saveTokens(accessToken, refreshToken)`.
+- Returns `true`/`false`.
 
-**Error Phase** (`onError`, 401 Handling):
-1. Receive 401 response
-2. `QueuedInterceptorsWrapper` automatically locks — subsequent requests wait
-3. Call `TokenProvider.refreshToken()`
-4. If refresh succeeds:
-   - Store new token via `TokenProvider.saveToken()`
-   - Retry the original request with new token via `handler.resolve()`
-5. If refresh fails:
-   - Emit `AuthBloc.add(SessionExpired())`
-   - Reject the error via `handler.reject()` (propagate to caller)
+**Why queued:** without it, 3 concurrent 401s → 3 parallel refreshes (race). Queue serializes `onError` so only the first refreshes; others wait and retry with the refreshed token.
 
-**Why QueuedInterceptorsWrapper**: Regular `Interceptor` would allow concurrent requests to all trigger refresh simultaneously. `QueuedInterceptorsWrapper` serializes interceptor execution, so only the first 401 triggers a refresh; subsequent requests wait and get the new token automatically.
+### `RetryInterceptor` (`interceptors/retry_interceptor.dart`)
 
-**Edge Cases**:
-- Multiple concurrent 401s: automatically handled by queue — only the first triggers refresh
-- Refresh token also expired: logout the user
-- Endpoints that don't require auth: marked with a custom `Options` extra flag
+**Deps:** `ConnectivityService`.
 
-### RetryInterceptor
-
-**File**: `lib/core/network/interceptors/retry_interceptor.dart`
-
-**Dependencies**: `ConnectivityService`
-
-**Retry Policy** (exponential backoff):
+**Policy (exponential backoff):**
 
 | Attempt | Delay | Condition |
-|---------|-------|-----------|
-| 1 | 1 second | Status 500, 502, 503, 504, or `SocketException` |
-| 2 | 2 seconds | Same |
-| 3 | 4 seconds | Same |
-| Max | 3 attempts | Give up, propagate error |
+|---|---|---|
+| 1 | 1s | 500/502/503/504 or `SocketException` |
+| 2 | 2s | same |
+| 3 | 4s | same |
+| Max | 3 | give up |
 
-**Does NOT retry**:
-- 4xx errors (client errors - retrying won't help)
-- Request cancellation (`DioExceptionType.cancel`)
-- POST/PUT/PATCH without idempotency key (unsafe to retry)
+**Does NOT retry:** 4xx (won't help), `DioExceptionType.cancel`, POST/PUT/PATCH without idempotency key.
 
-**ConnectivityService integration**: If device is offline, skip retry delay and wait for connectivity restoration (up to 30s timeout).
+**Connectivity integration:** if offline, skip retry delay, wait for connectivity (30s timeout).
 
-### CacheInterceptor
+### `CacheInterceptor` (`interceptors/cache_interceptor.dart`)
 
-**File**: `lib/core/network/interceptors/cache_interceptor.dart`
+**Deps:** in-memory LRU + Drift `ApiCacheTable`.
 
-**Dependencies**: In-memory LRU map + Drift `ApiCacheTable`
+**`onRequest`:**
+1. Cacheable only if GET and not `no-cache`.
+2. Cached fresh (TTL valid) → resolve with cached.
+3. Cached stale → add `If-None-Match: <etag>`.
 
-**Request Phase**:
-1. Check if request is cacheable (GET only, not marked `no-cache`)
-2. If cached response exists and is fresh (TTL not expired): resolve with cached data
-3. If cached response exists but stale: add `If-None-Match: <etag>` header
+**`onResponse`:**
+1. 304 → return cached body with 200 status.
+2. 200 → store with ETag + timestamp.
+3. Respect `Cache-Control` headers.
 
-**Response Phase**:
-1. If response is 304 Not Modified: return cached body with 200 status
-2. If response is 200: store in cache with ETag and timestamp
-3. Respect `Cache-Control` headers from server
+**`onError`:**
+1. Network error + stale cache → return stale (offline fallback).
+2. Else propagate.
 
-**Error Phase**:
-1. If network error and stale cache exists: return stale cache (offline fallback)
-2. Otherwise: propagate error
+**Storage:** in-memory LRU max 50 per session; Drift persistent for rarely-changing responses. **TTL:** 5 min lists, 30 min detail, 24 h static.
 
-**Cache Storage**:
-- In-memory LRU cache for session (max 50 entries)
-- Drift table for persistent cache (API responses that rarely change)
-- TTL: 5 minutes for lists, 30 minutes for detail pages, 24 hours for static content
+### `LogInterceptor` (Dio built-in — NO custom file)
 
-### LogInterceptor (Dio Built-in)
+Configured in `network_module.dart`:
 
-**No custom file needed.** Dio provides `LogInterceptor` out of the box. Configured in `network_module.dart` during DI setup.
+| Param | Value | Purpose |
+|---|---|---|
+| `requestHeader` | `true` | log headers |
+| `requestBody` | `false` | avoid logging sensitive POST bodies |
+| `responseHeader` | `false` | too verbose |
+| `responseBody` | `false` | avoid large payload logs |
+| `error` | `true` | always log errors |
+| `logPrint` | `appLogger.debug` | route through `AppLogger`, never `print()` |
 
-**Configuration**:
+**Privacy:** keep `requestBody: false` — avoid accidental password/token logging. Enable temporarily for debugging, never commit `true`.
 
-| Parameter | Value | Purpose |
-|-----------|-------|---------|
-| `requestHeader` | `true` | Log request headers |
-| `requestBody` | `false` | Avoid logging large/sensitive POST bodies by default |
-| `responseHeader` | `false` | Too verbose for development |
-| `responseBody` | `false` | Avoid logging large JSON payloads |
-| `error` | `true` | Always log errors |
-| `logPrint` | `appLogger.debug` | Route through `AppLogger` instead of `print()` |
+**Removed:** custom `LoggingInterceptor` / `logging_interceptor.dart` — Dio's built-in does the same with less code.
 
-**Why built-in**: Dio's `LogInterceptor` already handles request/response/error logging with configurable verbosity. Building a custom one would duplicate this behavior.
+## DI registration (`network_module.dart`)
 
-**Privacy note**: Set `requestBody: false` to avoid accidentally logging passwords or tokens in POST bodies. For development debugging, enable temporarily but never commit with `true`.
+1. Create `Dio` with `BaseOptions`.
+2. Add interceptors in order: `LogInterceptor` → `Auth` → `Cache` → `Retry`.
+3. `sl.registerLazySingleton<HttpClient>(() => DioHttpClient(dio))`.
 
-### What Was Removed
+Repositories get `HttpClient` from GetIt. They never see Dio.
 
-| Removed | Why |
-|---------|-----|
-| Custom `LoggingInterceptor` | Dio's built-in `LogInterceptor` provides identical functionality with less code |
-| `logging_interceptor.dart` | Deleted — use `LogInterceptor()` directly in DI setup |
+## Repository usage
 
----
-
-## DI Registration
-
-In `network_module.dart`:
-
-```
-1. Create Dio instance with BaseOptions
-2. Add interceptors in order: LogInterceptor (built-in) → Auth → Cache → Retry
-3. Register: sl.registerLazySingleton<HttpClient>(() => DioHttpClient(dio))
-```
-
-Repositories receive `HttpClient` (the interface) from GetIt. They never know about Dio.
-
----
-
-## Repository Usage Pattern
-
-Repositories call `HttpClient` - no try-catch needed, `Either` handles it:
-
-```
-// Single object:
+```dart
 httpClient.request<BookModel>(
   '/v1/books/$id',
   method: RequestMethod.get,
   fromJson: BookModel.fromJson,
   keyPath: 'data',
-)
+);
 
-// List:
 httpClient.requestList<BookModel>(
   '/v1/books',
   method: RequestMethod.get,
   fromJson: BookModel.fromJson,
   keyPath: 'data',
   queryParameters: {'page': page},
-)
+);
 
-// Empty (DELETE, logout):
 httpClient.requestEmpty(
   '/v1/user/bookmarks/$id',
   method: RequestMethod.delete,
-)
+);
 ```
 
-Each call is one statement. No manual JSON extraction, no try-catch, no status code checking. All handled inside `DioHttpClient`.
-
----
+One statement each. No manual JSON extraction, try/catch, or status checking — handled inside `DioHttpClient`.
 
 ## Testability
 
-| What to Test | How |
-|-------------|-----|
-| Repository logic | Mock `HttpClient` interface with `mocktail` - return `right(model)` or `left(exception)` |
-| DioHttpClient itself | Use Dio's `HttpClientAdapter` to mock HTTP responses |
-| Interceptors | Test each interceptor in isolation with mock `RequestInterceptorHandler` |
+| Target | How |
+|---|---|
+| Repository logic | Mock `HttpClient` with mocktail — return `right(model)` or `left(exception)` |
+| `DioHttpClient` itself | Use Dio's `HttpClientAdapter` to mock responses |
+| Interceptors | Test each in isolation with mock `RequestInterceptorHandler` |
 
-The interface boundary means **repository tests never touch Dio** - they only test that the repository calls the right method with the right parameters and maps the `Either` correctly.
+Repository tests **never touch Dio** — just verify correct method + params + `Either` mapping.
 
----
+## Dio built-in features reference
 
-## Dio Built-in Features Reference
+Do not re-implement:
 
-These are Dio features used internally by `DioHttpClient` or available for advanced use. Do not re-implement them.
+| Feature | Dio API | Used for |
+|---|---|---|
+| Cancellation | `CancelToken` | search-as-you-type, page disposal |
+| File upload | `FormData` + `MultipartFile` | multipart uploads |
+| Download progress | `onReceiveProgress` | large file downloads |
+| Upload progress | `onSendProgress` | tracking upload |
+| Per-request config | `Options(extra: {...})` | interceptor metadata (e.g. skip-auth) |
+| Response transformer | `Transformer` | custom transformation (rare) |
+| Mock adapter | `HttpClientAdapter` | test transport |
 
-| Feature | Dio API | Used For |
-|---------|---------|----------|
-| Request cancellation | `CancelToken` | Cancel in-flight requests (e.g., search-as-you-type, page disposal) |
-| File upload | `FormData` + `MultipartFile` | Multipart uploads when needed |
-| Download progress | `onReceiveProgress` callback | Large file downloads with progress |
-| Upload progress | `onSendProgress` callback | File upload progress tracking |
-| Per-request config | `Options(extra: {...})` | Pass metadata to interceptors (e.g., skip-auth flag) |
-| Response transformer | `Transformer` | Custom response transformation (rarely needed) |
-| Mock adapter | `HttpClientAdapter` | Replace HTTP transport in tests |
-
-### CancelToken Usage
-
-Pass a `CancelToken` through `HttpClient` methods to cancel requests when a screen is disposed or a new search replaces the previous one:
+### CancelToken usage
 
 ```dart
 final cancelToken = CancelToken();
-
-// In BLoC or repository:
 httpClient.requestList<BookModel>(
   '/v1/books',
   method: RequestMethod.get,
   fromJson: BookModel.fromJson,
   cancelToken: cancelToken,
 );
-
-// On dispose or new search:
+// On dispose / new search:
 cancelToken.cancel('Operation cancelled');
 ```
 
-Cancelled requests return `Left(NetworkException)` with `DioExceptionType.cancel`. The `RetryInterceptor` does NOT retry cancelled requests.
+Cancelled requests return `Left(NetworkException)` with `DioExceptionType.cancel`. `RetryInterceptor` does NOT retry cancelled requests.
