@@ -1,9 +1,12 @@
 /// Contract for reading and persisting auth tokens.
 ///
-/// The concrete implementation wraps [SecureStore]. An in-memory
-/// implementation is used during development/testing.
+/// The production implementation is SecureTokenProvider
+/// (flutter_secure_storage). Use InMemoryTokenProvider only in tests.
 abstract interface class TokenProvider {
+  /// Current access token (sync — loaded from secure storage at startup).
   String? get accessToken;
+
+  /// Current refresh token (sync — loaded from secure storage at startup).
   String? get refreshToken;
 
   Future<void> saveTokens({
@@ -14,10 +17,10 @@ abstract interface class TokenProvider {
   Future<void> clearTokens();
 }
 
-/// Simple in-memory [TokenProvider].
+/// In-memory [TokenProvider] for unit tests and development.
 ///
-/// Tokens survive only for the duration of the current app session.
-/// Replace with a [SecureStore]-backed implementation for production.
+/// Tokens are lost when the app process exits.
+/// **Do not use in production builds.**
 final class InMemoryTokenProvider implements TokenProvider {
   String? _accessToken;
   String? _refreshToken;

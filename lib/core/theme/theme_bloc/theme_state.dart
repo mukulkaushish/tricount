@@ -50,16 +50,20 @@ class ThemeState extends Equatable {
     double? fontScale,
     ThemeData? lightTheme,
     ThemeData? darkTheme,
-  }) =>
-      ThemeState(
-        palette: palette ?? this.palette,
-        themeMode: themeMode ?? this.themeMode,
-        fontScale: fontScale ?? this.fontScale,
-        lightTheme: lightTheme ?? this.lightTheme,
-        darkTheme: darkTheme ?? this.darkTheme,
-      );
+  }) => ThemeState(
+    palette: palette ?? this.palette,
+    themeMode: themeMode ?? this.themeMode,
+    fontScale: fontScale ?? this.fontScale,
+    lightTheme: lightTheme ?? this.lightTheme,
+    darkTheme: darkTheme ?? this.darkTheme,
+  );
 
   @override
-  List<Object?> get props =>
-      [palette, themeMode, fontScale, lightTheme, darkTheme];
+  List<Object?> get props => [
+    palette,
+    themeMode,
+    fontScale,
+    lightTheme,
+    darkTheme,
+  ];
 }

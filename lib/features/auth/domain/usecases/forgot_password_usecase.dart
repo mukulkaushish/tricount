@@ -10,6 +10,5 @@ final class ForgotPasswordUseCase {
 
   Future<Either<AppException, EmptyResponse>> call({
     required final String email,
-  }) =>
-      _repository.forgotPassword(email: email);
+  }) => _repository.forgotPassword(email: email);
 }

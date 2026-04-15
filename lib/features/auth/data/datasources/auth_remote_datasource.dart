@@ -52,83 +52,76 @@ final class DioAuthDataSource implements AuthRemoteDataSource {
   Future<Either<AppException, AuthTokenModel>> login({
     required final String email,
     required final String password,
-  }) =>
-      _client.request(
-        authLoginPath,
-        method: RequestMethod.post,
-        body: {'email': email, 'password': password},
-        fromJson: AuthTokenModel.fromJson,
-      );
+  }) => _client.request(
+    authLoginPath,
+    method: RequestMethod.post,
+    body: {'email': email, 'password': password},
+    fromJson: AuthTokenModel.fromJson,
+  );
 
   @override
   Future<Either<AppException, AuthTokenModel>> register({
     required final String email,
     required final String password,
     required final String displayName,
-  }) =>
-      _client.request(
-        authRegisterPath,
-        method: RequestMethod.post,
-        body: {
-          'email': email,
-          'password': password,
-          'displayName': displayName,
-        },
-        fromJson: AuthTokenModel.fromJson,
-      );
+  }) => _client.request(
+    authRegisterPath,
+    method: RequestMethod.post,
+    body: {
+      'email': email,
+      'password': password,
+      'displayName': displayName,
+    },
+    fromJson: AuthTokenModel.fromJson,
+  );
 
   @override
   Future<Either<AppException, EmptyResponse>> forgotPassword({
     required final String email,
-  }) =>
-      _client.requestEmpty(
-        authForgotPasswordPath,
-        method: RequestMethod.post,
-        body: {'email': email},
-      );
+  }) => _client.requestEmpty(
+    authForgotPasswordPath,
+    method: RequestMethod.post,
+    body: {'email': email},
+  );
 
   @override
   Future<Either<AppException, EmptyResponse>> resetPassword({
     required final String email,
     required final String code,
     required final String newPassword,
-  }) =>
-      _client.requestEmpty(
-        authResetPasswordPath,
-        method: RequestMethod.post,
-        body: {'email': email, 'code': code, 'newPassword': newPassword},
-      );
+  }) => _client.requestEmpty(
+    authResetPasswordPath,
+    method: RequestMethod.post,
+    body: {'email': email, 'code': code, 'newPassword': newPassword},
+  );
 
   @override
   Future<Either<AppException, AuthTokenModel>> refreshToken({
     required final String refreshToken,
-  }) =>
-      _client.request(
-        authRefreshPath,
-        method: RequestMethod.post,
-        body: {'refreshToken': refreshToken},
-        fromJson: AuthTokenModel.fromJson,
-      );
+  }) => _client.request(
+    authRefreshPath,
+    method: RequestMethod.post,
+    body: {'refreshToken': refreshToken},
+    fromJson: AuthTokenModel.fromJson,
+  );
 
   @override
   Future<Either<AppException, AuthTokenModel>> loginWithGoogle({
     required final String idToken,
-  }) =>
-      _client.request(
-        authGooglePath,
-        method: RequestMethod.post,
-        body: {'idToken': idToken},
-        fromJson: AuthTokenModel.fromJson,
-      );
+  }) => _client.request(
+    authGooglePath,
+    method: RequestMethod.post,
+    body: {'idToken': idToken},
+    fromJson: AuthTokenModel.fromJson,
+  );
 
   @override
   Future<Either<AppException, AuthTokenModel>> loginWithApple({
     required final String idToken,
-  }) =>
-      _client.request(
-        authApplePath,
-        method: RequestMethod.post,
-        body: {'idToken': idToken},
-        fromJson: AuthTokenModel.fromJson,
-      );
+  }) => _client.request(
+    authApplePath,
+    method: RequestMethod.post,
+    body: {'idToken': idToken},
+    fromJson: AuthTokenModel.fromJson,
+  );
 }

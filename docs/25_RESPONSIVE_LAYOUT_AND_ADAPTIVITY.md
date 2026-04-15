@@ -132,6 +132,49 @@ extension ResponsiveContext on BuildContext {
 
 ---
 
+## Current Implementation
+
+### Existing Adaptive Screens
+
+| Screen | Compact | Medium/Expanded |
+|--------|---------|-----------------|
+| `LoginPage` | Single-column: gradient top half, form card slides up from bottom | Two-column: gradient + branding left, form card right |
+| `RegisterPage` | Single-column scrollable form | Centered form with max-width constraint (560dp) |
+| `SplashPage` | Centered logo | Same (no layout change needed) |
+
+### AdaptiveLayout Widget
+
+`lib/shared/widgets/adaptive_layout.dart` — use for top-level page branching:
+
+```dart
+AdaptiveLayout(
+  compact: const _PhoneLayout(),
+  expanded: const _TabletLayout(), // optional — falls back to compact
+)
+```
+
+### Responsive Context Extensions
+
+`lib/core/extensions/responsive_extensions.dart`:
+
+| Extension | Returns | Condition |
+|-----------|---------|-----------|
+| `context.isCompact` | `bool` | width < 600dp |
+| `context.isMedium` | `bool` | 600dp ≤ width < 840dp |
+| `context.isExpanded` | `bool` | width ≥ 840dp |
+| `context.isLargeScreen` | `bool` | width ≥ 600dp |
+| `context.hingeFeature` | `DisplayFeature?` | Physical hinge or fold |
+| `context.isHalfOpened` | `bool` | Foldable half-opened posture |
+
+### Rules for New Screens
+
+1. Wrap the root body with `AdaptiveLayout` when the screen has meaningfully different layouts between phone and tablet.
+2. If the screen is a form (login, register, settings), on expanded screens: center content with `ConstrainedBox(maxWidth: AppDimensions.contentMaxWidth)`.
+3. Do not let text lines exceed `AppDimensions.contentMaxWidth` (560dp) on large screens.
+4. Detect hinge with `context.hingeFeature` and avoid placing interactive elements or dividers directly over it.
+
+---
+
 ## Testing & Validation
 
 ### Simulators / Emulators

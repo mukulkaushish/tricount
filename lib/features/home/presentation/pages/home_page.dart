@@ -153,8 +153,7 @@ class _PalettePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentPaletteId =
-        context.watch<ThemeBloc>().state.palette.id;
+    final currentPaletteId = context.watch<ThemeBloc>().state.palette.id;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,9 +174,9 @@ class _PalettePicker extends StatelessWidget {
                 child: _PaletteCard(
                   palette: palette,
                   selected: selected,
-                  onTap: () => context
-                      .read<ThemeBloc>()
-                      .add(ThemePaletteChanged(palette)),
+                  onTap: () => context.read<ThemeBloc>().add(
+                    ThemePaletteChanged(palette),
+                  ),
                 ),
               ),
             );
@@ -241,8 +240,7 @@ class _PaletteCard extends StatelessWidget {
               textAlign: TextAlign.center,
               style: context.textTheme.labelSmall?.copyWith(
                 color: selected ? tokens.primary : scheme.onSurfaceVariant,
-                fontWeight:
-                    selected ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -309,9 +307,8 @@ class _ThemeModePicker extends StatelessWidget {
             ),
           ],
           selected: {current},
-          onSelectionChanged: (selection) => context
-              .read<ThemeBloc>()
-              .add(ThemeModeChanged(selection.first)),
+          onSelectionChanged: (selection) =>
+              context.read<ThemeBloc>().add(ThemeModeChanged(selection.first)),
         ),
       ],
     );
@@ -355,9 +352,8 @@ class _FontScalePicker extends StatelessWidget {
                 child: _ScaleChip(
                   label: s.label,
                   selected: selected,
-                  onTap: () => context
-                      .read<ThemeBloc>()
-                      .add(FontScaleChanged(s.value)),
+                  onTap: () =>
+                      context.read<ThemeBloc>().add(FontScaleChanged(s.value)),
                 ),
               ),
             );

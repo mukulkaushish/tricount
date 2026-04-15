@@ -5,8 +5,8 @@ import 'package:tricount/features/auth/domain/entities/auth_token.dart';
 
 /// Contract for all authentication operations.
 ///
-/// Every method returns `Either<AppException, T>`. The BLoC folds the result
-/// and emits the appropriate state — no throw-based error handling.
+/// Every method returns `Either<AppException, T>`. The BLoC folds the
+/// result and emits the appropriate state — no throw-based error handling.
 abstract interface class AuthRepository {
   Future<Either<AppException, AuthToken>> login({
     required final String email,
@@ -33,11 +33,11 @@ abstract interface class AuthRepository {
     required final String refreshToken,
   });
 
-  Future<Either<AppException, AuthToken>> loginWithGoogle({
-    required final String idToken,
-  });
+  /// Runs the native Google Sign-In flow then exchanges the idToken
+  /// with the backend. Both steps are handled in the data layer.
+  Future<Either<AppException, AuthToken>> loginWithGoogle();
 
-  Future<Either<AppException, AuthToken>> loginWithApple({
-    required final String idToken,
-  });
+  /// Runs the native Apple Sign-In flow then exchanges the idToken
+  /// with the backend. Both steps are handled in the data layer.
+  Future<Either<AppException, AuthToken>> loginWithApple();
 }

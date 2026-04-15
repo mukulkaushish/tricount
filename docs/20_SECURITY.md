@@ -27,7 +27,7 @@
 
 ### Token Refresh Flow
 
-Handled by `AuthInterceptor` (extends `QueuedInterceptorsWrapper`) → [06_NETWORKING_LAYER.md](06_NETWORKING_LAYER.md#authinterceptor-extends-queuedinterceptorswrapper)
+Handled by `AuthInterceptor` (`QueuedInterceptorsWrapper`). On a 401 response it calls a DI-provided refresh callback, saves the new token pair via `TokenProvider`, and retries the original request. If the refresh itself fails, tokens are cleared and the error propagates so the UI can redirect to the login screen.
 
 ### Token Lifecycle
 

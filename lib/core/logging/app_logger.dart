@@ -3,7 +3,7 @@ import 'package:tricount/core/logging/log_level.dart';
 /// Structured logger interface used throughout the app.
 ///
 /// Inject the concrete implementation via DI. The default is
-/// [PrettyAppLogger] which writes colorful output to the console.
+/// PrettyAppLogger which writes colorful output to the console.
 abstract class AppLogger {
   void verbose(
     final Object? message, {

@@ -12,10 +12,9 @@ final class RegisterUseCase {
     required final String email,
     required final String password,
     required final String displayName,
-  }) =>
-      _repository.register(
-        email: email,
-        password: password,
-        displayName: displayName,
-      );
+  }) => _repository.register(
+    email: email,
+    password: password,
+    displayName: displayName,
+  );
 }

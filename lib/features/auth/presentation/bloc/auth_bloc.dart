@@ -14,13 +14,13 @@ final class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required final ResetPasswordUseCase resetPasswordUseCase,
     required final LoginWithGoogleUseCase loginWithGoogleUseCase,
     required final LoginWithAppleUseCase loginWithAppleUseCase,
-  })  : _loginUseCase = loginUseCase,
-        _registerUseCase = registerUseCase,
-        _forgotPasswordUseCase = forgotPasswordUseCase,
-        _resetPasswordUseCase = resetPasswordUseCase,
-        _loginWithGoogleUseCase = loginWithGoogleUseCase,
-        _loginWithAppleUseCase = loginWithAppleUseCase,
-        super(const AuthInitial()) {
+  }) : _loginUseCase = loginUseCase,
+       _registerUseCase = registerUseCase,
+       _forgotPasswordUseCase = forgotPasswordUseCase,
+       _resetPasswordUseCase = resetPasswordUseCase,
+       _loginWithGoogleUseCase = loginWithGoogleUseCase,
+       _loginWithAppleUseCase = loginWithAppleUseCase,
+       super(const AuthInitial()) {
     on<LoginWithEmailRequested>(_onEmailLogin);
     on<LoginWithGoogleRequested>(_onGoogleLogin);
     on<LoginWithAppleRequested>(_onAppleLogin);
@@ -56,7 +56,7 @@ final class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final Emitter<AuthState> emit,
   ) async {
     emit(const AuthLoading());
-    final result = await _loginWithGoogleUseCase(idToken: event.idToken);
+    final result = await _loginWithGoogleUseCase();
     result.fold(
       (exception) => emit(AuthFailure(exception: exception)),
       (token) => emit(AuthSuccess(token: token)),
@@ -68,7 +68,7 @@ final class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final Emitter<AuthState> emit,
   ) async {
     emit(const AuthLoading());
-    final result = await _loginWithAppleUseCase(idToken: event.idToken);
+    final result = await _loginWithAppleUseCase();
     result.fold(
       (exception) => emit(AuthFailure(exception: exception)),
       (token) => emit(AuthSuccess(token: token)),

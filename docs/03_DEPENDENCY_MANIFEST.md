@@ -34,7 +34,7 @@ Before adding anything, compare this document with:
 | Local database | `drift` | Type-safe local persistence with migrations and DAOs | Planned |
 | SQLite support | `sqlite3_flutter_libs` | SQLite binaries for mobile targets when Drift is adopted | Planned |
 | Paths | `path_provider`, `path` | Database and file-path management | Planned |
-| Secure storage | `flutter_secure_storage` | Sensitive key-value storage (replaces `InMemoryTokenProvider`) | Planned |
+| Secure storage | `flutter_secure_storage` | Sensitive key-value storage (replaces `InMemoryTokenProvider`) | **[ADOPTED]** |
 | Simple preferences | `shared_preferences` | Non-sensitive local preferences | **[ADOPTED]** |
 | Dependency injection | `get_it` | Small, explicit DI for non-widget layers | **[ADOPTED]** |
 | Functional error handling | `fpdart` | Typed `Either` for repositories and use cases | **[ADOPTED]** |
@@ -42,6 +42,7 @@ Before adding anything, compare this document with:
 | Logging | `logger` | Structured local logging (`PrettyAppLogger`) | **[ADOPTED]** |
 | Images | `cached_network_image` | Disk-backed image loading for remote media | Planned |
 | SVG | `flutter_svg` | Vector rendering for icons and illustrations | **[ADOPTED]** |
+| Social auth | `flutter_appauth` | Single OAuth2/OIDC library for Google, Apple, and future SSO providers via authorization-code + PKCE flow | **[ADOPTED]** |
 
 ### Optional Production Dependencies
 

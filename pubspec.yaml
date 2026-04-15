@@ -14,7 +14,9 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_animate: ^4.5.2
+  flutter_appauth: ^8.0.1
   flutter_bloc: ^9.1.1
+  flutter_secure_storage: ^9.2.4
   flutter_svg: ^2.2.4
   fpdart: ^1.2.0
   gap: ^3.0.1

@@ -4,25 +4,27 @@
 
 The repository docs describe a production-ready Flutter architecture, but the codebase is currently much smaller than that target. This file keeps contributors aligned on what exists today, what is planned, and how to adopt the architecture safely.
 
-## Current Repository State (Phase 3 complete)
+## Current Repository State (Phase 3 complete + production-hardened)
 
-Phases 1–3 are complete. The following layers are fully in place:
+Phases 1–3 are complete and the auth subsystem has been production-hardened. The following layers are fully in place:
 
 | Area | Location | Status |
 |------|----------|--------|
 | Core theme layer | `lib/core/theme/` | ✅ Done |
-| Context extensions | `lib/core/extensions/` | ✅ Done |
-| Core error | `lib/core/error/app_exception.dart` — sealed `AppException` with subtypes | ✅ Done |
-| JSON parsing | `lib/core/json/json_parser.dart` — `JsonParser` mixin, `JsonCodable` interface | ✅ Done |
+| Context extensions | `lib/core/extensions/` — theme + responsive extensions | ✅ Done |
+| Core error | `lib/core/error/app_exception.dart` — 11 `AppException` subtypes, `userMessage` getter, `mapDioException` | ✅ Done |
+| JSON parsing | `lib/core/network/json_parser.dart` — `JsonParser` mixin (co-located with network; `JsonCodable` removed) | ✅ Done |
 | Logging | `lib/core/logging/` — `AppLogger` abstract, `PrettyAppLogger`, global `logger` | ✅ Done |
-| Networking | `lib/core/network/` — `HttpClient` interface, `NetworkManager` (Dio impl), `RequestMethod`, `EmptyResponse`, `AuthInterceptor` | ✅ Done |
-| Security | `lib/core/security/` — `TokenProvider` interface, `InMemoryTokenProvider` (swap with `flutter_secure_storage` for prod) | ✅ Done |
+| Networking | `lib/core/network/` — `HttpClient`, `DioHttpClient`, `RequestMethod`, `EmptyResponse` | ✅ Done |
+| Auth interceptor | `lib/core/network/interceptors/auth_interceptor.dart` — `QueuedInterceptorsWrapper`, Bearer attach, 401 refresh + retry | ✅ Done |
+| Security | `lib/core/security/` — `TokenProvider` interface, `SecureTokenProvider` (flutter_secure_storage), `SecureStore` | ✅ Done |
 | Constants | `lib/core/constants/api_constants.dart` — base URL, all auth endpoints | ✅ Done |
-| Dependency injection | `lib/core/di/injection_container.dart` — GetIt wiring for core + auth | ✅ Done |
-| Auth domain | `lib/features/auth/domain/` — `AuthToken`, `User` entities; `AuthRepository` interface; 7 use cases | ✅ Done |
-| Auth data | `lib/features/auth/data/` — `DioAuthDataSource`, `AuthTokenModel` (uses `JsonParser`), `RemoteAuthRepository` | ✅ Done |
+| Dependency injection | `lib/core/di/injection_container.dart` — full GetIt wiring, refresh callback, social auth | ✅ Done |
+| Auth domain | `lib/features/auth/domain/` — `AuthToken`, `User` entities; `AuthRepository`; 7 use cases | ✅ Done |
+| Auth data | `lib/features/auth/data/` — `DioAuthDataSource`, `SocialAuthDataSource` (Google + Apple native), `RemoteAuthRepository` | ✅ Done |
 | Auth BLoC | `lib/features/auth/presentation/bloc/` — full `AuthBloc` using use cases + `Either` folding | ✅ Done |
-| Auth screens | `lib/features/auth/presentation/pages/` — `LoginPage`, `RegisterPage`, `SplashPage` | ✅ Done |
+| Auth screens | `lib/features/auth/presentation/pages/` — `LoginPage`, `RegisterPage`, `SplashPage` with adaptive layouts | ✅ Done |
+| Shared widgets | `lib/shared/widgets/` — `AdaptiveLayout`, `KeyboardDismisser` | ✅ Done |
 
 **Auth API endpoints wired (from Postman collection):**
 
@@ -32,13 +34,13 @@ Phases 1–3 are complete. The following layers are fully in place:
 | `POST /v1/auth/register` | `RegisterUseCase` | ✅ |
 | `POST /v1/auth/forgot-password` | `ForgotPasswordUseCase` | ✅ |
 | `POST /v1/auth/reset-password` | `ResetPasswordUseCase` | ✅ |
-| `POST /v1/auth/refresh` | `RefreshTokenUseCase` | ✅ |
-| `POST /v1/auth/google` | `LoginWithGoogleUseCase` | ✅ wired, needs `google_sign_in` |
-| `POST /v1/auth/apple` | `LoginWithAppleUseCase` | ✅ wired, needs `sign_in_with_apple` |
+| `POST /v1/auth/refresh` | `RefreshTokenUseCase` + `AuthInterceptor` callback | ✅ |
+| `POST /v1/auth/google` | `LoginWithGoogleUseCase` → `NativeSocialAuthDataSource` | ✅ fully wired |
+| `POST /v1/auth/apple` | `LoginWithAppleUseCase` → `NativeSocialAuthDataSource` | ✅ fully wired |
 | `POST /v1/auth/passkeys/authenticate/options` | — | Planned Phase 4 |
 | `POST /v1/auth/passkeys/authenticate/verify` | — | Planned Phase 4 |
 
-This means many docs in this folder describe the intended architecture, not completed code. The theme system and login screen represent the first concrete adoption of these patterns.
+**Social sign-in architecture note**: Native SDK calls (Google / Apple) live in `SocialAuthDataSource` (data layer). `RemoteAuthRepository` orchestrates native SDK → backend exchange. BLoC and widgets dispatch parameterless events — they never touch Google/Apple SDKs directly.
 
 ## Target Architecture
 

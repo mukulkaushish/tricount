@@ -248,7 +248,7 @@ const BookCard(
 
 ## Barrel Files
 
-Every folder with 2+ public Dart files must have a barrel file named `<folder_name>.dart`. Barrel files contain ONLY `export` statements.
+Every folder with **3 or more** public Dart files must have a barrel file named `<folder_name>.dart`. Barrel files contain ONLY `export` statements.
 
 **Full rules, examples, and import patterns** → [02_PROJECT_STRUCTURE.md](02_PROJECT_STRUCTURE.md#barrel-file-convention)
 

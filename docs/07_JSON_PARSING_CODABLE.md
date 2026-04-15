@@ -4,51 +4,30 @@
 
 ## Overview
 
-The app uses a single `JsonParser` mixin that serves as the complete codable system — providing both deserialization (type-safe field extraction) and serialization (null-stripping `toJson`). Inspired by Swift's Codable protocol. No code generation needed.
+The app uses a single `JsonParser` mixin that serves as the complete JSON layer — providing type-safe field extraction (deserialization) and null-stripping serialization (`toJson`). No code generation needed.
 
-Two components:
+**File**: `lib/core/network/json_parser.dart`
 
-1. **`JsonCodable`** — interface that all DTOs implement (`fromJson` factory + `toJson` method)
-2. **`JsonParser`** — mixin with static helpers used inside `fromJson`/`toJson` implementations
+`JsonParser` is co-located with the network layer because it exists to parse HTTP response bodies. It is exported from `network.dart` and available through `import 'package:tricount/core/core.dart'`.
 
----
-
-## JsonCodable Interface
-
-**File**: `lib/core/json/codable.dart`
-
-```dart
-abstract class JsonCodable {
-  Map<String, dynamic> toJson();
-}
-```
-
-Every DTO model in the `data/models/` layer implements `JsonCodable` and provides:
-
-- A `factory Model.fromJson(Map<String, dynamic> json)` constructor
-- A `toJson()` method returning `Map<String, dynamic>`
-
-| Method | Purpose |
-|--------|---------|
-| `fromJson(Map<String, dynamic>)` | Factory constructor — deserialize from JSON |
-| `toJson()` | Serialize to JSON map |
-
-**Rules:**
-
-1. `fromJson` uses `JsonParser` static methods for every field — never direct `json['key']` access
-2. `toJson` uses `JsonParser.toJson()` for null-stripping and nested serialization
-3. Models live in `data/models/`, never in `domain/entities/`
-4. Models map to domain entities via extension/inheritance (see Model-to-Entity section)
+> **Note**: `JsonCodable` (formerly `lib/core/json/codable.dart`) has been removed. No models in the codebase implemented it. Models provide a `fromJson` factory and a `toDomain()` method directly without the interface.
 
 ---
 
 ## JsonParser Mixin
 
-**File**: `lib/core/json/json_parser.dart`
+**File**: `lib/core/network/json_parser.dart`
 
-Declared as `mixin JsonParser` but all methods are `static` — no instance state. You do **not** need to apply the mixin to a class to call these methods; use them directly as `JsonParser.parseString(json, key)`. The mixin declaration exists so classes can optionally `with JsonParser` for convenience.
+Declared as `mixin JsonParser` but all methods are `static` — no instance state. Call them directly as `JsonParser.parseString(json, key)`.
 
-`DataMismatchException` is imported from `network_exception.dart` (part of the error layer). It is a subtype of `AppException` — see [14_ERROR_HANDLING.md](14_ERROR_HANDLING.md).
+Every method throws `DataMismatchException` on type mismatch or missing required fields. `DataMismatchException` is a subtype of `AppException` — see [14_ERROR_HANDLING.md](14_ERROR_HANDLING.md).
+
+**Rules for DTO models:**
+
+1. `fromJson` uses `JsonParser` static methods for every field — never direct `json['key']` access
+2. `toJson` (if implemented) uses `JsonParser.toJson()` for null-stripping and nested serialization
+3. Models live in `data/models/`, never in `domain/entities/`
+4. Models map to domain entities via a `.toDomain()` method
 
 ---
 

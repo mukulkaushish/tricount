@@ -80,4 +80,17 @@ abstract final class AppDimensions {
   // ── Page padding ───────────────────────────────────────────────────────────
   static const double pagePaddingH = 24;
   static const double pagePaddingV = 16;
+
+  // ── Responsive breakpoints ────────────────────────────────────────────────
+  /// Compact → Medium breakpoint (foldables unfolded, small tablets).
+  static const double breakpointMedium = 600;
+
+  /// Medium → Expanded breakpoint (iPads, large tablets, desktop).
+  static const double breakpointExpanded = 840;
+
+  /// Maximum content width on Expanded screens (readable line length).
+  static const double contentMaxWidth = 560;
+
+  /// Minimum panel width in List-Detail layout.
+  static const double panelMinWidth = 320;
 }

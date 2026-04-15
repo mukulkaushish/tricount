@@ -10,6 +10,5 @@ final class RefreshTokenUseCase {
 
   Future<Either<AppException, AuthToken>> call({
     required final String refreshToken,
-  }) =>
-      _repository.refreshToken(refreshToken: refreshToken);
+  }) => _repository.refreshToken(refreshToken: refreshToken);
 }

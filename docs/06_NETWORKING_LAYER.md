@@ -228,36 +228,33 @@ Response flow: Server → RetryInterceptor → CacheInterceptor → AuthIntercep
 
 ## Interceptor Specifications
 
-### AuthInterceptor (extends QueuedInterceptorsWrapper)
+### AuthInterceptor
 
 **File**: `lib/core/network/interceptors/auth_interceptor.dart`
 
-**Base class**: `QueuedInterceptorsWrapper` (Dio built-in). This ensures requests are processed sequentially during token refresh — no race conditions. Concurrent requests are automatically queued until the lock is released.
+**Base class**: `QueuedInterceptorsWrapper` — serializes all interceptor callbacks so concurrent 401 responses only trigger one refresh, and waiting requests are retried with the new token.
 
-**Dependencies**: `TokenProvider`, `AuthBloc`
+**Dependencies**: `TokenProvider`, `Future<bool> Function() onRefreshToken` callback (provided by DI), `Dio` (for retrying the original request)
 
 **Request Phase** (`onRequest`):
-1. Read access token from `TokenProvider`
+1. Read access token from `TokenProvider.accessToken` (sync — loaded at startup)
 2. If token exists, add header: `Authorization: Bearer <token>`
-3. If token is null, let request proceed without auth header
+3. If token is null, let request proceed without auth header (unauthenticated endpoints like login)
 
-**Error Phase** (`onError`, 401 Handling):
-1. Receive 401 response
-2. `QueuedInterceptorsWrapper` automatically locks — subsequent requests wait
-3. Call `TokenProvider.refreshToken()`
-4. If refresh succeeds:
-   - Store new token via `TokenProvider.saveToken()`
-   - Retry the original request with new token via `handler.resolve()`
-5. If refresh fails:
-   - Emit `AuthBloc.add(SessionExpired())`
-   - Reject the error via `handler.reject()` (propagate to caller)
+**Error Phase** (`onError`):
+1. If status is 401 and request is not already a retry (`extra['isRetry'] != true`):
+   a. Call `onRefreshToken()` — returns `true` on success, `false` on failure
+   b. On success: update `Authorization` header with new token, set `extra['isRetry'] = true`, call `dio.fetch(requestOptions)` to retry, resolve with the new response
+   c. On failure: call `tokenProvider.clearTokens()`, propagate the original 401 error
+2. Otherwise: propagate error unchanged
 
-**Why QueuedInterceptorsWrapper**: Regular `Interceptor` would allow concurrent requests to all trigger refresh simultaneously. `QueuedInterceptorsWrapper` serializes interceptor execution, so only the first 401 triggers a refresh; subsequent requests wait and get the new token automatically.
+**Refresh callback** (defined in `injection_container.dart`):
+- Calls `authRefreshPath` via the same Dio instance with `extra['isRetry'] = true`
+- Parses `AuthTokenModel.fromJson` from the response body
+- Calls `tokenProvider.saveTokens(accessToken, refreshToken)`
+- Returns `true` on success, `false` on any exception
 
-**Edge Cases**:
-- Multiple concurrent 401s: automatically handled by queue — only the first triggers refresh
-- Refresh token also expired: logout the user
-- Endpoints that don't require auth: marked with a custom `Options` extra flag
+**Why `QueuedInterceptorsWrapper`**: Without it, if 3 requests fire simultaneously and all receive 401, three parallel refresh calls would race. The wrapper serializes `onError` callbacks so only the first fires the refresh; the others wait and then get retried with the already-refreshed token.
 
 ### RetryInterceptor
 

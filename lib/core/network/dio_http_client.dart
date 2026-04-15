@@ -11,9 +11,9 @@ import 'package:tricount/core/network/request_method.dart';
 /// All three request methods share common response-processing helpers.
 /// HTML/gateway-error responses are detected early and surfaced as
 /// [NetworkException] before the JSON parsing stage runs.
-final class NetworkManager implements HttpClient {
-  NetworkManager(this._dio, {final AppLogger? appLogger})
-      : _logger = appLogger ?? logger;
+final class DioHttpClient implements HttpClient {
+  DioHttpClient(this._dio, {final AppLogger? appLogger})
+    : _logger = appLogger ?? logger;
 
   final Dio _dio;
   final AppLogger _logger;
@@ -174,10 +174,13 @@ final class NetworkManager implements HttpClient {
       return left(const DataMismatchException('Empty response body'));
     }
     if (jsonResponse is List && jsonResponse.isEmpty) {
-      return left(const DataMismatchException('Unexpected empty list response'));
+      return left(
+        const DataMismatchException('Unexpected empty list response'),
+      );
     }
-    final extracted =
-        keyPath != null ? _extractByKeyPath(jsonResponse, keyPath) : jsonResponse;
+    final extracted = keyPath != null
+        ? _extractByKeyPath(jsonResponse, keyPath)
+        : jsonResponse;
     if (extracted is! Map<String, dynamic>) {
       return left(const DataMismatchException('Unexpected response format'));
     }
@@ -199,8 +202,9 @@ final class NetworkManager implements HttpClient {
         (jsonResponse is List && jsonResponse.isEmpty)) {
       return right(<T>[]);
     }
-    final extracted =
-        keyPath != null ? _extractByKeyPath(jsonResponse, keyPath) : jsonResponse;
+    final extracted = keyPath != null
+        ? _extractByKeyPath(jsonResponse, keyPath)
+        : jsonResponse;
     if (extracted is! List) {
       return left(const DataMismatchException('Unexpected response format'));
     }
@@ -228,7 +232,7 @@ final class NetworkManager implements HttpClient {
   }
 
   Either<AppException, T> _handleGenericException<T>(final Exception e) =>
-      left(UnexpectedException(e.toString()));
+      left(UnknownException(e.toString()));
 
   dynamic _extractByKeyPath(final dynamic data, final String keyPath) {
     final keys = keyPath.split('.');

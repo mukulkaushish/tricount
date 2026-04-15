@@ -12,16 +12,16 @@ final class LoginWithEmailRequested extends AuthEvent {
   final String password;
 }
 
+/// Triggers the native Google Sign-In flow then exchanges the idToken
+/// with the backend. The data layer handles both steps.
 final class LoginWithGoogleRequested extends AuthEvent {
-  const LoginWithGoogleRequested({required this.idToken});
-
-  final String idToken;
+  const LoginWithGoogleRequested();
 }
 
+/// Triggers the native Apple Sign-In flow then exchanges the idToken
+/// with the backend. The data layer handles both steps.
 final class LoginWithAppleRequested extends AuthEvent {
-  const LoginWithAppleRequested({required this.idToken});
-
-  final String idToken;
+  const LoginWithAppleRequested();
 }
 
 final class RegisterRequested extends AuthEvent {

@@ -1,4 +1,4 @@
-/// Severity levels used by [AppLogger].
+/// Severity levels used by AppLogger.
 enum LogLevel {
   verbose,
   debug,

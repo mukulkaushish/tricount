@@ -4,7 +4,7 @@
 
 ## Barrel File Convention
 
-Every folder that contains 2+ public Dart files **must** have a barrel file. Barrel files:
+Every folder that contains **3 or more** public Dart files must have a barrel file. Barrel files:
 
 - Are named after the folder (e.g., `core/extensions/extensions.dart`)
 - Export all public files in that folder
@@ -23,7 +23,7 @@ Every folder that contains 2+ public Dart files **must** have a barrel file. Bar
 
 | Rule | Detail |
 |------|--------|
-| One barrel per folder with 2+ public files | Named `<folder_name>.dart` |
+| One barrel per folder with 3+ public files | Named `<folder_name>.dart` |
 | Top-level module barrel aggregates sub-barrels | `core/core.dart` exports `extensions/extensions.dart`, `network/network.dart`, etc. |
 | Feature barrels export only the public surface | Domain entities + repository interfaces, NOT implementation details |
 | Never import a file that lives behind another barrel directly | Always go through the barrel |
@@ -82,10 +82,6 @@ lib/
 │   │   # Start with only the extensions that remove repeated friction.
 │   │   # Add more only after the same pattern appears in multiple places.
 │   │
-│   ├── json/
-│   │   ├── json.dart                      # BARREL
-│   │   ├── json_parser.dart               # JsonParser mixin
-│   │   └── codable.dart                   # JsonCodable interface
 │   │
 │   ├── logging/
 │   │   ├── logging.dart                   # BARREL
@@ -99,6 +95,7 @@ lib/
 │   │   ├── empty_response.dart            # Const sentinel for type-safe no-body responses
 │   │   ├── http_client.dart               # Abstract interface: request<T>, requestList<T>, requestEmpty
 │   │   ├── dio_http_client.dart           # Dio implementation of HttpClient
+│   │   ├── json_parser.dart               # JsonParser mixin (type-safe HTTP response parsing)
 │   │   ├── request_method.dart            # RequestMethod enum + extension
 │   │   └── interceptors/
 │   │       ├── interceptors.dart          # BARREL
@@ -357,7 +354,7 @@ lib/
 export 'constants/constants.dart';
 export 'error/error.dart';
 export 'extensions/extensions.dart';
-export 'json/json.dart';
+
 export 'logging/logging.dart';
 export 'network/network.dart';
 export 'analytics/analytics.dart';

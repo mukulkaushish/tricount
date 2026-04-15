@@ -92,12 +92,12 @@ class _RegisterViewState extends State<_RegisterView> {
     if (!_validate()) return;
     unawaited(HapticFeedback.lightImpact());
     context.read<AuthBloc>().add(
-          RegisterRequested(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-            displayName: _displayNameController.text.trim(),
-          ),
-        );
+      RegisterRequested(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        displayName: _displayNameController.text.trim(),
+      ),
+    );
   }
 
   @override
@@ -147,162 +147,175 @@ class _RegisterViewState extends State<_RegisterView> {
             builder: (context, state) {
               final isLoading = state is AuthLoading;
               return SafeArea(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppDimensions.pagePaddingH,
-                    vertical: AppDimensions.s16,
-                  ),
-                  child: AutofillGroup(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'Create account',
-                          style: context.textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: scheme.onSurface,
-                          ),
-                        ),
-                        const Gap(AppDimensions.s8),
-                        Text(
-                          'Split bills with your people.',
-                          style: context.textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const Gap(AppDimensions.s32),
-                        TextField(
-                          controller: _displayNameController,
-                          focusNode: _displayNameFocus,
-                          enabled: !isLoading,
-                          textInputAction: TextInputAction.next,
-                          autofillHints: const [AutofillHints.name],
-                          onChanged: (_) {
-                            if (_displayNameError != null) {
-                              setState(() => _displayNameError = null);
-                            }
-                          },
-                          onSubmitted: (_) => _emailFocus.requestFocus(),
-                          decoration: InputDecoration(
-                            hintText: 'Your name',
-                            errorText: _displayNameError,
-                            prefixIcon: Icon(
-                              Icons.person_outline_rounded,
-                              size: AppDimensions.iconMd,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                        const Gap(AppDimensions.s12),
-                        TextField(
-                          controller: _emailController,
-                          focusNode: _emailFocus,
-                          enabled: !isLoading,
-                          keyboardType: TextInputType.emailAddress,
-                          textInputAction: TextInputAction.next,
-                          autofillHints: const [AutofillHints.email],
-                          onChanged: (_) {
-                            if (_emailError != null) {
-                              setState(() => _emailError = null);
-                            }
-                          },
-                          onSubmitted: (_) => _passwordFocus.requestFocus(),
-                          decoration: InputDecoration(
-                            hintText: 'your@email.com',
-                            errorText: _emailError,
-                            prefixIcon: Icon(
-                              Icons.mail_outline_rounded,
-                              size: AppDimensions.iconMd,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                        const Gap(AppDimensions.s12),
-                        TextField(
-                          controller: _passwordController,
-                          focusNode: _passwordFocus,
-                          enabled: !isLoading,
-                          obscureText: _obscurePassword,
-                          keyboardType: TextInputType.visiblePassword,
-                          textInputAction: TextInputAction.done,
-                          autofillHints: const [AutofillHints.newPassword],
-                          onChanged: (_) {
-                            if (_passwordError != null) {
-                              setState(() => _passwordError = null);
-                            }
-                          },
-                          onSubmitted: (_) => _onRegisterPressed(),
-                          decoration: InputDecoration(
-                            hintText: 'Password (8+ characters)',
-                            errorText: _passwordError,
-                            prefixIcon: Icon(
-                              Icons.lock_outline_rounded,
-                              size: AppDimensions.iconMd,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                                size: AppDimensions.iconMd,
-                                color: scheme.onSurfaceVariant,
-                              ),
-                              onPressed: () => setState(
-                                () => _obscurePassword = !_obscurePassword,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const Gap(AppDimensions.s28),
-                        SizedBox(
-                          height: AppDimensions.buttonHeight,
-                          child: FilledButton(
-                            onPressed: isLoading ? null : _onRegisterPressed,
-                            child: isLoading
-                                ? SizedBox.square(
-                                    dimension: 22,
-                                    child: CircularProgressIndicator.adaptive(
-                                      strokeWidth: 2.5,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        scheme.onPrimary,
-                                      ),
-                                    ),
-                                  )
-                                : const Text('Create Account'),
-                          ),
-                        ),
-                        const Gap(AppDimensions.s20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppDimensions.contentMaxWidth,
+                    ),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppDimensions.pagePaddingH,
+                        vertical: AppDimensions.s16,
+                      ),
+                      child: AutofillGroup(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Text(
-                              'Already have an account?',
-                              style: context.textTheme.bodySmall?.copyWith(
+                              'Create account',
+                              style: context.textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: scheme.onSurface,
+                              ),
+                            ),
+                            const Gap(AppDimensions.s8),
+                            Text(
+                              'Split bills with your people.',
+                              style: context.textTheme.bodyMedium?.copyWith(
                                 color: scheme.onSurfaceVariant,
                               ),
                             ),
-                            TextButton(
-                              onPressed: () => Navigator.of(context).maybePop(),
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: AppDimensions.s6,
+                            const Gap(AppDimensions.s32),
+                            TextField(
+                              controller: _displayNameController,
+                              focusNode: _displayNameFocus,
+                              enabled: !isLoading,
+                              textInputAction: TextInputAction.next,
+                              autofillHints: const [AutofillHints.name],
+                              onChanged: (_) {
+                                if (_displayNameError != null) {
+                                  setState(() => _displayNameError = null);
+                                }
+                              },
+                              onSubmitted: (_) => _emailFocus.requestFocus(),
+                              decoration: InputDecoration(
+                                hintText: 'Your name',
+                                errorText: _displayNameError,
+                                prefixIcon: Icon(
+                                  Icons.person_outline_rounded,
+                                  size: AppDimensions.iconMd,
+                                  color: scheme.onSurfaceVariant,
                                 ),
-                                minimumSize: Size.zero,
-                                tapTargetSize:
-                                    MaterialTapTargetSize.shrinkWrap,
                               ),
-                              child: Text(
-                                'Sign in',
-                                style: context.textTheme.bodySmall?.copyWith(
-                                  color: scheme.primary,
-                                  fontWeight: FontWeight.w700,
+                            ),
+                            const Gap(AppDimensions.s12),
+                            TextField(
+                              controller: _emailController,
+                              focusNode: _emailFocus,
+                              enabled: !isLoading,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              autofillHints: const [AutofillHints.email],
+                              onChanged: (_) {
+                                if (_emailError != null) {
+                                  setState(() => _emailError = null);
+                                }
+                              },
+                              onSubmitted: (_) => _passwordFocus.requestFocus(),
+                              decoration: InputDecoration(
+                                hintText: 'your@email.com',
+                                errorText: _emailError,
+                                prefixIcon: Icon(
+                                  Icons.mail_outline_rounded,
+                                  size: AppDimensions.iconMd,
+                                  color: scheme.onSurfaceVariant,
                                 ),
                               ),
+                            ),
+                            const Gap(AppDimensions.s12),
+                            TextField(
+                              controller: _passwordController,
+                              focusNode: _passwordFocus,
+                              enabled: !isLoading,
+                              obscureText: _obscurePassword,
+                              keyboardType: TextInputType.visiblePassword,
+                              textInputAction: TextInputAction.done,
+                              autofillHints: const [AutofillHints.newPassword],
+                              onChanged: (_) {
+                                if (_passwordError != null) {
+                                  setState(() => _passwordError = null);
+                                }
+                              },
+                              onSubmitted: (_) => _onRegisterPressed(),
+                              decoration: InputDecoration(
+                                hintText: 'Password (8+ characters)',
+                                errorText: _passwordError,
+                                prefixIcon: Icon(
+                                  Icons.lock_outline_rounded,
+                                  size: AppDimensions.iconMd,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined,
+                                    size: AppDimensions.iconMd,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                  onPressed: () => setState(
+                                    () => _obscurePassword = !_obscurePassword,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const Gap(AppDimensions.s28),
+                            SizedBox(
+                              height: AppDimensions.buttonHeight,
+                              child: FilledButton(
+                                onPressed: isLoading
+                                    ? null
+                                    : _onRegisterPressed,
+                                child: isLoading
+                                    ? SizedBox.square(
+                                        dimension: 22,
+                                        child:
+                                            CircularProgressIndicator.adaptive(
+                                              strokeWidth: 2.5,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                    scheme.onPrimary,
+                                                  ),
+                                            ),
+                                      )
+                                    : const Text('Create Account'),
+                              ),
+                            ),
+                            const Gap(AppDimensions.s20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Already have an account?',
+                                  style: context.textTheme.bodySmall?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.of(context).maybePop(),
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppDimensions.s6,
+                                    ),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: Text(
+                                    'Sign in',
+                                    style: context.textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: scheme.primary,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),

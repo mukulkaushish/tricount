@@ -11,6 +11,5 @@ final class LoginUseCase {
   Future<Either<AppException, AuthToken>> call({
     required final String email,
     required final String password,
-  }) =>
-      _repository.login(email: email, password: password);
+  }) => _repository.login(email: email, password: password);
 }

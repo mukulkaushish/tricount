@@ -1,10 +1,13 @@
 import 'package:tricount/core/error/app_exception.dart';
 
-/// Mixin providing static JSON parsing helpers with typed error surfaces.
+/// Static JSON parsing helpers with typed error surfaces.
 ///
 /// Every method throws [DataMismatchException] on type mismatch or missing
 /// required fields so callers get structured error context rather than
-/// a generic [TypeError] or cast exception.
+/// a generic TypeError or cast exception.
+///
+/// Usage: models call `JsonParser.parseString(json, 'key')` rather
+/// than casting `json['key'] as String`.
 mixin JsonParser {
   // ========== STRING ==========
 
@@ -54,7 +57,8 @@ mixin JsonParser {
         return value.toInt();
       }
       throw DataMismatchException(
-        "Double value $value cannot be safely converted to int for field '$key'",
+        'Double value $value cannot be safely converted to int '
+        "for field '$key'",
         fieldName: key,
       );
     }
@@ -215,202 +219,6 @@ mixin JsonParser {
     }
   }
 
-  // ========== INT LIST ==========
-
-  static List<int> parseIntList(
-    final Map<String, dynamic> json,
-    final String key,
-  ) {
-    final value = json[key];
-    if (value == null) {
-      throw DataMismatchException(
-        "Required field '$key' is missing or null",
-        fieldName: key,
-      );
-    }
-    if (value is! List) {
-      throw DataMismatchException(
-        "Expected List but got ${value.runtimeType} for field '$key'",
-        fieldName: key,
-      );
-    }
-    final result = <int>[];
-    for (var i = 0; i < value.length; i++) {
-      final item = value[i];
-      if (item == null) {
-        throw DataMismatchException(
-          "Null value at index $i for field '$key'",
-          fieldName: '$key[$i]',
-        );
-      }
-      if (item is int) {
-        result.add(item);
-      } else if (item is double &&
-          item.isFinite &&
-          item == item.truncateToDouble()) {
-        result.add(item.toInt());
-      } else if (item is String) {
-        final parsed = int.tryParse(item);
-        if (parsed != null) {
-          result.add(parsed);
-        } else {
-          throw DataMismatchException(
-            "String '$item' cannot be parsed as int at index $i for '$key'",
-            fieldName: '$key[$i]',
-          );
-        }
-      } else {
-        throw DataMismatchException(
-          "Expected int but got ${item.runtimeType} at index $i for '$key'",
-          fieldName: '$key[$i]',
-        );
-      }
-    }
-    return result;
-  }
-
-  static List<int>? parseIntListOptional(
-    final Map<String, dynamic> json,
-    final String key,
-  ) {
-    if (json[key] == null) return null;
-    try {
-      return parseIntList(json, key);
-    } on Exception {
-      return null;
-    }
-  }
-
-  // ========== DOUBLE LIST ==========
-
-  static List<double> parseDoubleList(
-    final Map<String, dynamic> json,
-    final String key,
-  ) {
-    final value = json[key];
-    if (value == null) {
-      throw DataMismatchException(
-        "Required field '$key' is missing or null",
-        fieldName: key,
-      );
-    }
-    if (value is! List) {
-      throw DataMismatchException(
-        "Expected List but got ${value.runtimeType} for field '$key'",
-        fieldName: key,
-      );
-    }
-    final result = <double>[];
-    for (var i = 0; i < value.length; i++) {
-      final item = value[i];
-      if (item == null) {
-        throw DataMismatchException(
-          "Null value at index $i for field '$key'",
-          fieldName: '$key[$i]',
-        );
-      }
-      if (item is int) {
-        result.add(item.toDouble());
-      } else if (item is double) {
-        result.add(item);
-      } else if (item is String) {
-        final parsed = double.tryParse(item);
-        if (parsed != null && parsed.isFinite) {
-          result.add(parsed);
-        } else {
-          throw DataMismatchException(
-            "String '$item' cannot be parsed as double at index $i for '$key'",
-            fieldName: '$key[$i]',
-          );
-        }
-      } else {
-        throw DataMismatchException(
-          "Expected double but got ${item.runtimeType} at index $i for '$key'",
-          fieldName: '$key[$i]',
-        );
-      }
-    }
-    return result;
-  }
-
-  static List<double>? parseDoubleListOptional(
-    final Map<String, dynamic> json,
-    final String key,
-  ) {
-    if (json[key] == null) return null;
-    try {
-      return parseDoubleList(json, key);
-    } on Exception {
-      return null;
-    }
-  }
-
-  // ========== BOOL LIST ==========
-
-  static List<bool> parseBoolList(
-    final Map<String, dynamic> json,
-    final String key,
-  ) {
-    final value = json[key];
-    if (value == null) {
-      throw DataMismatchException(
-        "Required field '$key' is missing or null",
-        fieldName: key,
-      );
-    }
-    if (value is! List) {
-      throw DataMismatchException(
-        "Expected List but got ${value.runtimeType} for field '$key'",
-        fieldName: key,
-      );
-    }
-    final result = <bool>[];
-    for (var i = 0; i < value.length; i++) {
-      final item = value[i];
-      if (item == null) {
-        throw DataMismatchException(
-          "Null value at index $i for field '$key'",
-          fieldName: '$key[$i]',
-        );
-      }
-      if (item is bool) {
-        result.add(item);
-      } else if (item is String) {
-        final lower = item.toLowerCase();
-        if (lower == 'true' || lower == '1') {
-          result.add(true);
-        } else if (lower == 'false' || lower == '0') {
-          result.add(false);
-        } else {
-          throw DataMismatchException(
-            "String '$item' cannot be parsed as bool at index $i for '$key'",
-            fieldName: '$key[$i]',
-          );
-        }
-      } else if (item is int) {
-        result.add(item != 0);
-      } else {
-        throw DataMismatchException(
-          "Expected bool but got ${item.runtimeType} at index $i for '$key'",
-          fieldName: '$key[$i]',
-        );
-      }
-    }
-    return result;
-  }
-
-  static List<bool>? parseBoolListOptional(
-    final Map<String, dynamic> json,
-    final String key,
-  ) {
-    if (json[key] == null) return null;
-    try {
-      return parseBoolList(json, key);
-    } on Exception {
-      return null;
-    }
-  }
-
   // ========== OBJECT LIST ==========
 
   static List<T> parseList<T>(
@@ -436,7 +244,7 @@ mixin JsonParser {
       final item = value[i];
       if (item is! Map<String, dynamic>) {
         throw DataMismatchException(
-          "Expected Map<String, dynamic> at index $i but got "
+          'Expected Map<String, dynamic> at index $i but got '
           "${item.runtimeType} for field '$key'",
           fieldName: '$key[$i]',
         );
@@ -526,8 +334,7 @@ mixin JsonParser {
   static bool hasKey(
     final Map<String, dynamic> json,
     final String key,
-  ) =>
-      json.containsKey(key);
+  ) => json.containsKey(key);
 
   static Set<String> getKeys(final Map<String, dynamic> json) =>
       json.keys.toSet();
@@ -548,27 +355,16 @@ mixin JsonParser {
 }
 
 /// Serializes [value] to a JSON-compatible primitive.
-///
-/// Handles: primitives, lists, `Map<String, dynamic>`, and objects
-/// that implement [JsonCodable].
 dynamic _serializeValue(final dynamic value) {
   if (value == null) return null;
   if (value is String || value is int || value is double || value is bool) {
     return value;
   }
-  if (value is List) {
-    return value.map(_serializeValue).toList();
-  }
+  if (value is List) return value.map(_serializeValue).toList();
   if (value is Map<String, dynamic>) {
     return value.map(
       (final key, final val) => MapEntry(key, _serializeValue(val)),
     );
   }
-  if (value is JsonCodable) return value.toJson();
   return value.toString();
-}
-
-/// Interface for objects that can serialize themselves to JSON.
-abstract interface class JsonCodable {
-  Map<String, dynamic> toJson();
 }

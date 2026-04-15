@@ -8,15 +8,12 @@ import 'package:tricount/core/logging/log_level.dart';
 /// Register a production logger in release builds.
 final class PrettyAppLogger implements AppLogger {
   PrettyAppLogger()
-      : _logger = Logger(
-          printer: PrettyPrinter(
-            methodCount: 0,
-            errorMethodCount: 5,
-            lineLength: 80,
-            colors: true,
-            printEmojis: true,
-          ),
-        );
+    : _logger = Logger(
+        printer: PrettyPrinter(
+          methodCount: 0,
+          errorMethodCount: 5,
+        ),
+      );
 
   final Logger _logger;
 
@@ -25,40 +22,35 @@ final class PrettyAppLogger implements AppLogger {
     final Object? message, {
     final Object? error,
     final StackTrace? stackTrace,
-  }) =>
-      _logger.t(message?.toString(), error: error, stackTrace: stackTrace);
+  }) => _logger.t(message?.toString(), error: error, stackTrace: stackTrace);
 
   @override
   void debug(
     final Object? message, {
     final Object? error,
     final StackTrace? stackTrace,
-  }) =>
-      _logger.d(message?.toString(), error: error, stackTrace: stackTrace);
+  }) => _logger.d(message?.toString(), error: error, stackTrace: stackTrace);
 
   @override
   void info(
     final Object? message, {
     final Object? error,
     final StackTrace? stackTrace,
-  }) =>
-      _logger.i(message?.toString(), error: error, stackTrace: stackTrace);
+  }) => _logger.i(message?.toString(), error: error, stackTrace: stackTrace);
 
   @override
   void warning(
     final Object? message, {
     final Object? error,
     final StackTrace? stackTrace,
-  }) =>
-      _logger.w(message?.toString(), error: error, stackTrace: stackTrace);
+  }) => _logger.w(message?.toString(), error: error, stackTrace: stackTrace);
 
   @override
   void error(
     final Object? message, {
     final Object? error,
     final StackTrace? stackTrace,
-  }) =>
-      _logger.e(message?.toString(), error: error, stackTrace: stackTrace);
+  }) => _logger.e(message?.toString(), error: error, stackTrace: stackTrace);
 
   @override
   void log(

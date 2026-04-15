@@ -4,6 +4,23 @@
 
 This repository is a Flutter application workspace with a documented target architecture. The current codebase is still near starter-app state, so the docs should be read as a migration blueprint unless `docs/00B_PROJECT_STATUS_AND_ADOPTION.md` says a pattern is already in place.
 
+## Docs-First Workflow (Mandatory Before Every Task)
+
+Before writing any code or planning any implementation:
+
+1. **Read memory** — Load `/memory/MEMORY.md` and the linked memory files to understand current project state, completed phases, and any prior feedback.
+2. **Read the core docs** in this order:
+   - `docs/00A_CODING_RULES.md` — linting, naming, style rules
+   - `docs/00B_PROJECT_STATUS_AND_ADOPTION.md` — what is done vs. planned
+   - `docs/01_ARCHITECTURE_OVERVIEW.md` — layer boundaries
+   - `docs/02_PROJECT_STRUCTURE.md` — barrel files, file placement
+   - `docs/03_DEPENDENCY_MANIFEST.md` — allowed packages
+3. **Read subsystem docs** relevant to the task (e.g., `06_NETWORKING_LAYER.md` before touching network code, `20_SECURITY.md` before touching auth).
+4. **Plan before coding** — enumerate every file that must change, in dependency order. Surface any doc contradictions or architecture boundary violations before touching code.
+5. **Confirm scope** if the plan is large or cross-cutting.
+
+This workflow prevents re-work caused by missing context and keeps implementations aligned with the documented architecture.
+
 ## Documentation Read Order
 
 Read these documents before making structural changes:

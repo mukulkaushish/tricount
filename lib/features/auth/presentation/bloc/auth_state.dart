@@ -40,7 +40,7 @@ final class AuthFailure extends AuthState {
 
   final AppException exception;
 
-  String get message => exception.message;
+  String get message => exception.userMessage;
 
   @override
   List<Object?> get props => [exception.message];
