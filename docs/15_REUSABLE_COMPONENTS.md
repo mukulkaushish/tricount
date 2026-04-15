@@ -1,89 +1,63 @@
-# 15 - Reusable Components
+# 15 — Reusable Components
 
-## Component Catalog
+## Rules
 
-All reusable widgets live in `lib/shared/widgets/` and follow these rules:
+All shared widgets live in `lib/shared/widgets/`:
+1. **Stateless when possible** — use `const` constructors.
+2. **Theme-aware** — `context.colorScheme`, `context.textTheme`; never hardcoded.
+3. **Configurable** — expose meaningful props, not implementation details.
+4. **Accessible** — semantics, ≥ 48×48 tap targets.
+5. **No styling wrappers** — never create wrappers whose sole purpose is visual styling (see `05_THEMING_SYSTEM.md`). Use framework widgets directly — global theme handles styling. Shared widgets justified only when they add **behavioral composition** (loading states, cached image fallbacks, shimmer placeholders).
 
-1. **Stateless when possible** - use const constructors
-2. **Theme-aware** - use `context.colorScheme` and `context.textTheme`, never hardcoded values
-3. **Configurable** - expose meaningful props, not implementation details
-4. **Accessible** - include semantics, adequate touch targets (48x48 minimum)
-5. **No styling wrappers** - do not create wrapper widgets whose sole purpose is visual styling (see 05_THEMING_SYSTEM.md). Use framework widgets (`FilledButton`, `TextField`, `Switch.adaptive`, etc.) directly — the global theme handles styling. Shared widgets are justified only when they add **behavioral composition** (e.g., loading states, cached image fallbacks, shimmer placeholders)
+## App Loading Page (`app_loading_page.dart`)
 
----
+Full-screen indicator for initial loads.
 
-## App Loading Page
+| Prop | Type | Default |
+|---|---|---|
+| `message` | `String?` | `null` |
 
-**File**: `lib/shared/widgets/app_loading_page.dart`
-
-Full-screen loading indicator shown during initial data loads.
-
-| Prop | Type | Default | Purpose |
-|------|------|---------|---------|
-| `message` | `String?` | `null` | Optional loading message |
-
-### Layout
 ```
-Scaffold
-└── Center
-    └── Column(mainAxisAlignment: center)
-        ├── CircularProgressIndicator(color: colorScheme.primary)
-        ├── SizedBox(height: 16)  [if message != null]
-        └── Text(message, style: bodyMedium)  [if message != null]
+Scaffold → Center → Column(center)
+  ├── CircularProgressIndicator(color: colorScheme.primary)
+  ├── SizedBox(height: 16)       // if message
+  └── Text(message, bodyMedium)  // if message
 ```
-
----
 
 ## App Error Page
+→ `14_ERROR_HANDLING.md`.
 
-(See 14_ERROR_HANDLING.md for full specification)
+## App Scaffold (`app_scaffold.dart`)
 
----
+Base scaffold standardizing chrome (AppBar, safe-area, slots).
 
-## App Scaffold
+| Prop | Type | Default |
+|---|---|---|
+| `title` | `String` | required |
+| `body` | `Widget` | required |
+| `showBackButton` | `bool` | `true` |
+| `actions` | `List<Widget>?` | `null` |
+| `floatingActionButton` | `Widget?` | `null` |
+| `bottomNavigationBar` | `Widget?` | `null` |
 
-**File**: `lib/shared/widgets/app_scaffold.dart`
-
-A base scaffold that standardizes common page chrome such as the app bar,
-safe-area handling, and page-level slots.
-
-| Prop | Type | Default | Purpose |
-|------|------|---------|---------|
-| `title` | `String` | required | AppBar title |
-| `body` | `Widget` | required | Page content |
-| `showBackButton` | `bool` | `true` | Show/hide back nav |
-| `actions` | `List<Widget>?` | `null` | AppBar actions |
-| `floatingActionButton` | `Widget?` | `null` | FAB |
-| `bottomNavigationBar` | `Widget?` | `null` | Bottom nav |
-
-### Behavior
-- Applies consistent `AppBar` styling from theme
-- Handles safe area insets
-- Does NOT include the connectivity banner; that lives once at the
-  `MaterialApp` level via `ConnectivityBanner`
-
----
+**Behavior:** consistent `AppBar` from theme; safe area handled. **Does NOT** include `ConnectivityBanner` — that lives once at `MaterialApp` level.
 
 ## Connectivity Banner
+→ `11_CONNECTIVITY_RESILIENCE.md`.
 
-(See 11_CONNECTIVITY_RESILIENCE.md for full specification)
+## Buttons, text fields, themed widgets
 
----
-
-## Buttons, Text Fields, and Other Themed Widgets
-
-**Do not create** `AppButton`, `AppTextField`, or similar styling wrappers. Use framework widgets directly:
+**Do not create** `AppButton`/`AppTextField`/etc. Use framework widgets directly:
 
 | Need | Use | Why |
-|------|-----|-----|
-| Primary CTA | `FilledButton(onPressed: ..., child: Text('Save'))` | Styled by `filledButtonTheme` |
-| Secondary action | `OutlinedButton(onPressed: ..., child: Text('Cancel'))` | Styled by `outlinedButtonTheme` |
-| Text action | `TextButton(onPressed: ..., child: Text('Skip'))` | Styled by `textButtonTheme` |
-| Text input | `TextField(decoration: InputDecoration(labelText: 'Email'))` | Styled by `inputDecorationTheme` |
-| Password input | `TextField(obscureText: true, decoration: ...)` | Framework handles toggle |
+|---|---|---|
+| Primary CTA | `FilledButton(onPressed, child: Text('Save'))` | `filledButtonTheme` |
+| Secondary | `OutlinedButton(...)` | `outlinedButtonTheme` |
+| Text action | `TextButton(...)` | `textButtonTheme` |
+| Text input | `TextField(decoration: InputDecoration(labelText: 'Email'))` | `inputDecorationTheme` |
+| Password | `TextField(obscureText: true, ...)` | framework handles toggle |
 
-For loading state on a button, handle inline — it's ~5 lines, not worth a wrapper. Use `CircularProgressIndicator.adaptive()` so iOS renders `CupertinoActivityIndicator` and Android renders the Material spinner. Lock the button size so layout does not shift:
-
+**Loading state on a button** — inline (~5 lines, not worth a wrapper). Use `CircularProgressIndicator.adaptive()`; lock size so layout doesn't shift:
 ```dart
 FilledButton(
   onPressed: isLoading ? null : onSubmit,
@@ -96,58 +70,44 @@ FilledButton(
 )
 ```
 
----
+## Auth Form (`lib/features/auth/presentation/widgets/auth_form.dart`)
 
-## Auth Form
-
-**File**: `lib/features/auth/presentation/widgets/auth_form.dart`
-
-Behavioral composition widget for the login credential form. Justified as a shared widget because it bundles validation logic, focus chain management, autofill context, and keyboard handling — not just visual styling.
+Behavioral composition — bundles validation, focus chain, autofill, keyboard handling. Not a styling wrapper.
 
 | Prop | Type | Purpose |
-|------|------|---------|
-| `onLoginPressed` | `void Function(String email, String password)` | Called on valid submit |
-| `onForgotPasswordPressed` | `void Function(String email)` | Called when "Forgot Password?" is tapped |
-| `isLoading` | `bool` | Disables fields and swaps button label to adaptive spinner |
+|---|---|---|
+| `onLoginPressed` | `void Function(String email, String password)` | valid submit |
+| `onForgotPasswordPressed` | `void Function(String email)` | "Forgot password?" tap |
+| `isLoading` | `bool` | disables fields; swaps button to adaptive spinner |
 
-### Adaptive behaviors built into this widget
+**Adaptive behaviors built in:**
+- `AutofillGroup` wraps both fields — iOS Keychain / Android Autofill.
+- `TextInputAction.next` on email → focus password via `FocusNode`.
+- `TextInputAction.done` on password → submit if valid, else inline error.
+- `HapticFeedback.lightImpact()` before `onLoginPressed`.
+- `HapticFeedback.heavyImpact()` + shake on validation failure.
+- `keyboardType: TextInputType.emailAddress` on email.
+- `keyboardType: TextInputType.visiblePassword` on password.
+- `textCapitalization: TextCapitalization.none` on both.
+- `TextInput.finishAutofillContext()` after successful login.
 
-- **`AutofillGroup`** wraps both fields — triggers iOS Keychain / Android Autofill
-- **`TextInputAction.next`** on email → moves focus to password field via `FocusNode`
-- **`TextInputAction.done`** on password → submits if valid, else shows inline error
-- **`HapticFeedback.lightImpact()`** fired before `onLoginPressed` is called
-- **`HapticFeedback.heavyImpact()`** + shake animation on validation failure
-- **`keyboardType: TextInputType.emailAddress`** on email field
-- **`keyboardType: TextInputType.visiblePassword`** on password field
-- **`textCapitalization: TextCapitalization.none`** on both fields
-- Calls `TextInput.finishAutofillContext()` after successful login signal
-
-### Accessibility
+**Accessibility:**
 
 | Requirement | Implementation |
 |---|---|
-| Email field semantics | `Semantics(label: 'Email address', textField: true)` |
-| Password field semantics | `Semantics(label: 'Password', obscured: true, textField: true)` |
-| Error message live region | `Semantics(liveRegion: true)` on error text below field |
-| Show/hide password toggle | `Semantics(label: 'Show password' / 'Hide password', button: true)` |
-| Login button tap target | Min `48×52dp` — enforced by `filledButtonTheme.minimumSize` |
+| Email field | `Semantics(label: 'Email address', textField: true)` |
+| Password field | `Semantics(label: 'Password', obscured: true, textField: true)` |
+| Error live region | `Semantics(liveRegion: true)` on error text |
+| Show/hide toggle | `Semantics(label: 'Show password'/'Hide password', button: true)` |
+| Login button tap target | min `48×52dp` via `filledButtonTheme.minimumSize` |
 
----
+## KeyboardDismisser (`lib/shared/widgets/keyboard_dismisser.dart`)
 
-## KeyboardDismisser
-
-**File**: `lib/shared/widgets/keyboard_dismisser.dart`
-
-A behavioral wrapper that dismisses the software keyboard when the user performs a gesture. Vendored directly into the project (no external package dependency).
-
-Justified as a shared widget because it provides a reusable behavioral contract used across every form screen — not visual styling.
+Vendored (no package dep). Dismisses keyboard on user gesture. Behavioral contract used across every form screen.
 
 ### Usage
-
-Wrap a `Scaffold` (or the entire `MaterialApp` for global coverage):
-
 ```dart
-// Per-screen (recommended for most cases)
+// Per screen (recommended)
 KeyboardDismisser(
   gestures: const [
     GestureType.onTap,
@@ -157,150 +117,126 @@ KeyboardDismisser(
   child: Scaffold(...),
 )
 
-// Global — wrapping MaterialApp dismisses keyboard on every screen
+// Global (wraps MaterialApp)
 KeyboardDismisser(
-  gestures: const [
-    GestureType.onTap,
-    GestureType.onPanUpdateDownDirection,
-  ],
+  gestures: const [GestureType.onTap, GestureType.onPanUpdateDownDirection],
   child: MaterialApp.router(...),
 )
 ```
 
-### Recommended gesture sets by screen type
+### Recommended gesture sets
 
-| Screen type | Recommended gestures | Reason |
+| Screen | Gestures | Reason |
 |---|---|---|
-| **Login / Register** (scrollable form) | `onTap`, `onPanUpdateDownDirection`, `onPanUpdateUpDirection` | Dismiss on tap outside + scroll in either direction |
-| **Chat / feed** (vertical scroll dominant) | `onTap`, `onPanUpdateDownDirection` | Only dismiss on downward swipe to avoid fighting upward scrolling |
-| **Horizontal pager** | `onTap` only | Pan gestures conflict with horizontal page swipe |
-| **Search** | `onTap`, `onPanUpdateDownDirection` | Standard search-dismiss pattern (pull down to dismiss) |
-| **Global / MaterialApp level** | `onTap`, `onPanUpdateDownDirection` | Conservative default — covers most cases without gesture conflicts |
+| **Login/Register** (scrollable form) | `onTap`, `onPanUpdateDownDirection`, `onPanUpdateUpDirection` | tap outside + scroll either way |
+| **Chat/feed** (vertical scroll) | `onTap`, `onPanUpdateDownDirection` | only downward, avoid fighting upward scroll |
+| **Horizontal pager** | `onTap` only | pan gestures conflict with horizontal page swipe |
+| **Search** | `onTap`, `onPanUpdateDownDirection` | standard pull-down-to-dismiss |
+| **Global / MaterialApp** | `onTap`, `onPanUpdateDownDirection` | conservative default |
 
-### Important interaction notes
-
-- Gestures **absorbed by child widgets** (buttons, text fields, list tiles) do **not** bubble up — tapping a button will not dismiss the keyboard, only taps on inert areas will.
-- Do **not** combine `onPanUpdate*` gestures with `onScaleUpdate` — the `GestureDetector` underneath will throw an assertion.
+### Interaction notes
+- Gestures absorbed by child widgets (buttons, fields, list tiles) **do not** bubble up — tapping a button won't dismiss keyboard, only inert areas will.
+- Do **not** combine `onPanUpdate*` with `onScaleUpdate` — `GestureDetector` underneath will throw an assertion.
 - Do **not** combine `onHorizontalDrag*` with `onVerticalDrag*` simultaneously.
-- On **navigation** (route push/pop), Flutter automatically dismisses the keyboard — `KeyboardDismisser` is not needed for that case.
+- On nav (push/pop), Flutter auto-dismisses keyboard — this widget is for in-screen cases only.
 
 ### Props
 
-| Prop | Type | Default | Purpose |
-|------|------|---------|---------|
-| `gestures` | `List<GestureType>` | `[GestureType.onTap]` | Which gestures trigger dismissal |
-| `behavior` | `HitTestBehavior?` | `null` | Hit test behavior of internal `GestureDetector` |
-| `dragStartBehavior` | `DragStartBehavior` | `.start` | When a drag formally begins |
-| `excludeFromSemantics` | `bool` | `false` | Exclude gesture detector from semantics tree |
-| `child` | `Widget?` | `null` | Wrapped widget |
+| Prop | Type | Default |
+|---|---|---|
+| `gestures` | `List<GestureType>` | `[GestureType.onTap]` |
+| `behavior` | `HitTestBehavior?` | `null` |
+| `dragStartBehavior` | `DragStartBehavior` | `.start` |
+| `excludeFromSemantics` | `bool` | `false` |
+| `child` | `Widget?` | `null` |
 
-### Accessibility
+**Accessibility:** internal `GestureDetector` doesn't affect screen reader nav; `excludeFromSemantics` is `false` by default. Dismissal is a secondary affordance — no accessible label needed.
 
-The `GestureDetector` inside does not affect screen reader navigation — `excludeFromSemantics` is `false` by default so the widget tree remains accessible. The unfocus action itself does not require an accessible label since the keyboard dismissal is a secondary affordance, not a primary action.
+## App Image (`app_image.dart`)
 
----
+Cached network image with loading + error placeholders.
 
-## App Image
+| Prop | Type | Default |
+|---|---|---|
+| `url` | `String` | required |
+| `width` | `double?` | `null` |
+| `height` | `double?` | `null` |
+| `borderRadius` | `double` | `8.0` |
+| `fit` | `BoxFit` | `.cover` |
 
-**File**: `lib/shared/widgets/app_image.dart`
+**States:**
+- **Loading** — `ShimmerLoading` placeholder matching dimensions.
+- **Error** — colored placeholder with `Icons.broken_image`.
+- **Loaded** — cached image, 300 ms fade-in.
 
-Cached network image with loading and error placeholders.
+Backed by `cached_network_image`.
 
-| Prop | Type | Default | Purpose |
-|------|------|---------|---------|
-| `url` | `String` | required | Image URL |
-| `width` | `double?` | `null` | Fixed width |
-| `height` | `double?` | `null` | Fixed height |
-| `borderRadius` | `double` | `8.0` | Corner radius |
-| `fit` | `BoxFit` | `.cover` | Image fit |
+## Shimmer Loading (`shimmer_loading.dart`)
 
-### States
-- **Loading**: `ShimmerLoading` placeholder matching dimensions
-- **Error**: Colored placeholder with `Icons.broken_image`
-- **Loaded**: Cached image with fade-in animation (300ms)
+Skeleton placeholder for not-yet-loaded content.
 
-Backed by `cached_network_image` package.
+| Prop | Type | Default |
+|---|---|---|
+| `width` | `double?` | `double.infinity` |
+| `height` | `double` | `16.0` |
+| `borderRadius` | `double` | `4.0` |
 
----
+Custom impl with `AnimationController` + `ShaderMask` (~30 lines, no package). Base color from `colorScheme.surfaceContainerHighest`.
 
-## Shimmer Loading
+**Predefined skeletons:**
+| Name | Description |
+|---|---|
+| `ShimmerBookCard` | image + 3 text lines |
+| `ShimmerBookGrid` | grid of 6 cards |
+| `ShimmerReaderPage` | 15 text lines of varying widths |
 
-**File**: `lib/shared/widgets/shimmer_loading.dart`
+## Adaptive Layout (`adaptive_layout.dart`)
 
-Skeleton placeholder for content that hasn't loaded yet.
+Responsive wrapper that switches on screen width. Full strategies → `25_RESPONSIVE_LAYOUT_AND_ADAPTIVITY.md`.
 
-| Prop | Type | Default | Purpose |
-|------|------|---------|---------|
-| `width` | `double?` | `double.infinity` | Width |
-| `height` | `double` | `16.0` | Height |
-| `borderRadius` | `double` | `4.0` | Corner radius |
+| Prop | Type | Required |
+|---|---|---|
+| `mobile` | `Widget` | ✓ |
+| `tablet` | `Widget?` | — |
+| `desktop` | `Widget?` | — |
 
-Custom implementation using `AnimationController` + `ShaderMask` (~30 lines, no package). Base color derived from `colorScheme.surfaceContainerHighest`.
+Uses `LayoutBuilder`; falls back to `mobile` if larger breakpoint widget missing.
 
-### Predefined Skeletons
+**Breakpoints:**
+| Name | Range | Use |
+|---|---|---|
+| Compact (Mobile) | < 600dp | single column, full-width cards |
+| Medium (Tablet) | 600–840dp | two-column, side panel, foldables |
+| Expanded (Desktop/iPad) | > 840dp | three-column, expanded nav, large iPads |
 
-| Skeleton | Description |
-|----------|-------------|
-| `ShimmerBookCard` | Book card placeholder (image + 3 text lines) |
-| `ShimmerBookGrid` | Grid of 6 `ShimmerBookCard` items |
-| `ShimmerReaderPage` | 15 text line placeholders of varying widths |
+## Usage rules
 
----
+1. **Never duplicate** — if it exists in `shared/widgets/`, use it.
+2. **Feature-specific widgets** live in the feature's `presentation/widgets/`.
+3. **Promote to shared** when used in 2+ features.
+4. No inline themes — all components read `context.colorScheme`/`textTheme`.
+5. No magic numbers — use `AppDimensions`.
 
-## Adaptive Layout
+## Accessibility per component
 
-**File**: `lib/shared/widgets/adaptive_layout.dart`
+Every shared widget meets (full → `22_ACCESSIBILITY.md`):
 
-Responsive wrapper that switches layout based on screen width. **See [25_RESPONSIVE_LAYOUT_AND_ADAPTIVITY.md](25_RESPONSIVE_LAYOUT_AND_ADAPTIVITY.md) for full implementation strategies for iPads and Foldables.**
+| Requirement | Standard | Applies to |
+|---|---|---|
+| Min tap target 48×48 | Material | all interactive |
+| Contrast 4.5:1 | WCAG AA | text on backgrounds |
+| Semantics label | VoiceOver/TalkBack | custom interactive / decorative images |
+| Font scale tolerance | system settings | all text containers — no fixed heights |
+| Live region | screen readers | connectivity banner, error messages |
 
-| Prop | Type | Required | Purpose |
-|------|------|----------|---------|
-| `mobile` | `Widget` | Yes | Layout for < 600dp |
-| `tablet` | `Widget?` | No | Layout for 600-840dp |
-| `desktop` | `Widget?` | No | Layout for > 840dp |
+### Per-widget checklist
 
-Uses `LayoutBuilder` to determine breakpoints. Falls back to `mobile` if larger breakpoint widget is not provided.
-
-### Breakpoints
-
-| Name | Width Range | Typical Use |
-|------|------------|-------------|
-| Compact (Mobile) | < 600dp | Single column, full-width cards |
-| Medium (Tablet) | 600-840dp | Two-column, side panel, Foldables |
-| Expanded (Desktop/iPad) | > 840dp | Three-column, expanded nav, large iPads |
-
----
-
-## Component Usage Rules
-
-1. **Never duplicate** - if a widget exists in `shared/widgets/`, use it
-2. **Feature-specific widgets** go in the feature's `presentation/widgets/` folder
-3. **Promote to shared** when a widget is used in 2+ features
-4. **No inline themes** - all components read from `context.colorScheme` / `context.textTheme`
-5. **No magic numbers** - use `AppDimensions` for spacing, radius, elevation
-
----
-
-## Accessibility Requirements Per Component
-
-Every shared widget must meet these criteria (see 22_ACCESSIBILITY.md for full guidelines):
-
-| Requirement | Standard | Applies To |
-|-------------|----------|------------|
-| Minimum tap target 48x48 | Material guidelines | All interactive widgets |
-| Color contrast 4.5:1 | WCAG AA | All text on backgrounds |
-| Semantics label | VoiceOver / TalkBack | Custom interactive widgets, decorative images |
-| Font scale tolerance | System settings | All text containers — no fixed heights |
-| Live region | Screen readers | Connectivity banner, error messages |
-
-### Per-Widget Checklist
-
-| Widget | Tap Target | Semantics | Font Scale Safe |
-|--------|-----------|-----------|-----------------|
-| App Loading Page | N/A | `Semantics(label: 'Loading')` on indicator | Yes (flexible layout) |
-| App Error Page | Retry button >=48px | Error message readable by screen reader | Yes |
-| App Scaffold | Back button >=48px (AppBar default) | Automatic via AppBar | Yes |
-| Connectivity Banner | N/A (not dismissible) | `Semantics(liveRegion: true)` | Yes |
-| App Image | N/A (decorative unless tappable) | `ExcludeSemantics` for decorative, `Semantics(label:)` for meaningful | Yes |
-| Shimmer Loading | N/A | `ExcludeSemantics` (placeholder) | Yes |
-| Adaptive Layout | N/A (container) | None needed | Yes |
+| Widget | Tap target | Semantics | Font-scale safe |
+|---|---|---|---|
+| App Loading Page | — | `Semantics(label: 'Loading')` | ✓ |
+| App Error Page | Retry ≥ 48px | error msg readable | ✓ |
+| App Scaffold | back ≥ 48px (AppBar default) | automatic | ✓ |
+| Connectivity Banner | — (not dismissible) | `Semantics(liveRegion: true)` | ✓ |
+| App Image | — (decorative unless tappable) | `ExcludeSemantics` decorative / `Semantics(label:)` meaningful | ✓ |
+| Shimmer Loading | — | `ExcludeSemantics` (placeholder) | ✓ |
+| Adaptive Layout | — (container) | none needed | ✓ |

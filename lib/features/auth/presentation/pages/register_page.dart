@@ -63,6 +63,7 @@ class _RegisterView extends StatelessWidget {
             elevation: 0,
             scrolledUnderElevation: 0,
             forceMaterialTransparency: true,
+            shape: const Border(), // removes iOS hairline on transparent AppBar
           ),
           body: const AdaptiveLayout(
             compact: _CompactRegisterLayout(),

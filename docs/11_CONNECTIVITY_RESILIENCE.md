@@ -1,156 +1,88 @@
-# 11 - Connectivity & Resilience
+# 11 — Connectivity & Resilience
 
-> Offline examples use a sample content domain to show the pattern. Adapt the same resilience rules to your actual feature set.
+> Offline examples use a sample content domain.
 
-## Connectivity Service
+## `ConnectivityService` (`lib/core/connectivity/connectivity_service.dart`)
 
-### Design: Thin Typed Wrapper
+Thin concrete wrapper around `connectivity_plus`. **No abstract interface** — unlikely to be swapped; in tests mock `ConnectivityService` itself via mocktail.
 
-**File**: `lib/core/connectivity/connectivity_service.dart`
+| Member | Returns | Purpose |
+|---|---|---|
+| `isConnected` | `Future<bool>` | one-shot check |
+| `onConnectivityChanged` | `Stream<bool>` | real-time stream |
 
-A single concrete class that wraps `connectivity_plus`. No abstract interface — `connectivity_plus` is unlikely to be swapped out, and in tests you mock `ConnectivityService` itself via `mocktail`.
+- Wraps `connectivity_plus`'s `Connectivity()` singleton.
+- Maps `List<ConnectivityResult>` → `bool`. `ConnectivityResult.none` → `false`; all others → `true`.
+- Debounces rapid flips (500 ms) to avoid banner flicker.
 
-| Method / Property | Returns | Purpose |
-|-------------------|---------|---------|
-| `isConnected` | `Future<bool>` | One-shot connectivity check |
-| `onConnectivityChanged` | `Stream<bool>` | Real-time connectivity stream |
+**Removed:** abstract interface + `ConnectivityAdapter`/`connectivity_adapter.dart` — over-abstraction.
 
-### What It Does
+## `ConnectivityBloc` (`lib/core/connectivity/connectivity_bloc/`)
 
-- Wraps `connectivity_plus` package's `Connectivity()` singleton
-- Maps `List<ConnectivityResult>` to simple `bool` (connected vs not)
-- `ConnectivityResult.none` → `false`; all others → `true`
-- Debounces rapid connectivity flips (500ms) to avoid UI flicker
+**Events:** `ConnectivityStarted` (app init — subscribe), `ConnectivityChanged(bool isConnected)` (from stream).
 
-### What Was Removed
+**States:** `ConnectivityInitial`, `ConnectivityOnline`, `ConnectivityOffline`.
 
-| Removed | Why |
-|---------|-----|
-| Abstract `ConnectivityService` interface + `ConnectivityAdapter` impl | Over-abstraction for a thin wrapper. One concrete class is enough. Mock it directly in tests. |
-| `connectivity_adapter.dart` | Merged into `connectivity_service.dart` |
+**Behavior:**
+1. `ConnectivityStarted` → subscribe to `ConnectivityService.onConnectivityChanged`.
+2. Each emission → emit `ConnectivityOnline` / `ConnectivityOffline`.
+3. Transition offline→online → trigger refresh events on other BLoCs (inter-BLoC comm or event bus).
 
----
+## Connectivity banner (`lib/shared/widgets/connectivity_banner.dart`)
 
-## ConnectivityBloc
-
-**File**: `lib/core/connectivity/connectivity_bloc/`
-
-### Events
-
-| Event | Source |
-|-------|--------|
-| `ConnectivityStarted` | App init - starts listening to stream |
-| `ConnectivityChanged(bool isConnected)` | From connectivity stream |
-
-### States
-
-| State | Meaning |
-|-------|---------|
-| `ConnectivityInitial` | Not yet checked |
-| `ConnectivityOnline` | Device has network |
-| `ConnectivityOffline` | No network detected |
-
-### Behavior
-
-1. On `ConnectivityStarted`: subscribe to `ConnectivityService.onConnectivityChanged`
-2. On each emission: emit `ConnectivityOnline` or `ConnectivityOffline`
-3. On transition to `ConnectivityOnline` after being offline: trigger refresh events on other BLoCs (via inter-BLoC communication or event bus)
-
----
-
-## Connectivity Banner
-
-**File**: `lib/shared/widgets/connectivity_banner.dart`
-
-### Placement
-
-Wrapped around the entire app in `MaterialApp.router`'s `builder`:
-
-```
-MaterialApp.router(
-  builder: (context, child) => ConnectivityBanner(child: child!),
-)
+Wrapped globally in `MaterialApp.router`'s `builder`:
+```dart
+MaterialApp.router(builder: (context, child) => ConnectivityBanner(child: child!))
 ```
 
-### Behavior
+| State | Banner |
+|---|---|
+| Online | hidden (zero height) |
+| Offline | slide-in from top, `colorScheme.error` bg, white text, Wi-Fi off icon, 44px |
+| Reconnected | brief green "Back online", auto-dismiss after 3s |
 
-| Connectivity State | Banner |
-|-------------------|--------|
-| Online | Hidden (zero height) |
-| Offline | Animated slide-in from top, red/orange background |
-| Reconnected | Brief green "Back online" banner, auto-dismiss after 3 seconds |
+**Text:** "No internet connection". **Animation:** `SlideTransition` + `SizeTransition`, 300 ms, `Curves.easeOut`. **Not dismissible** by user while offline.
 
-### Visual Specification
+**Accessibility:** `Semantics(liveRegion: true)` so screen readers announce changes. Sufficient contrast light + dark.
 
-- **Offline banner**: Full-width, 44px height, `colorScheme.error` background, white text, Wi-Fi off icon
-- **Text**: "No internet connection"
-- **Animation**: `SlideTransition` + `SizeTransition`, 300ms duration, `Curves.easeOut`
-- **Dismissal**: Cannot be dismissed by user while offline
-- **Reconnected banner**: Same dimensions, green background, "Back online" text, auto-hides
+## Offline-first strategy
 
-### Accessibility
+| Feature | Offline? | Source |
+|---|---|---|
+| Library (cached) | ✓ | Drift BooksTable |
+| Book detail | ✓ | Drift BooksTable |
+| Reader (cached) | ✓ | Drift ChaptersTable |
+| Reading progress | ✓ | Drift ReadingProgressTable |
+| Bookmarks | ✓ | Drift BookmarksTable |
+| Search | ✗ | offline message |
+| Login | ✗ | offline message |
+| Sync | ✗ | queued until online |
 
-- Banner has `Semantics(liveRegion: true)` so screen readers announce connectivity changes
-- Sufficient contrast ratio on both light and dark themes
+### Stale-while-revalidate
+1. Repo checks local cache first.
+2. Cache exists → return immediately.
+3. Online → fetch fresh in background.
+4. Fresh differs → update cache + emit new state.
+5. Offline + no cache → emit error.
 
----
+### Sync queue (writes while offline)
+1. Save to local Drift immediately.
+2. Append to sync queue table.
+3. On connectivity restore, process in order.
+4. On success, remove from queue.
+5. On conflict → server wins (last-write-wins for progress).
 
-## Offline-First Strategy
+## Retry policies
 
-### Data Availability Matrix
+- **Network request retry** — handled by `RetryInterceptor` → `06_NETWORKING_LAYER.md#retryinterceptor`.
+- **BLoC-level retry** — error states include original event; UI shows "Retry" button; re-dispatches. No auto retry (user-initiated).
 
-| Feature | Offline Capable? | Data Source When Offline |
-|---------|-----------------|------------------------|
-| Library (cached books) | Yes | Drift (BooksTable) |
-| Book Detail (cached) | Yes | Drift (BooksTable) |
-| Reader (cached chapters) | Yes | Drift (ChaptersTable) |
-| Reading Progress | Yes (local save) | Drift (ReadingProgressTable) |
-| Bookmarks | Yes (local save) | Drift (BookmarksTable) |
-| Search | No | Show offline message |
-| Login | No | Show offline message |
-| Sync | No | Queued until online |
+## Graceful degradation
 
-### Stale-While-Revalidate Pattern
-
-1. Repository checks local cache first
-2. If cache exists: return cached data immediately
-3. If online: fetch fresh data in background
-4. If fresh data differs: update cache, emit new state
-5. If offline and no cache: emit error state
-
-### Sync Queue
-
-For write operations (progress, bookmarks) made while offline:
-
-1. Save to local Drift DB immediately
-2. Add to sync queue (a Drift table with pending operations)
-3. When connectivity restored: process queue in order
-4. On success: remove from queue
-5. On conflict: server wins (last-write-wins for progress)
-
----
-
-## Retry Policies
-
-### Network Request Retry
-
-Handled by `RetryInterceptor` in the networking layer → [06_NETWORKING_LAYER.md](06_NETWORKING_LAYER.md#retryinterceptor)
-
-### BLoC-Level Retry
-
-- Error states include the original event for retry
-- UI shows "Retry" button on error pages
-- Retry button re-dispatches the original event
-- No automatic retry at BLoC level (user-initiated only)
-
----
-
-## Graceful Degradation
-
-| Component | When Offline | Behavior |
-|-----------|-------------|----------|
-| Book covers | Cached by `cached_network_image` | Shows cached image or placeholder |
-| Chapter content | Cached in Drift | Shows cached content |
-| Reading progress | Saved locally | Auto-syncs when back online |
-| Theme changes | Local only | Already persisted via SharedPreferences |
-| API calls | Interceptor serves cache | Stale data with "offline" indicator |
+| Component | Offline behavior |
+|---|---|
+| Book covers | `cached_network_image` cached / placeholder |
+| Chapter content | Drift cached |
+| Reading progress | local, auto-sync on reconnect |
+| Theme changes | local (SharedPreferences) |
+| API calls | interceptor serves stale cache with "offline" indicator |

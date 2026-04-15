@@ -1,84 +1,73 @@
-# 24 - Performance & Release Gates
+# 24 — Performance & Release Gates
 
 ## Purpose
 
-Production-ready apps need explicit quality gates for performance, not just correctness. This document adds the missing release-readiness checks that should sit beside testing and CI.
+Production apps need explicit quality gates for performance, not just correctness. This doc adds release-readiness checks beside testing and CI.
 
-## Guiding Principles
+## Principles
 
-- Profile performance in `profile` mode, not `debug` mode.
+- Profile in `profile` mode, not `debug`.
 - Measure representative user flows on real devices before release.
 - Prefer repeatable measurements over ad-hoc manual checks.
 - Fail releases on clear regressions, not subjective impressions.
 
-## Recommended Performance Gates
+## Recommended gates
 
 ### 1. Startup
+- Launches without visible jank on a representative mid-range device.
+- First meaningful screen within team's agreed target.
+- Expensive synchronous work moved out of first frame where possible.
 
-- App launches without visible jank on a representative mid-range device
-- First meaningful screen appears within the team’s agreed target
-- Expensive synchronous work is moved out of first frame where possible
+### 2. Scrolling & animation
+- Primary scroll surfaces stay smooth during normal usage.
+- Animations within frame budget for common transitions.
+- Images/gradients/shadows tested on lower-end hardware.
 
-### 2. Scrolling And Animation
+### 3. Network & data flows
+- Loading states appear quickly and predictably.
+- Offline + slow-network behaviors validated.
+- Large payload parsing measured if done on client.
 
-- Primary scrolling surfaces remain smooth during normal usage
-- Animations stay within frame budget for common transitions
-- Images, gradients, and shadows are tested on lower-end hardware
+### 4. Release verification
+- `flutter analyze` passes.
+- Automated tests pass.
+- Release build succeeds for target platforms.
+- Basic smoke test on a real device before shipping.
 
-### 3. Network And Data Flows
+## How to measure
 
-- Loading states appear quickly and predictably
-- Offline and slow-network behavior are validated
-- Large payload parsing is measured if it happens on the client
+### Manual profiling (early validation / UI-heavy work)
+1. Run in profile mode.
+2. Test on ≥ 1 physical device.
+3. Inspect frame rendering, memory, CPU via DevTools.
 
-### 4. Release Verification
-
-- `flutter analyze` passes
-- automated tests pass
-- release build succeeds for target platforms
-- basic smoke test is run on a real device before shipping
-
-## How To Measure
-
-### Manual Profiling
-
-Use this for early validation and UI-heavy work:
-
-1. Run the app in profile mode.
-2. Test on at least one physical device.
-3. Inspect frame rendering, memory, and CPU activity in DevTools.
-
-### Repeatable Profiling
-
-Use this before larger releases:
-
-1. Create an integration test for a representative user flow.
+### Repeatable profiling (before larger releases)
+1. Create an integration test for a representative flow.
 2. Record a performance timeline.
-3. Save the result and compare it across runs.
+3. Save the result and compare across runs.
 
-## Suggested Release Checklist
+## Release checklist
 
-- analyze passes
-- tests pass
-- build_runner outputs are up to date if code generation is used
-- release builds complete successfully
-- performance smoke checks pass in profile mode
-- crash reporting and analytics configuration are correct for the release environment
-- localization and accessibility regressions have been spot-checked
+- Analyze passes.
+- Tests pass.
+- `build_runner` outputs up to date if codegen is used.
+- Release builds complete successfully.
+- Performance smoke checks pass in profile mode.
+- Crash reporting + analytics configured correctly for release env.
+- Localization + accessibility regressions spot-checked.
 
-## Tooling Recommendations
+## Tooling
 
-- Flutter DevTools for frame, memory, and CPU inspection
-- integration tests for repeatable critical-path profiling
-- GitHub Actions for build/test gates
-- optional artifact upload for benchmark summaries when the project reaches that maturity
+- Flutter DevTools — frame, memory, CPU.
+- Integration tests — repeatable critical-path profiling.
+- GitHub Actions — build/test gates.
+- Optional artifact upload for benchmark summaries at maturity.
 
-## When To Add Hard Gates In CI
+## When to add hard CI gates
 
-Add automated performance gates after:
+Add automated performance gates only after:
+- App has a stable critical path worth benchmarking.
+- ≥ 1 repeatable integration test flow exists.
+- Team agrees on acceptable thresholds.
 
-- the app has a stable critical path worth benchmarking
-- there is at least one repeatable integration test flow
-- the team agrees on acceptable thresholds
-
-Before that point, keep performance review as a release checklist item rather than a blocking CI rule.
+Before that, keep perf review as a release checklist item, not a blocking CI rule.

@@ -1,178 +1,124 @@
-# 12 - Analytics Interface
+# 12 — Analytics Interface
 
-> Event names and payload fields below are examples. Keep the structure, but rename events to match the product you are actually shipping.
+> Event names are pattern examples.
 
-## Design Goals
+## Goals
+1. **Decouple from features** — no feature imports Sentry/Mixpanel/Firebase directly.
+2. **Swap providers via DI only** — no code changes.
+3. **Composite** — fan out to multiple providers.
+4. **Type-safe events** — no raw strings scattered across the codebase.
+5. **NoOp in dev** — zero analytics overhead in debug.
 
-1. **Decouple analytics from features** - no feature code imports Sentry/Mixpanel/Firebase directly
-2. **Swap providers without code changes** - add/remove analytics backends via DI only
-3. **Composite pattern** - fan out events to multiple providers simultaneously
-4. **Type-safe events** - no raw string event names scattered across codebase
-5. **NoOp in development** - zero analytics overhead in debug builds
+## Interface segregation
 
----
+### `EventTracker`
+| Method | Purpose |
+|---|---|
+| `trackEvent(AnalyticsEvent)` | log named event |
+| `trackScreen(String)` | log screen view |
 
-## Interface Segregation
+### `CrashReporter`
+| Method | Purpose |
+|---|---|
+| `recordError(error, stack, {fatal})` | report crash |
+| `recordMessage(msg, {extras})` | breadcrumb |
+| `setContext(key, value)` | context for next crash |
 
-Analytics is split into three focused interfaces:
+### `UserIdentifier`
+| Method | Purpose |
+|---|---|
+| `identifyUser(id, {traits})` | set identity |
+| `resetUser()` | clear on logout |
 
-### EventTracker
-
-| Method | Signature | Purpose |
-|--------|-----------|---------|
-| `trackEvent` | `void trackEvent(AnalyticsEvent event)` | Log a named event with properties |
-| `trackScreen` | `void trackScreen(String screenName)` | Log screen view |
-
-### CrashReporter
-
-| Method | Signature | Purpose |
-|--------|-----------|---------|
-| `recordError` | `void recordError(dynamic error, StackTrace? stack, {bool fatal})` | Report error/crash |
-| `recordMessage` | `void recordMessage(String message, {Map<String, dynamic>? extras})` | Breadcrumb/message |
-| `setContext` | `void setContext(String key, dynamic value)` | Add context for next crash |
-
-### UserIdentifier
-
-| Method | Signature | Purpose |
-|--------|-----------|---------|
-| `identifyUser` | `void identifyUser(String userId, {Map<String, dynamic>? traits})` | Set user identity |
-| `resetUser` | `void resetUser()` | Clear identity on logout |
-
-### AnalyticsService (Combined)
-
-```
+### Combined
+```dart
 abstract class AnalyticsService implements EventTracker, CrashReporter, UserIdentifier {
   Future<void> initialize();
 }
 ```
 
----
+## Event taxonomy
 
-## Event Taxonomy
-
-### AnalyticsEvent Class
-
+### `AnalyticsEvent`
 | Field | Type | Purpose |
-|-------|------|---------|
-| `name` | `String` | Event name (snake_case) |
-| `properties` | `Map<String, dynamic>` | Event parameters |
-| `category` | `EventCategory` | Grouping enum |
+|---|---|---|
+| `name` | `String` | snake_case |
+| `properties` | `Map<String, dynamic>` | params |
+| `category` | `EventCategory` | enum |
 
-### EventCategory Enum
+### `EventCategory`
+`navigation`, `engagement`, `reading`, `settings`, `auth`, `error`, `performance`.
 
-| Category | Examples |
-|----------|---------|
-| `navigation` | Screen views, tab switches |
-| `engagement` | Book opened, chapter read, bookmark added |
-| `reading` | Reading started, reading completed, time spent |
-| `settings` | Theme changed, font size changed, night mode toggled |
-| `auth` | Login, logout, session expired |
-| `error` | API error, parse error, timeout |
-| `performance` | App launch time, page load time |
+### Predefined events
 
-### Predefined Events
-
-| Event Name | Category | Properties |
-|-----------|----------|------------|
+| Name | Category | Properties |
+|---|---|---|
 | `book_opened` | engagement | `book_id`, `source` (library/search/deeplink) |
 | `chapter_read` | reading | `book_id`, `chapter_index`, `time_spent_seconds` |
 | `reading_session_started` | reading | `book_id`, `chapter_index` |
 | `reading_session_ended` | reading | `book_id`, `pages_read`, `duration_seconds` |
-| `bookmark_added` | engagement | `book_id`, `chapter_id` |
-| `bookmark_removed` | engagement | `book_id`, `chapter_id` |
+| `bookmark_added`/`removed` | engagement | `book_id`, `chapter_id` |
 | `search_performed` | engagement | `query`, `results_count` |
 | `theme_changed` | settings | `palette_id`, `mode` |
-| `font_scale_changed` | settings | `scale`, `direction` (increased/decreased) |
+| `font_scale_changed` | settings | `scale`, `direction` |
 | `login_success` | auth | `method` |
 | `login_failure` | auth | `method`, `error_type` |
 | `app_launch` | performance | `cold_start`, `duration_ms` |
 
----
+## Adapters
 
-## Provider Adapters
+Each implements `AnalyticsService` wrapping a specific SDK.
 
-### Adapter Interface
-
-Each adapter implements `AnalyticsService` and wraps a specific SDK:
-
-### SentryAdapter
-
-**File**: `lib/core/analytics/adapters/sentry_adapter.dart`
-
-| AnalyticsService Method | Sentry SDK Mapping |
-|------------------------|--------------------|
+### `SentryAdapter`
+| AnalyticsService | Sentry SDK |
+|---|---|
 | `initialize()` | `Sentry.init()` with DSN |
-| `trackEvent(event)` | `Sentry.addBreadcrumb()` |
-| `trackScreen(name)` | `Sentry.addBreadcrumb(category: 'navigation')` |
-| `recordError(error, stack)` | `Sentry.captureException()` |
-| `recordMessage(msg)` | `Sentry.captureMessage()` |
-| `identifyUser(id)` | `Sentry.configureScope(user:)` |
-| `resetUser()` | `Sentry.configureScope(user: null)` |
+| `trackEvent` | `Sentry.addBreadcrumb()` |
+| `trackScreen` | `Sentry.addBreadcrumb(category: 'navigation')` |
+| `recordError` | `Sentry.captureException()` |
+| `recordMessage` | `Sentry.captureMessage()` |
+| `identifyUser` | `Sentry.configureScope(user:)` |
+| `resetUser` | `Sentry.configureScope(user: null)` |
 
-### MixpanelAdapter
+### `MixpanelAdapter`
+| AnalyticsService | Mixpanel SDK |
+|---|---|
+| `initialize` | `Mixpanel.init(token)` |
+| `trackEvent` | `mixpanel.track(name, properties)` |
+| `trackScreen` | `mixpanel.track('screen_view', {screen: name})` |
+| `recordError` | `mixpanel.track('error', {message})` |
+| `identifyUser` | `mixpanel.identify(id)` |
+| `resetUser` | `mixpanel.reset()` |
 
-**File**: `lib/core/analytics/adapters/mixpanel_adapter.dart`
+### `FirebaseAdapter`
+| AnalyticsService | Firebase SDK |
+|---|---|
+| `initialize` | `Firebase.initializeApp()` |
+| `trackEvent` | `FirebaseAnalytics.logEvent()` |
+| `trackScreen` | `logEvent(name: 'screen_view', parameters: {'screen_name': name})` |
+| `recordError` | `FirebaseCrashlytics.recordError()` |
+| `identifyUser` | `FirebaseAnalytics.setUserId()` |
 
-| AnalyticsService Method | Mixpanel SDK Mapping |
-|------------------------|--------------------|
-| `initialize()` | `Mixpanel.init(token)` |
-| `trackEvent(event)` | `mixpanel.track(event.name, properties)` |
-| `trackScreen(name)` | `mixpanel.track('screen_view', {screen: name})` |
-| `recordError(error)` | `mixpanel.track('error', {message: error})` |
-| `identifyUser(id)` | `mixpanel.identify(id)` |
-| `resetUser()` | `mixpanel.reset()` |
+### `NoOpAdapter`
+All methods empty. Dev + tests.
 
-### FirebaseAdapter
+## `CompositeAnalyticsService` (`composite_analytics.dart`)
 
-**File**: `lib/core/analytics/adapters/firebase_adapter.dart`
+Holds `List<AnalyticsService>`. On every method, iterates and calls each. **Catches adapter exceptions** (one failing doesn't break others). Logs adapter failures via `AppLogger`.
 
-| AnalyticsService Method | Firebase SDK Mapping |
-|------------------------|--------------------|
-| `initialize()` | `Firebase.initializeApp()` |
-| `trackEvent(event)` | `FirebaseAnalytics.logEvent()` |
-| `trackScreen(name)` | `FirebaseAnalytics.logEvent(name: 'screen_view', parameters: {'screen_name': name})` |
-| `recordError(error)` | `FirebaseCrashlytics.recordError()` |
-| `identifyUser(id)` | `FirebaseAnalytics.setUserId()` |
+### DI registration by env
 
-### NoOpAdapter
+| Env | Adapters |
+|---|---|
+| development | `[NoOpAdapter]` |
+| staging | `[SentryAdapter]` |
+| production | `[SentryAdapter, MixpanelAdapter, FirebaseAdapter]` |
 
-**File**: `lib/core/analytics/adapters/noop_adapter.dart`
+## BLoC integration
 
-All methods are empty. Used in development and testing.
+Analytics fired **never from widgets**. Only from:
+1. **BLoC event handlers** — after successful state transitions.
+2. **Route observer** — auto_route's `AutoRouteObserver` for screen tracking.
+3. **Global error handlers** — `FlutterError.onError`, `PlatformDispatcher.onError`.
 
----
-
-## CompositeAnalyticsService
-
-**File**: `lib/core/analytics/composite_analytics.dart`
-
-Wraps multiple adapters and fans out every call:
-
-| Behavior |
-|----------|
-| Holds a `List<AnalyticsService>` |
-| On every method call, iterates and calls each adapter |
-| Catches exceptions from individual adapters (one failing doesn't break others) |
-| Logs adapter failures via `AppLogger` |
-
-### DI Registration by Environment
-
-| Environment | Adapters |
-|-------------|----------|
-| Development | `[NoOpAdapter]` |
-| Staging | `[SentryAdapter]` |
-| Production | `[SentryAdapter, MixpanelAdapter, FirebaseAdapter]` |
-
----
-
-## BLoC Integration
-
-Analytics events are NOT fired from widgets. They are fired from:
-
-1. **BLoC event handlers** - after successful state transitions
-2. **Route observer** - auto_route's `AutoRouteObserver` for screen tracking
-3. **Global error handlers** - `FlutterError.onError`, `PlatformDispatcher.onError`
-
-### Screen Tracking via AutoRouteObserver
-
-Implementation details → [09_NAVIGATION_DEEP_LINKING.md](09_NAVIGATION_DEEP_LINKING.md#screen-tracking-with-autorouteobserver)
+Screen tracking details → `09_NAVIGATION_DEEP_LINKING.md#screen-tracking`.

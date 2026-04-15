@@ -1,76 +1,57 @@
-# 20 - Security
+# 20 — Security
 
-## Secure Token Management
+## Secure token management
 
-### Token Storage
-
+### Token storage
 | Token | Storage | Encryption |
-|-------|---------|------------|
-| Access Token (JWT) | `flutter_secure_storage` | Platform keychain/keystore |
-| Refresh Token | `flutter_secure_storage` | Platform keychain/keystore |
-| Token Expiry | `flutter_secure_storage` | Platform keychain/keystore |
+|---|---|---|
+| Access token (JWT) | `flutter_secure_storage` | platform keychain/keystore |
+| Refresh token | `flutter_secure_storage` | platform keychain/keystore |
+| Token expiry | `flutter_secure_storage` | platform keychain/keystore |
 
-**Never store tokens in**: SharedPreferences, Drift database, plain files, or in-memory only.
+**Never store tokens in:** SharedPreferences, Drift, plain files, or in-memory only.
 
-### TokenProvider Interface
-
-**File**: `lib/core/security/token_provider.dart`
+### `TokenProvider` interface (`lib/core/security/token_provider.dart`)
 
 | Method | Returns | Purpose |
-|--------|---------|---------|
-| `getAccessToken()` | `Future<String?>` | Read current access token |
-| `getRefreshToken()` | `Future<String?>` | Read current refresh token |
-| `saveTokens(access, refresh, expiry)` | `Future<void>` | Store new tokens |
-| `clearTokens()` | `Future<void>` | Remove all tokens (logout) |
-| `hasValidToken()` | `Future<bool>` | Check if token exists and not expired |
-| `isTokenExpired()` | `Future<bool>` | Check expiry without network call |
+|---|---|---|
+| `getAccessToken()` | `Future<String?>` | read current access token |
+| `getRefreshToken()` | `Future<String?>` | read refresh token |
+| `saveTokens(access, refresh, expiry)` | `Future<void>` | store new tokens |
+| `clearTokens()` | `Future<void>` | remove all (logout) |
+| `hasValidToken()` | `Future<bool>` | exists and not expired |
+| `isTokenExpired()` | `Future<bool>` | check expiry without network |
 
-### Token Refresh Flow
+### Refresh flow
 
-Handled by `AuthInterceptor` (`QueuedInterceptorsWrapper`). On a 401 response it calls a DI-provided refresh callback, saves the new token pair via `TokenProvider`, and retries the original request. If the refresh itself fails, tokens are cleared and the error propagates so the UI can redirect to the login screen.
+Handled by `AuthInterceptor` (`QueuedInterceptorsWrapper`). On 401 it calls a DI-provided refresh callback, saves the new pair via `TokenProvider`, and retries. If refresh itself fails, tokens are cleared and the error propagates so the UI can redirect to login.
 
-### Token Lifecycle
+### Lifecycle
+1. **Login** — server returns `access_token`, `refresh_token`, `expires_in`.
+2. **Storage** — both stored in `flutter_secure_storage`.
+3. **Usage** — `AuthInterceptor` attaches access token to every request.
+4. **Expiry** — proactive refresh when token is within 60s of expiry.
+5. **401** — reactive refresh via `AuthInterceptor`.
+6. **Logout** — `clearTokens()` removes all credentials.
 
-1. **Login**: Server returns `access_token`, `refresh_token`, `expires_in`
-2. **Storage**: Both tokens stored in `flutter_secure_storage`
-3. **Usage**: `AuthInterceptor` attaches access token to every request
-4. **Expiry**: Proactive refresh when token is within 60s of expiry
-5. **401**: Reactive refresh via `AuthInterceptor`
-6. **Logout**: `clearTokens()` removes all credentials
-
----
-
-## Platform Security Configuration
+## Platform security
 
 ### iOS
-
 | Setting | Value | Purpose |
-|---------|-------|---------|
-| Keychain accessibility | `kSecAttrAccessibleWhenUnlocked` | Token available only when device unlocked |
-| App Transport Security | Enabled | Enforce HTTPS |
-| Keychain sharing | Disabled | No cross-app access |
+|---|---|---|
+| Keychain accessibility | `kSecAttrAccessibleWhenUnlocked` | only when unlocked |
+| App Transport Security | enabled | enforce HTTPS |
+| Keychain sharing | disabled | no cross-app access |
 
 ### Android
-
 | Setting | Value | Purpose |
-|---------|-------|---------|
-| EncryptedSharedPreferences | AES-256 | Hardware-backed encryption |
-| `android:allowBackup` | `false` | Prevent backup of secure data |
-| `android:usesCleartextTraffic` | `false` | Enforce HTTPS |
-| Network security config | Disable cleartext + configure trust anchors | HTTPS enforcement / trust policy |
+|---|---|---|
+| `EncryptedSharedPreferences` | AES-256 | hardware-backed |
+| `android:allowBackup` | `false` | no secure-data backup |
+| `android:usesCleartextTraffic` | `false` | enforce HTTPS |
+| Network security config | disable cleartext + trust anchors | HTTPS enforcement / trust policy |
 
-#### HTTPS Enforcement (network_security_config.xml)
-
-**File**: `android/app/src/main/res/xml/network_security_config.xml`
-
-This XML example disables cleartext traffic and configures trust anchors via
-`base-config` and `debug-overrides`. It enforces HTTPS and does **not**
-implement certificate or public-key pinning by itself.
-
-The current repository does not yet include this file or the corresponding
-`AndroidManifest.xml` wiring below, so treat this as a target-state Android
-configuration example.
-
+**HTTPS enforcement** (`android/app/src/main/res/xml/network_security_config.xml`) — target-state:
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
@@ -79,7 +60,6 @@ configuration example.
       <certificates src="system" />
     </trust-anchors>
   </base-config>
-  <!-- Debug-only exception for local development -->
   <debug-overrides>
     <trust-anchors>
       <certificates src="user" />
@@ -87,7 +67,6 @@ configuration example.
   </debug-overrides>
 </network-security-config>
 ```
-
 Reference in `AndroidManifest.xml`:
 ```xml
 <application
@@ -96,107 +75,78 @@ Reference in `AndroidManifest.xml`:
   ...>
 ```
 
----
+Disables cleartext + configures trust anchors. **Does NOT** implement cert/pubkey pinning by itself.
 
-## Certificate Pinning (Optional)
+## Certificate pinning (optional)
 
-For high-security requirements, configure Dio with certificate pinning:
-
-### Implementation Approach
+For high-security requirements, pin via Dio.
 
 | Option | When |
-|--------|------|
-| Public key pinning | Most flexible - survives certificate rotation |
-| Certificate pinning | Strictest - must update app on cert renewal |
+|---|---|
+| Public key pinning | most flexible — survives cert rotation |
+| Cert pinning | strictest — must update app on cert renewal |
 
-**Recommendation**: Public key pinning with a backup pin.
+**Recommendation:** public key pinning with a backup pin.
 
-### Configuration
+**Config:** custom `SecurityContext` on `HttpClient`, or Dio's `HttpClientAdapter` to validate server certs. Include 2 pins: current + backup/next.
 
-In `DioHttpClient` / Dio setup:
-- Provide custom `SecurityContext` to `HttpClient`
-- Or use Dio's `HttpClientAdapter` to validate server certificates
-- Include 2 pins: current certificate + backup/next certificate
+**Pin update strategy:** include next cert's pin before rotation. App update required for pin change (use feature flag to disable pinning in emergency).
 
-### Pin Update Strategy
-
-- Include next certificate's pin before rotation
-- App update required for pin change (use feature flag to disable pinning if emergency)
-
----
-
-## API Security Headers
+## API security headers
 
 | Header | Value | Purpose |
-|--------|-------|---------|
-| `Authorization` | `Bearer <token>` | Authentication |
-| `X-App-Version` | `1.0.0+45` | Track client versions |
-| `X-Platform` | `ios` or `android` | Platform identification |
-| `X-Request-ID` | UUID per request | Request tracing |
+|---|---|---|
+| `Authorization` | `Bearer <token>` | auth |
+| `X-App-Version` | `1.0.0+45` | client version tracking |
+| `X-Platform` | `ios`/`android` | platform ID |
+| `X-Request-ID` | UUID/request | tracing |
 
----
-
-## Data at Rest
+## Data at rest
 
 | Data | Storage | Protection |
-|------|---------|-----------|
-| Auth tokens | flutter_secure_storage | Platform encryption |
-| User preferences | SharedPreferences | Not encrypted (non-sensitive) |
-| Cached books | Drift (SQLite) | Not encrypted (public content) |
-| Reading progress | Drift (SQLite) | Not encrypted (low sensitivity) |
-| Bookmarks | Drift (SQLite) | Not encrypted (low sensitivity) |
+|---|---|---|
+| Auth tokens | `flutter_secure_storage` | platform encryption |
+| Preferences | SharedPreferences | none (non-sensitive) |
+| Cached books | Drift | none (public content) |
+| Reading progress | Drift | none (low sensitivity) |
+| Bookmarks | Drift | none (low sensitivity) |
 
-### When to Encrypt Drift DB
+**Encrypt Drift DB?** If app stores private/premium content that must not be extractable:
+- Use `sqlcipher_flutter_libs` instead of `sqlite3_flutter_libs`.
+- Key derived from secure storage.
+- Perf impact ~5–15% on DB ops.
 
-If the app stores private/premium content that must not be extractable:
-- Use `sqlcipher_flutter_libs` instead of `sqlite3_flutter_libs`
-- Encryption key derived from secure storage
-- Performance impact: ~5-15% on DB operations
+**Default:** no DB encryption (content not DRM-protected). Enable if business requires.
 
-**Default**: No DB encryption (content is not DRM-protected). Enable if business requirements change.
+## Input validation
 
----
+| Input | Validation |
+|---|---|
+| Login form | email format, min password length (client-side) |
+| Search query | sanitize special chars, max length |
+| Deep link params | validate format before navigation |
+| API responses | `JsonParser` validates types (→ `07_JSON_PARSING_CODABLE.md`) |
 
-## Input Validation
+## Sensitive data policy
 
-| Input Point | Validation |
-|-------------|-----------|
-| Login form | Email format, password minimum length (client-side) |
-| Search query | Sanitize special characters, max length |
-| Deep link params | Validate format before navigation |
-| API responses | `JsonParser` validates types (see 07_JSON_PARSING_CODABLE.md) |
+**Never log:** tokens (access, refresh), passwords, personal user info, full request bodies with sensitive fields.
 
----
+**Masking:**
+- Authorization header → `Bearer ***` in logs.
+- Email → `m***@example.com` in analytics.
+- User ID — full value OK (not PII alone).
 
-## Sensitive Data Policy
+**Debug builds:**
+- `kDebugMode` controls verbose logging.
+- Debug may show additional developer info.
+- **Never** ship debug to production (enforced by CI `--release`).
 
-### Never Log
-
-- Tokens (access, refresh)
-- Passwords
-- Personal user information
-- Full request bodies with sensitive fields
-
-### Masking
-
-- Authorization header: `Bearer ***` in logs
-- Email: `m***@example.com` in analytics
-- User ID: full value OK (not PII by itself)
-
-### Debug Builds
-
-- `kDebugMode` flag controls verbose logging
-- Debug builds may show additional developer info
-- **Never** ship debug builds to production (enforced by CI `--release` flag)
-
----
-
-## Dependency Security
+## Dependency security
 
 | Practice | Implementation |
-|----------|---------------|
-| Audit dependencies | `flutter pub outdated` in nightly CI |
-| Pin major versions | Caret syntax (`^x.y.z`) in pubspec |
-| Review changelogs | Before major version bumps |
-| Minimize dependencies | Only add packages that justify their weight |
-| No abandoned packages | Check pub.dev scores and last publish date |
+|---|---|
+| Audit deps | `flutter pub outdated` nightly CI |
+| Pin major versions | caret syntax `^x.y.z` in pubspec |
+| Review changelogs | before major bumps |
+| Minimize deps | only packages that justify weight |
+| No abandoned packages | check pub.dev scores + last publish |

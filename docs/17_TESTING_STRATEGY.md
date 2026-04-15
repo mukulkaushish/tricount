@@ -1,307 +1,102 @@
-# 17 - Testing Strategy
+# 17 — Testing Strategy
 
-> This is the recommended testing strategy for the target architecture. Adopt it incrementally as the codebase grows.
+> Recommended strategy. Adopt incrementally.
 
-## Test Pyramid
+## Test pyramid
 
 ```
-        ╱  Integration  ╲        ← Few: full user flows
-       ╱    (E2E)         ╲
-      ╱───────────────────╲
-     ╱   Widget Tests       ╲    ← Medium: pages, components
-    ╱─────────────────────────╲
-   ╱      Unit Tests            ╲ ← Many: BLoCs, UseCases, Repos, Parsing
-  ╱───────────────────────────────╲
+        ╱  Integration (E2E)  ╲    ← few — full user flows
+       ╱                        ╲
+      ╱      Widget Tests         ╲  ← medium — pages, components
+     ╱                              ╲
+    ╱        Unit Tests              ╲  ← many — BLoCs, use cases, repos, parsing
 ```
 
-| Layer | Count Target | Speed | What It Tests |
-|-------|-------------|-------|---------------|
-| Unit | ~70% of tests | < 1s each | BLoCs, Use Cases, Repositories, JsonParser, Extensions |
-| Widget | ~20% of tests | < 3s each | Pages render correctly, user interactions, error/loading states |
-| Integration | ~10% of tests | < 30s each | Full user flows across multiple screens |
+| Layer | Target count | Speed | Covers |
+|---|---|---|---|
+| Unit | ~70% | < 1s each | BLoCs, Use Cases, Repos, JsonParser, Extensions |
+| Widget | ~20% | < 3s each | Page render, interactions, error/loading states |
+| Integration | ~10% | < 30s each | Full flows across screens |
 
----
+## Unit tests
 
-## Unit Tests
+### BLoC tests (`bloc_test`)
 
-### BLoC Tests (using `bloc_test`)
+Every BLoC, every event → state sequence.
 
-**Pattern**: For every BLoC, test every event → state sequence.
-
-| Test Category | What to Verify |
-|---------------|---------------|
-| Initial state | BLoC starts with expected initial state |
+| Category | Verify |
+|---|---|
+| Initial state | starts with expected |
 | Happy path | Event → [Loading, Loaded(data)] |
 | Error path | Event → [Loading, Error(failure)] |
-| Multiple events | Correct state sequence for event chains |
-| Debounce/throttle | Transformer behavior (e.g., search debounce) |
+| Multi-event | correct sequence for event chains |
+| Debounce/throttle | transformer behavior (e.g. search debounce) |
 
-**Mocking**: Mock Use Cases with `mocktail` - no code generation needed.
+**Mocking:** use cases with mocktail — no codegen.
 
-### Use Case Tests
+### Use case tests
+| Category | Verify |
+|---|---|
+| Delegation | calls correct repo method |
+| Return mapping | `Either` passed through correctly |
+| Business logic | any transformation/validation |
 
-| Test Category | What to Verify |
-|---------------|---------------|
-| Delegation | Use case calls correct repository method |
-| Return mapping | `Either` result is passed through correctly |
-| Business logic | Any transformation/validation the use case performs |
-
-### Repository Tests
-
-| Test Category | What to Verify |
-|---------------|---------------|
+### Repository tests
+| Category | Verify |
+|---|---|
 | Remote success | API call → DTO parsed → entity returned as Right |
-| Remote failure | API exception → `AppException` returned as Left |
-| Cache fallback | Remote fails → local cache returned |
-| Cache update | Remote success → local cache updated |
+| Remote failure | exception → `AppException` returned as Left |
+| Cache fallback | remote fails → local cache returned |
+| Cache update | remote success → local cache updated |
 
-**Mocking**: Mock both `RemoteDataSource` and `LocalDataSource`.
+**Mocking:** both `RemoteDataSource` and `LocalDataSource`.
 
-### JsonParser Tests
-
-| Test Category | What to Verify |
-|---------------|---------------|
-| Valid parsing | Correct types extracted from well-formed JSON |
-| Missing required field | `DataMismatchException` thrown with correct `fieldName` |
+### JsonParser tests
+| Category | Verify |
+|---|---|
+| Valid parse | correct types from well-formed JSON |
+| Missing required | `DataMismatchException` with correct `fieldName` |
 | Wrong type | `DataMismatchException` with descriptive message |
-| Null optionals | Returns null without throwing |
-| Type coercion | String "123" → int 123, etc. |
-| Round-trip | `fromJson(toJson(model))` equals original |
+| Null optionals | returns `null` without throwing |
+| Coercion | `"123"` → `int 123`, etc. |
+| Round-trip | `fromJson(toJson(m)) == m` |
 
-### Extension Tests
+### Extension tests
+All custom extensions on `String`, `DateTime`, `BuildContext`, etc.
 
-Test all custom extensions on `String`, `DateTime`, `BuildContext`, etc.
+## Widget tests
 
----
-
-## Widget Tests
-
-### Page Tests
-
-For every page, test:
-
+### Page tests
 | Scenario | Method |
-|----------|--------|
-| Loading state | Pump page with BLoC in `Loading` state → find `AppLoadingPage` |
-| Loaded state | Pump page with BLoC in `Loaded` state → find expected widgets |
-| Error state | Pump page with BLoC in `Error` state → find `AppErrorPage` |
-| Retry | In error state, tap "Try Again" → verify event dispatched to BLoC |
-| User interaction | Tap buttons, enter text → verify BLoC events |
+|---|---|
+| Loading | pump with BLoC Loading → find `AppLoadingPage` |
+| Loaded | pump with BLoC Loaded → find expected widgets |
+| Error | pump with BLoC Error → find `AppErrorPage` |
+| Retry | in error, tap "Try Again" → verify event dispatched |
+| Interaction | tap buttons / enter text → verify BLoC events |
 
-### Component Tests
+### Component tests
+| Test | Verify |
+|---|---|
+| Renders | expected children |
+| Props | different values → different output |
+| Loading | `isLoading` shows spinner |
+| Disabled | `null` callback disables interaction |
+| Theme compliance | uses theme colors (not hardcoded) |
 
-For every shared widget:
+### Test helpers
 
-| Test | What to Verify |
-|------|---------------|
-| Renders correctly | Finds expected child widgets |
-| Props work | Different prop values produce different output |
-| Loading state | `isLoading` shows spinner |
-| Disabled state | `null` callback disables interaction |
-| Theme compliance | Uses theme colors (not hardcoded) |
-
-### Test Helpers
-
-**File**: `test/helpers/pump_app.dart`
-
-A helper that wraps any widget in the required providers:
-
+**`test/helpers/pump_app.dart`** — wraps any widget in required providers:
 ```
 pumpApp(tester, widget)
   → MaterialApp
-    → MultiBlocProvider (with mock BLoCs)
+    → MultiBlocProvider (mock BLoCs)
       → Theme (test theme)
         → widget
 ```
 
-**File**: `test/helpers/mock_generators.dart`
-
-Shared mock factories:
-- `mockEntity()` → returns a representative domain entity with defaults
-- `mockCollection()` → returns a representative list payload
-- `mockException()` → returns an `AppException` subtype
-
----
-
-## Integration Tests
-
-**Directory**: `test/integration/`
-
-### Primary User Flow Test
-
-End-to-end test of the app's most important user journey:
-
-1. App launches
-2. Auth check completes
-3. Home or list screen loads
-4. User opens a detail or editing flow
-5. User performs the core action
-6. App persists or syncs the change
-7. Updated state is visible after navigation or reload
-
-### Offline Flow Test
-
-1. Start with cached data
-2. Simulate offline (`ConnectivityService` returns false)
-3. Verify connectivity banner appears
-4. Navigate to cached book → loads from Drift
-5. Add bookmark → saved locally
-6. Restore connectivity
-7. Verify sync happens
-
----
-
-## Mocking with mocktail
-
-No code generation needed. Declare mock classes inline or in `test/helpers/mock_generators.dart`.
-
-### Fakes vs Mocks
-
-| Approach | When to Use | Benefit |
-|----------|-------------|---------|
-| **Mock** (mocktail `Mock`) | Verifying interactions (was method called? with what args?) | Precise call verification |
-| **Fake** (hand-written impl) | Providing deterministic state for ViewModels/Views | Well-defined inputs, easier to reason about |
-
-**Rule**: Prefer **Fakes** for repositories when testing BLoCs and widgets — they give you predictable state without stubbing every method. Use **Mocks** when you need to verify *that* a method was called (e.g., verifying analytics events fire).
-
+Must include localization delegates for widgets that display localized text:
 ```dart
-// Fake — returns controlled data, no stubbing needed:
-class FakeLibraryRepository implements LibraryRepository {
-  final List<Book> books;
-  FakeLibraryRepository({this.books = const []});
-
-  @override
-  Future<Either<AppException, List<Book>>> getBooks({required int page}) async =>
-    right(books);
-}
-
-// Mock — for verifying interactions:
-class MockAnalyticsService extends Mock implements AnalyticsService {}
-```
-
-### What Gets Mocked
-
-| Layer | How | Mocked For |
-|-------|-----|-----------|
-| Use Cases | `class MockGetBooksUseCase extends Mock implements GetBooksUseCase {}` | BLoC tests |
-| Repositories | `class FakeLibraryRepository implements LibraryRepository {...}` or Mock | Use Case tests, Widget tests |
-| Data Sources | `class MockLibraryRemoteDataSource extends Mock implements LibraryRemoteDataSource {}` | Repository tests |
-| HttpClient | `class MockHttpClient extends Mock implements HttpClient {}` | Data source tests |
-| Services | `class MockConnectivityService extends Mock implements ConnectivityService {}` | Various |
-
-Using `mocktail` for Mocks — no code generation needed. Declare mock/fake classes in `test/helpers/`.
-
----
-
-## LayoutBuilder Testing
-
-For responsive layout testing:
-
-| Test | Screen Size | Verify |
-|------|------------|--------|
-| Mobile layout | 400 x 800 | Single column, full-width cards |
-| Tablet layout | 800 x 1024 | Two-column layout |
-| Desktop layout | 1400 x 900 | Three-column layout |
-
-Use `tester.view.physicalSize` and `tester.view.devicePixelRatio` to set screen dimensions in widget tests. Remember to call `addTearDown(tester.view.reset)` to clean up after the test.
-
----
-
-## Test Fixtures
-
-**Directory**: `test/fixtures/`
-
-JSON files containing sample API responses:
-
-| File | Contents |
-|------|----------|
-| `item_response.json` | Single domain object response |
-| `items_list_response.json` | Paginated list response |
-| `detail_response.json` | Detail payload response |
-| `auth_response.json` | Login response with tokens |
-| `error_response.json` | Standard error response |
-
-Loaded in tests via:
-```dart
-final json = jsonDecode(File('test/fixtures/item_response.json').readAsStringSync());
-```
-
----
-
-## Coverage Target
-
-| Area | Minimum Coverage |
-|------|-----------------|
-| Core (json, network, error) | 90% |
-| Domain (use cases, entities) | 95% |
-| Data (repositories, models) | 85% |
-| Presentation (BLoCs) | 90% |
-| Presentation (widgets) | 70% |
-| Overall | 80% |
-
-Run coverage: `flutter test --coverage && genhtml coverage/lcov.info -o coverage/html`
-
----
-
-## Integration Test Setup
-
-### Package
-
-Add to `pubspec.yaml` dev_dependencies:
-
-```yaml
-dev_dependencies:
-  integration_test:
-    sdk: flutter
-```
-
-### Directory
-
-```
-integration_test/
-├── app_test.dart          # Full user flow tests
-└── helpers/
-    └── test_app.dart      # App bootstrap with test config
-```
-
-### Running
-
-| Platform | Command |
-|----------|---------|
-| Mobile (device/emulator) | `flutter test integration_test/app_test.dart` |
-| Web (Chrome) | `chromedriver --port=4444` then `flutter drive --driver=test_driver/integration_test.dart --target=integration_test/app_test.dart -d chrome` |
-
-### Example
-
-```dart
-import 'package:flutter_test/flutter_test.dart';
-import 'package:integration_test/integration_test.dart';
-
-void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-
-  testWidgets('login flow', (final tester) async {
-    await tester.pumpWidget(const TestApp());
-    await tester.pumpAndSettle();
-
-    // Find login fields
-    await tester.enterText(find.byType(TextField).first, 'test@example.com');
-    await tester.enterText(find.byType(TextField).last, 'Test1234');
-    await tester.tap(find.text('Sign In'));
-    await tester.pumpAndSettle();
-
-    // Verify navigation to home
-    expect(find.text('Home'), findsOneWidget);
-  });
-}
-```
-
-### Widget Test Helpers with Localization
-
-The `pumpApp` helper must include localization delegates for widgets that display localized text:
-
-```dart
-// test/helpers/pump_app.dart
 Future<void> pumpApp(
   WidgetTester tester,
   Widget widget, {
@@ -316,5 +111,142 @@ Future<void> pumpApp(
           : widget,
     ),
   );
+}
+```
+
+**`test/helpers/mock_generators.dart`** — `mockEntity()`, `mockCollection()`, `mockException()`.
+
+## Integration tests
+
+**Directory:** `test/integration/`.
+
+### Primary user flow
+1. Launch.
+2. Auth check completes.
+3. Home/list loads.
+4. Open detail/editing flow.
+5. Perform core action.
+6. Persist or sync.
+7. Updated state visible after navigation/reload.
+
+### Offline flow
+1. Start with cached data.
+2. Simulate offline (`ConnectivityService` returns false).
+3. Banner appears.
+4. Navigate to cached book → loads from Drift.
+5. Add bookmark → saved locally.
+6. Restore connectivity → verify sync.
+
+## Mocking with mocktail
+
+No codegen. Declare inline or in `test/helpers/mock_generators.dart`.
+
+### Fakes vs mocks
+| Approach | When | Benefit |
+|---|---|---|
+| **Mock** (mocktail `Mock`) | verify interactions (called? with what args?) | precise call verification |
+| **Fake** (hand-written impl) | deterministic state for ViewModels/Views | predictable, easier to reason about |
+
+**Rule:** prefer **Fakes** for repositories when testing BLoCs/widgets — predictable state without stubbing every method. Use **Mocks** to verify method calls (e.g., analytics events fire).
+
+```dart
+class FakeLibraryRepository implements LibraryRepository {
+  final List<Book> books;
+  FakeLibraryRepository({this.books = const []});
+
+  @override
+  Future<Either<AppException, List<Book>>> getBooks({required int page}) async =>
+    right(books);
+}
+
+class MockAnalyticsService extends Mock implements AnalyticsService {}
+```
+
+### What gets mocked
+| Layer | How | Mocked for |
+|---|---|---|
+| Use Cases | `MockGetBooksUseCase extends Mock implements GetBooksUseCase` | BLoC tests |
+| Repositories | Fake or Mock | Use case + widget tests |
+| Data Sources | `MockLibraryRemoteDataSource ...` | Repository tests |
+| HttpClient | `MockHttpClient extends Mock implements HttpClient` | Data source tests |
+| Services | `MockConnectivityService ...` | various |
+
+## LayoutBuilder testing
+
+Responsive layouts:
+
+| Test | Size | Verify |
+|---|---|---|
+| Mobile | 400×800 | single column, full-width cards |
+| Tablet | 800×1024 | two-column |
+| Desktop | 1400×900 | three-column |
+
+Use `tester.view.physicalSize` + `devicePixelRatio` to set dimensions. **Must** call `addTearDown(tester.view.reset)` to clean up.
+
+## Test fixtures
+
+**Directory:** `test/fixtures/` — JSON sample API responses.
+
+| File | Contents |
+|---|---|
+| `item_response.json` | single domain object |
+| `items_list_response.json` | paginated list |
+| `detail_response.json` | detail payload |
+| `auth_response.json` | login response with tokens |
+| `error_response.json` | standard error |
+
+```dart
+final json = jsonDecode(File('test/fixtures/item_response.json').readAsStringSync());
+```
+
+## Coverage target
+
+| Area | Min coverage |
+|---|---|
+| Core (json, network, error) | 90% |
+| Domain (use cases, entities) | 95% |
+| Data (repos, models) | 85% |
+| Presentation (BLoCs) | 90% |
+| Presentation (widgets) | 70% |
+| Overall | 80% |
+
+`flutter test --coverage && genhtml coverage/lcov.info -o coverage/html`.
+
+## Integration test setup
+
+**Package:**
+```yaml
+dev_dependencies:
+  integration_test:
+    sdk: flutter
+```
+
+**Directory:**
+```
+integration_test/
+├── app_test.dart
+└── helpers/test_app.dart
+```
+
+**Running:**
+| Platform | Command |
+|---|---|
+| Mobile | `flutter test integration_test/app_test.dart` |
+| Web | `chromedriver --port=4444` then `flutter drive --driver=test_driver/integration_test.dart --target=integration_test/app_test.dart -d chrome` |
+
+**Example:**
+```dart
+void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('login flow', (final tester) async {
+    await tester.pumpWidget(const TestApp());
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'test@example.com');
+    await tester.enterText(find.byType(TextField).last, 'Test1234');
+    await tester.tap(find.text('Sign In'));
+    await tester.pumpAndSettle();
+    expect(find.text('Home'), findsOneWidget);
+  });
 }
 ```

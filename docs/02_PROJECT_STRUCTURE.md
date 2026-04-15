@@ -1,360 +1,90 @@
-# 02 - Project Structure
+# 02 — Project Structure
 
-> The directory tree below uses illustrative feature and entity names. Adapt the structure to your product domain rather than copying the sample names literally.
+> Feature names below are illustrative. Adapt to your domain.
 
-## Barrel File Convention
+## Barrel convention
 
-Every folder that contains **3 or more** public Dart files must have a barrel file. Barrel files:
-
-- Are named after the folder (e.g., `core/extensions/extensions.dart`)
-- Export all public files in that folder
-- Are the **only** file imported by other modules (never import individual files across module boundaries)
-- **Do NOT** re-export third-party packages
-- **Do NOT** re-export generated files (`*.g.dart`, `*.gr.dart`)
-
-### Why Barrel Files
-
-1. **Single import per module**: `import 'package:<app_package>/core/core.dart';` instead of 5 separate imports
-2. **Controlled public API**: Only what's exported in the barrel is public
-3. **Refactoring safety**: Move/rename internal files without breaking imports across modules
-4. **Enforced by lint**: `always_use_package_imports` + barrel convention = clean dependency graph
-
-### Barrel File Rules
+Folder with **≥ 3 public Dart files** needs `<folder>.dart`. Rules:
 
 | Rule | Detail |
-|------|--------|
-| One barrel per folder with 3+ public files | Named `<folder_name>.dart` |
-| Top-level module barrel aggregates sub-barrels | `core/core.dart` exports `extensions/extensions.dart`, `network/network.dart`, etc. |
-| Feature barrels export only the public surface | Domain entities + repository interfaces, NOT implementation details |
-| Never import a file that lives behind another barrel directly | Always go through the barrel |
-| Barrel files contain ONLY `export` statements | No classes, no functions, no logic |
+|---|---|
+| Named after folder | `core/extensions/extensions.dart` |
+| Exports only | no classes, no functions, no logic |
+| Only barrel crosses module boundaries | never import leaf files from other modules |
+| Do NOT re-export third-party packages | |
+| Do NOT export generated files | `*.g.dart`, `*.gr.dart` |
+| Top-level barrel aggregates sub-barrels | `core/core.dart` exports `extensions/extensions.dart`, etc. |
+| Feature barrels export only public surface | domain + presentation — NOT `data/` |
+| Within same module | direct imports OK |
 
-## Placement Rule Of Thumb
+**Why:** one import per module; controlled public API; refactor-safe; lint-enforced (`always_use_package_imports`).
 
-- `core/` = cross-cutting infrastructure and technical contracts
-- `shared/` = reusable presentation-only widgets and UI helpers
-- `features/` = feature-specific `data/`, `domain/`, and `presentation/`
+## Placement
 
-Do not use `shared/` as a catch-all for networking, repository, or domain
-types.
+- `core/` — cross-cutting infra, technical contracts
+- `shared/` — reusable presentation-only widgets / UI helpers
+- `features/` — feature `data/`/`domain/`/`presentation/`
 
----
+`shared/` is **not** a catch-all for networking, repos, or domain types.
 
-## Complete Directory Tree
-
-> Barrel files marked with `# BARREL` annotation.
+## Directory tree
 
 ```
 lib/
-├── main.dart                              # Entry point (minimal - calls bootstrap)
-├── app.dart                               # MaterialApp.router with theme & connectivity
-├── bootstrap.dart                         # DI initialization, environment setup
+├── main.dart                 # minimal; calls bootstrap
+├── app.dart                  # MaterialApp.router + theme + connectivity
+├── bootstrap.dart            # DI init, env setup
 │
 ├── core/
-│   ├── core.dart                          # BARREL - exports all core sub-modules
-│   │
-│   ├── constants/
-│   │   ├── constants.dart                 # BARREL
-│   │   ├── api_constants.dart             # Base URLs, endpoints, timeouts
-│   │   ├── app_constants.dart             # App-wide magic numbers, durations
-│   │   ├── storage_keys.dart              # Keys for secure storage & prefs
-│   │   └── asset_paths.dart               # Asset path constants
-│   │
-│   ├── di/
-│   │   ├── di.dart                        # BARREL
-│   │   ├── injection_container.dart       # GetIt setup - registers all dependencies
-│   │   ├── network_module.dart            # Dio, interceptors, HttpClient → DioHttpClient
-│   │   ├── storage_module.dart            # Drift DB, secure storage registration
-│   │   ├── analytics_module.dart          # Analytics service registration
-│   │   └── feature_module.dart            # Feature-level repos, usecases, blocs
-│   │
-│   ├── error/
-│   │   ├── error.dart                     # BARREL
-│   │   └── app_exception.dart             # Sealed class - single error type for Either returns
-│   │
-│   ├── extensions/
-│   │   ├── extensions.dart                # BARREL
-│   │   ├── build_context_extensions.dart  # context.colorScheme, context.textTheme, context.appColors
-│   │   ├── string_extensions.dart         # capitalize, toBookId, truncate
-│   │   ├── datetime_extensions.dart       # toReadableDate, timeAgo
-│   │   ├── num_extensions.dart            # toDuration, toFileSize
-│   │   └── iterable_extensions.dart       # separatedBy, groupBy
-│   │   # Start with only the extensions that remove repeated friction.
-│   │   # Add more only after the same pattern appears in multiple places.
-│   │
-│   │
-│   ├── logging/
-│   │   ├── logging.dart                   # BARREL
-│   │   ├── app_logger.dart                # AppLogger interface
-│   │   ├── pretty_app_logger.dart         # Dev impl: colorful console output
-│   │   ├── production_app_logger.dart     # Prod impl: structured + CrashReporter
-│   │   └── log_level.dart                 # Enum: verbose, debug, info, warn, error
-│   │
-│   ├── network/
-│   │   ├── network.dart                   # BARREL
-│   │   ├── empty_response.dart            # Const sentinel for type-safe no-body responses
-│   │   ├── http_client.dart               # Abstract interface: request<T>, requestList<T>, requestEmpty
-│   │   ├── dio_http_client.dart           # Dio implementation of HttpClient
-│   │   ├── json_parser.dart               # JsonParser mixin (type-safe HTTP response parsing)
-│   │   ├── request_method.dart            # RequestMethod enum + extension
-│   │   └── interceptors/
-│   │       ├── interceptors.dart          # BARREL
-│   │       ├── auth_interceptor.dart      # QueuedInterceptorsWrapper: token + 401 handling
-│   │       ├── retry_interceptor.dart     # Exponential backoff retry
-│   │       └── cache_interceptor.dart     # ETag / last-modified caching
-│   │       # No logging_interceptor.dart — uses Dio's built-in LogInterceptor
-│   │
-│   ├── analytics/
-│   │   ├── analytics.dart                 # BARREL
-│   │   ├── analytics_service.dart         # Abstract: EventTracker, CrashReporter, UserIdentifier
-│   │   ├── analytics_event.dart           # Typed event definitions
-│   │   ├── composite_analytics.dart       # Fans out to multiple providers
-│   │   └── adapters/
-│   │       ├── adapters.dart              # BARREL
-│   │       ├── sentry_adapter.dart        # Sentry implementation
-│   │       ├── mixpanel_adapter.dart      # Mixpanel implementation
-│   │       ├── firebase_adapter.dart      # Firebase Analytics implementation
-│   │       └── noop_adapter.dart          # No-op for testing/debug
-│   │
-│   ├── connectivity/
-│   │   ├── connectivity.dart              # BARREL
-│   │   ├── connectivity_service.dart      # Concrete wrapper around connectivity_plus
-│   │   └── connectivity_bloc/
-│   │       ├── connectivity_bloc.dart     # Global connectivity BLoC (also barrel - exports event/state)
-│   │       ├── connectivity_event.dart
-│   │       └── connectivity_state.dart
-│   │
-│   ├── security/
-│   │   ├── security.dart                  # BARREL
-│   │   ├── secure_store.dart              # Abstract secure storage interface
-│   │   ├── secure_storage_adapter.dart    # flutter_secure_storage implementation
-│   │   └── token_provider.dart            # Token read/write/refresh interface
-│   │
-│   ├── storage/
-│   │   ├── storage.dart                   # BARREL
-│   │   ├── drift/
-│   │   │   ├── drift.dart                 # BARREL
-│   │   │   ├── app_database.dart          # Drift database definition
-│   │   │   ├── app_database.g.dart        # Generated Drift code
-│   │   │   ├── tables/
-│   │   │   │   ├── tables.dart            # BARREL
-│   │   │   │   ├── books_table.dart
-│   │   │   │   ├── chapters_table.dart
-│   │   │   │   ├── bookmarks_table.dart
-│   │   │   │   └── reading_progress_table.dart
-│   │   │   └── daos/
-│   │   │       ├── daos.dart              # BARREL
-│   │   │       ├── book_dao.dart
-│   │   │       └── reading_dao.dart
-│   │   └── cache/
-│   │       └── cache_manager.dart         # TTL-based cache logic
-│   │
-│   └── theme/
-│       ├── theme.dart                     # BARREL
-│       ├── app_theme.dart                 # ThemeData factory from AppColorPalette
-│       ├── app_color_palette.dart         # Color palette value object
-│       ├── app_colors.dart                # All palettes (blue, violet, red, orange, pink)
-│       ├── app_text_styles.dart           # Centralized typography definitions
-│       ├── app_dimensions.dart            # Spacing, radius, elevation constants
-│       ├── theme_bloc/
-│       │   ├── theme_bloc.dart            # Manages theme mode + palette + font scale (also barrel)
-│       │   ├── theme_event.dart
-│       │   └── theme_state.dart
-│       └── theme_extensions.dart          # BuildContext extensions for theme access
+│   ├── core.dart                               # BARREL
+│   ├── constants/ (BARREL)  api_constants.dart, app_constants.dart, storage_keys.dart, asset_paths.dart
+│   ├── di/       (BARREL)   injection_container.dart, network_module.dart, storage_module.dart, analytics_module.dart, feature_module.dart
+│   ├── error/    (BARREL)   app_exception.dart          # sealed, the single error type for Either
+│   ├── extensions/ (BARREL) build_context_extensions.dart, string_extensions.dart, datetime_extensions.dart, num_extensions.dart, iterable_extensions.dart
+│   │                        # start only with extensions that remove repeated friction; add more once pain repeats
+│   ├── logging/  (BARREL)   app_logger.dart (iface), pretty_app_logger.dart, production_app_logger.dart, log_level.dart
+│   ├── network/  (BARREL)   empty_response.dart, http_client.dart (iface), dio_http_client.dart, json_parser.dart, request_method.dart
+│   │   └── interceptors/ (BARREL) auth_interceptor.dart, retry_interceptor.dart, cache_interceptor.dart
+│   │                              # NO logging_interceptor — use Dio's built-in LogInterceptor
+│   ├── analytics/ (BARREL)  analytics_service.dart (iface), analytics_event.dart, composite_analytics.dart
+│   │   └── adapters/ (BARREL) sentry_adapter.dart, mixpanel_adapter.dart, firebase_adapter.dart, noop_adapter.dart
+│   ├── connectivity/ (BARREL) connectivity_service.dart  (concrete wrapper around connectivity_plus)
+│   │   └── connectivity_bloc/ connectivity_bloc.dart (also barrel), _event.dart, _state.dart
+│   ├── security/ (BARREL)   secure_store.dart (iface), secure_storage_adapter.dart, token_provider.dart
+│   ├── storage/  (BARREL)
+│   │   ├── drift/ (BARREL) app_database.dart, app_database.g.dart,
+│   │   │   ├── tables/ (BARREL) books_table.dart, chapters_table.dart, bookmarks_table.dart, reading_progress_table.dart
+│   │   │   └── daos/   (BARREL) book_dao.dart, reading_dao.dart
+│   │   └── cache/ cache_manager.dart  # TTL cache
+│   └── theme/ (BARREL) app_theme.dart, app_color_palette.dart, app_colors.dart, app_text_styles.dart, app_dimensions.dart, theme_extensions.dart
+│       └── theme_bloc/ theme_bloc.dart (also barrel), _event.dart, _state.dart
 │
 ├── features/
-│   ├── auth/
-│   │   ├── auth.dart                      # BARREL - exports public surface only
-│   │   ├── data/
-│   │   │   ├── data.dart                  # BARREL
-│   │   │   ├── datasources/
-│   │   │   │   └── auth_remote_datasource.dart
-│   │   │   ├── models/
-│   │   │   │   ├── models.dart            # BARREL
-│   │   │   │   ├── auth_token_model.dart
-│   │   │   │   └── user_model.dart
-│   │   │   └── repositories/
-│   │   │       └── auth_repository_impl.dart
-│   │   ├── domain/
-│   │   │   ├── domain.dart                # BARREL
-│   │   │   ├── entities/
-│   │   │   │   ├── entities.dart          # BARREL
-│   │   │   │   ├── auth_token.dart
-│   │   │   │   └── user.dart
-│   │   │   ├── repositories/
-│   │   │   │   └── auth_repository.dart
-│   │   │   └── usecases/
-│   │   │       ├── usecases.dart          # BARREL
-│   │   │       ├── login_usecase.dart
-│   │   │       ├── logout_usecase.dart
-│   │   │       └── refresh_token_usecase.dart
-│   │   └── presentation/
-│   │       ├── presentation.dart          # BARREL
-│   │       ├── bloc/
-│   │       │   ├── auth_bloc.dart         # Also barrel - exports event/state
-│   │       │   ├── auth_event.dart
-│   │       │   └── auth_state.dart
-│   │       ├── pages/
-│   │       │   ├── pages.dart             # BARREL
-│   │       │   ├── login_page.dart
-│   │       │   └── splash_page.dart
-│   │       └── widgets/
-│   │           └── auth_form.dart
-│   │
-│   ├── library/
-│   │   ├── library.dart                   # BARREL
-│   │   ├── data/
-│   │   │   ├── data.dart                  # BARREL
-│   │   │   ├── datasources/
-│   │   │   │   ├── library_remote_datasource.dart
-│   │   │   │   └── library_local_datasource.dart
-│   │   │   ├── models/
-│   │   │   │   ├── models.dart            # BARREL
-│   │   │   │   ├── book_model.dart
-│   │   │   │   └── category_model.dart
-│   │   │   └── repositories/
-│   │   │       └── library_repository_impl.dart
-│   │   ├── domain/
-│   │   │   ├── domain.dart                # BARREL
-│   │   │   ├── entities/
-│   │   │   │   ├── entities.dart          # BARREL
-│   │   │   │   ├── book.dart
-│   │   │   │   └── category.dart
-│   │   │   ├── repositories/
-│   │   │   │   └── library_repository.dart
-│   │   │   └── usecases/
-│   │   │       ├── usecases.dart          # BARREL
-│   │   │       ├── get_books_usecase.dart
-│   │   │       ├── get_book_detail_usecase.dart
-│   │   │       └── search_books_usecase.dart
-│   │   └── presentation/
-│   │       ├── presentation.dart          # BARREL
-│   │       ├── bloc/
-│   │       │   ├── library_bloc.dart      # Also barrel
-│   │       │   ├── library_event.dart
-│   │       │   └── library_state.dart
-│   │       ├── pages/
-│   │       │   ├── pages.dart             # BARREL
-│   │       │   ├── library_page.dart
-│   │       │   └── book_detail_page.dart
-│   │       └── widgets/
-│   │           ├── widgets.dart           # BARREL
-│   │           ├── book_card.dart
-│   │           ├── book_grid.dart
-│   │           └── search_bar.dart
-│   │
-│   ├── reader/
-│   │   ├── reader.dart                    # BARREL
-│   │   ├── data/
-│   │   │   ├── data.dart                  # BARREL
-│   │   │   ├── datasources/
-│   │   │   │   ├── content_remote_datasource.dart
-│   │   │   │   └── content_local_datasource.dart
-│   │   │   ├── models/
-│   │   │   │   ├── models.dart            # BARREL
-│   │   │   │   ├── chapter_model.dart
-│   │   │   │   ├── reading_progress_model.dart
-│   │   │   │   └── bookmark_model.dart
-│   │   │   └── repositories/
-│   │   │       └── reader_repository_impl.dart
-│   │   ├── domain/
-│   │   │   ├── domain.dart                # BARREL
-│   │   │   ├── entities/
-│   │   │   │   ├── entities.dart          # BARREL
-│   │   │   │   ├── chapter.dart
-│   │   │   │   ├── reading_progress.dart
-│   │   │   │   └── bookmark.dart
-│   │   │   ├── repositories/
-│   │   │   │   └── reader_repository.dart
-│   │   │   └── usecases/
-│   │   │       ├── usecases.dart          # BARREL
-│   │   │       ├── get_chapter_content_usecase.dart
-│   │   │       ├── save_reading_progress_usecase.dart
-│   │   │       ├── toggle_bookmark_usecase.dart
-│   │   │       └── sync_progress_usecase.dart
-│   │   └── presentation/
-│   │       ├── presentation.dart          # BARREL
-│   │       ├── bloc/
-│   │       │   ├── reader_bloc.dart       # Also barrel
-│   │       │   ├── reader_event.dart
-│   │       │   └── reader_state.dart
-│   │       ├── pages/
-│   │       │   └── reader_page.dart
-│   │       └── widgets/
-│   │           ├── widgets.dart           # BARREL
-│   │           ├── reader_content.dart
-│   │           ├── reader_controls.dart
-│   │           ├── chapter_navigation.dart
-│   │           └── bookmark_button.dart
-│   │
-│   └── settings/
-│       ├── settings.dart                  # BARREL
-│       ├── data/
-│       │   ├── data.dart                  # BARREL
-│       │   ├── models/
-│       │   │   └── user_preferences_model.dart
-│       │   └── repositories/
-│       │       └── settings_repository_impl.dart
-│       ├── domain/
-│       │   ├── domain.dart                # BARREL
-│       │   ├── entities/
-│       │   │   └── user_preferences.dart
-│       │   ├── repositories/
-│       │   │   └── settings_repository.dart
-│       │   └── usecases/
-│       │       ├── usecases.dart          # BARREL
-│       │       ├── get_preferences_usecase.dart
-│       │       ├── update_theme_usecase.dart
-│       │       └── update_font_size_usecase.dart
-│       └── presentation/
-│           ├── presentation.dart          # BARREL
-│           ├── cubit/
-│           │   ├── settings_cubit.dart    # Also barrel - exports state
-│           │   └── settings_state.dart    # Cubit has no events (direct methods)
-│           ├── pages/
-│           │   └── settings_page.dart
-│           └── widgets/
-│               ├── widgets.dart           # BARREL
-│               ├── theme_picker.dart
-│               ├── font_size_slider.dart
-│               └── night_mode_toggle.dart
+│   ├── auth/    auth.dart (BARREL — exports domain + presentation only)
+│   │   ├── data/    (BARREL) datasources/auth_remote_datasource.dart, models/ (BARREL), repositories/auth_repository_impl.dart
+│   │   ├── domain/  (BARREL) entities/ (BARREL), repositories/auth_repository.dart, usecases/ (BARREL) login/logout/refresh
+│   │   └── presentation/ (BARREL) bloc/auth_bloc.dart (+ _event + _state), pages/ (BARREL), widgets/
+│   ├── library/ …same layout… (models: book, category; usecases: get_books, get_book_detail, search_books)
+│   ├── reader/  …(models: chapter, reading_progress, bookmark; usecases: get_chapter_content, save_reading_progress, toggle_bookmark, sync_progress)
+│   └── settings/ …(cubit instead of bloc — direct methods, no events; usecases: get/update prefs/theme/font)
 │
-├── shared/                                # Reusable presentation-only building blocks
-│   ├── shared.dart                        # BARREL
-│   ├── widgets/
-│   │   ├── widgets.dart                   # BARREL
-│   │   ├── app_loading_page.dart
-│   │   ├── app_error_page.dart
-│   │   ├── app_scaffold.dart
-│   │   ├── connectivity_banner.dart
-│   │   ├── app_image.dart                 # Behavioral: cached loading + shimmer + error states
-│   │   ├── shimmer_loading.dart           # Custom, no package
-│   │   └── adaptive_layout.dart           # Optional: add only if breakpoints repeat enough to justify it
-│   └── mixins/
-│       ├── mixins.dart                    # BARREL
-│       └── safe_state_mixin.dart
+├── shared/ (BARREL)  # reusable presentation-only
+│   ├── widgets/ (BARREL) app_loading_page.dart, app_error_page.dart, app_scaffold.dart, connectivity_banner.dart,
+│   │                     app_image.dart (cached + shimmer + error), shimmer_loading.dart,
+│   │                     adaptive_layout.dart  (optional; add only when breakpoints repeat)
+│   └── mixins/ (BARREL) safe_state_mixin.dart
 │
-└── router/
-    ├── router.dart                        # BARREL
-    ├── app_router.dart                    # @AutoRouterConfig annotated router
-    ├── app_router.gr.dart                 # Generated route code (NOT in barrel)
-    └── guards/
-        ├── guards.dart                    # BARREL
-        ├── auth_guard.dart
-        └── connectivity_guard.dart
+└── router/ (BARREL) app_router.dart, app_router.gr.dart (NOT in barrel)
+    └── guards/ (BARREL) auth_guard.dart, connectivity_guard.dart
 ```
 
----
+## Barrel examples
 
-## Barrel File Examples
-
-### Top-level core barrel: `lib/core/core.dart`
-
+**`core/core.dart`:**
 ```dart
 export 'constants/constants.dart';
 export 'error/error.dart';
 export 'extensions/extensions.dart';
-
 export 'logging/logging.dart';
 export 'network/network.dart';
 export 'analytics/analytics.dart';
@@ -364,8 +94,7 @@ export 'storage/storage.dart';
 export 'theme/theme.dart';
 ```
 
-### Sub-module barrel: `lib/core/network/network.dart`
-
+**`core/network/network.dart`:**
 ```dart
 export 'empty_response.dart';
 export 'http_client.dart';
@@ -374,122 +103,55 @@ export 'request_method.dart';
 export 'interceptors/interceptors.dart';
 ```
 
-### Feature barrel: `lib/features/library/library.dart`
-
+**`features/library/library.dart`:**
 ```dart
-// Only export the public surface - what other modules need
 export 'domain/domain.dart';
 export 'presentation/presentation.dart';
-// data/ is NOT exported - it's an implementation detail
+// data/ NOT exported — implementation detail
 ```
 
-### Import usage across the codebase
-
+**Usage:**
 ```dart
-// WRONG - importing individual files across modules:
-import 'package:<app_package>/core/network/http_client.dart';
-import 'package:<app_package>/core/error/app_exception.dart';
-import 'package:<app_package>/core/extensions/string_extensions.dart';
-
-// RIGHT - import through barrel:
-import 'package:<app_package>/core/core.dart';
+// ❌  import 'package:<app>/core/network/http_client.dart';
+// ✅  import 'package:<app>/core/core.dart';
 ```
 
----
-
-## Test Directory Structure
+## Test layout
 
 ```
 test/
 ├── core/
-│   ├── json/
-│   │   └── json_parser_test.dart
-│   ├── network/
-│   │   ├── dio_http_client_test.dart
-│   │   └── interceptors/
-│   │       ├── auth_interceptor_test.dart
-│   │       ├── retry_interceptor_test.dart
-│   │       └── cache_interceptor_test.dart
-│   ├── theme/
-│   │   └── theme_bloc_test.dart
-│   └── extensions/
-│       └── string_extensions_test.dart
-│
-├── features/
-│   ├── auth/
-│   │   ├── data/
-│   │   │   └── auth_repository_impl_test.dart
-│   │   ├── domain/
-│   │   │   └── login_usecase_test.dart
-│   │   └── presentation/
-│   │       └── auth_bloc_test.dart
-│   ├── library/
-│   │   ├── data/
-│   │   │   └── library_repository_impl_test.dart
-│   │   ├── domain/
-│   │   │   └── get_books_usecase_test.dart
-│   │   └── presentation/
-│   │       └── library_bloc_test.dart
-│   ├── reader/
-│   │   ├── data/
-│   │   │   └── reader_repository_impl_test.dart
-│   │   ├── domain/
-│   │   │   └── get_chapter_content_usecase_test.dart
-│   │   └── presentation/
-│   │       └── reader_bloc_test.dart
-│   └── settings/
-│       └── presentation/
-│           └── settings_cubit_test.dart
-│
-├── shared/
-│   └── widgets/
-│       ├── app_loading_page_test.dart
-│       ├── app_error_page_test.dart
-│       ├── app_image_test.dart
-│       └── connectivity_banner_test.dart
-│
-├── fixtures/
-│   ├── book_response.json
-│   ├── chapter_response.json
-│   └── auth_response.json
-│
-├── helpers/
-│   ├── test_helpers.dart
-│   ├── pump_app.dart
-│   └── mock_generators.dart
-│
-└── integration/
-    └── reading_flow_test.dart
+│   ├── json/json_parser_test.dart
+│   ├── network/dio_http_client_test.dart + interceptors/*_test.dart
+│   ├── theme/theme_bloc_test.dart
+│   └── extensions/string_extensions_test.dart
+├── features/<feature>/{data,domain,presentation}/*_test.dart
+├── shared/widgets/*_test.dart
+├── fixtures/      # JSON responses
+├── helpers/       # test_helpers.dart, pump_app.dart, mock_generators.dart
+└── integration/   # end-to-end flows
 ```
 
----
-
-## File Naming Conventions
+## File naming
 
 | Type | Pattern | Example |
-|------|---------|---------|
-| Barrel files | `<folder_name>.dart` | `network.dart`, `widgets.dart` |
-| Pages | `*_page.dart` | `reader_page.dart` |
-| Widgets | descriptive name | `book_card.dart` |
-| BLoC | `*_bloc.dart` | `library_bloc.dart` |
-| Events | `*_event.dart` | `library_event.dart` |
-| States | `*_state.dart` | `library_state.dart` |
-| Models (DTO) | `*_model.dart` | `book_model.dart` |
-| Entities | plain name | `book.dart` |
-| Repositories (abstract) | `*_repository.dart` | `library_repository.dart` |
-| Repositories (impl) | `*_repository_impl.dart` | `library_repository_impl.dart` |
-| Use cases | `*_usecase.dart` | `get_books_usecase.dart` |
-| Extensions | `*_extensions.dart` | `string_extensions.dart` |
-| Interceptors | `*_interceptor.dart` | `auth_interceptor.dart` |
-| Tests | `*_test.dart` | `library_bloc_test.dart` |
+|---|---|---|
+| Barrel | `<folder>.dart` | `network.dart` |
+| Page | `*_page.dart` | `reader_page.dart` |
+| BLoC / Event / State | `*_bloc.dart` / `*_event.dart` / `*_state.dart` | `library_bloc.dart` |
+| Model (DTO) | `*_model.dart` | `book_model.dart` |
+| Entity | plain name | `book.dart` |
+| Repo (abstract) | `*_repository.dart` | `library_repository.dart` |
+| Repo (impl) | `*_repository_impl.dart` | `library_repository_impl.dart` |
+| Use case | `*_usecase.dart` | `get_books_usecase.dart` |
+| Extension | `*_extensions.dart` | `string_extensions.dart` |
+| Interceptor | `*_interceptor.dart` | `auth_interceptor.dart` |
+| Test | `*_test.dart` | `library_bloc_test.dart` |
 
----
-
-## Generated Files
-
-Auto-generated files - commit them, but **never** export from barrel files:
+## Generated files
+Commit them; never export from barrels.
 
 | File | Generator | Command |
-|------|-----------|---------|
+|---|---|---|
 | `*.g.dart` | Drift | `dart run build_runner build` |
 | `*.gr.dart` | auto_route | `dart run build_runner build` |

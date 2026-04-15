@@ -1,95 +1,77 @@
-# 19 - Example Feature Specification
+# 19 — Example Feature Specification
 
-## Overview
+> Illustrative example. Use the template to document your real features. Content below is demo.
 
-This document shows what a detailed feature specification can look like. The example below uses a content-heavy feature to demonstrate API contracts, BLoC responsibilities, UI states, and data flows. Adapt the structure to your real product domain instead of copying the example literally.
+## Feature spec template
 
----
+When creating a new feature, document it with:
 
-## Feature Spec Template (Copy This)
+### 1. API contract
+- Endpoints with method, path, purpose, response shape.
+- Pagination / filtering / sorting parameters.
+- Required headers.
 
-When creating a new feature, document it using this structure. Each section maps to the architecture layers:
+### 2. Data layer
+- **Models**: JSON keys, types, required/optional, `JsonParser` method.
+- **Repository**: methods with `Future<Either<AppException, T>>` signatures.
+- **Data sources**: Remote (API) + local (Drift DAO) + cache strategy.
 
-### 1. API Contract
-- List endpoints with method, path, purpose, and response shape
-- Define pagination, filtering, and sorting parameters
-- List required headers
+### 3. Domain layer
+- **Entities**: pure Dart, immutable.
+- **Use Cases**: one per business op, repo via constructor.
+- **Repository interface**: abstract in `domain/repositories/`.
 
-### 2. Data Layer
-- **Models**: List JSON keys, field types, required/optional, `JsonParser` method
-- **Repository**: Define methods with `Future<Either<AppException, T>>` signatures
-- **Data sources**: Remote (API) and local (Drift DAO) with cache strategy
+### 4. Presentation layer
+- **BLoC/Cubit**: events table, state, transformer choices.
+- **Page**: widget tree sketch, which `BlocBuilder`/`BlocSelector` wraps what.
+- **WrappedRoute**: what providers the page injects via `wrappedRoute()`.
 
-### 3. Domain Layer
-- **Entities**: Pure Dart, immutable domain objects
-- **Use Cases**: One per business operation, receives repository via constructor
-- **Repository interface**: Abstract class in `domain/repositories/`
-
-### 4. Presentation Layer
-- **BLoC/Cubit**: Events table, state definition, transformer choices
-- **Page**: Widget tree sketch, which `BlocBuilder`/`BlocSelector` wraps what
-- **WrappedRoute**: What providers the page injects via `wrappedRoute()`
-
-### 5. User Flows
-- Step-by-step flow for the feature's primary action
-- Offline behavior and retry strategy
-- Deep link entry points (if applicable)
+### 5. User flows
+- Primary action step-by-step.
+- Offline behavior + retry strategy.
+- Deep link entry points (if applicable).
 
 ---
 
-## Example: Content Reader Feature
+# Example: Content Reader Feature
 
-The example below applies the template to a reading/content feature.
+> Target-architecture example — `auto_route` not yet adopted; treat snippets as planned.
 
----
-
-## Content API Integration
+## API integration
 
 ### Endpoints
-
 | Endpoint | Method | Purpose | Response |
-|----------|--------|---------|----------|
-| `/v1/books` | GET | List books (paginated) | `{ data: Book[], meta: Pagination }` |
-| `/v1/books/:id` | GET | Book detail | `{ data: Book }` |
-| `/v1/books/:id/chapters` | GET | Chapter list | `{ data: Chapter[] }` |
-| `/v1/books/:id/chapters/:index` | GET | Chapter content | `{ data: ChapterContent }` |
-| `/v1/user/progress` | GET | All reading progress | `{ data: ReadingProgress[] }` |
-| `/v1/user/progress/:bookId` | PUT | Update progress | `{ data: ReadingProgress }` |
-| `/v1/user/bookmarks` | GET | All bookmarks | `{ data: Bookmark[] }` |
-| `/v1/user/bookmarks` | POST | Create bookmark | `{ data: Bookmark }` |
-| `/v1/user/bookmarks/:id` | DELETE | Delete bookmark | `204 No Content` |
+|---|---|---|---|
+| `/v1/books` | GET | list books (paginated) | `{data: Book[], meta: Pagination}` |
+| `/v1/books/:id` | GET | book detail | `{data: Book}` |
+| `/v1/books/:id/chapters` | GET | chapter list | `{data: Chapter[]}` |
+| `/v1/books/:id/chapters/:index` | GET | chapter content | `{data: ChapterContent}` |
+| `/v1/user/progress` | GET | all reading progress | `{data: ReadingProgress[]}` |
+| `/v1/user/progress/:bookId` | PUT | update progress | `{data: ReadingProgress}` |
+| `/v1/user/bookmarks` | GET | all bookmarks | `{data: Bookmark[]}` |
+| `/v1/user/bookmarks` | POST | create bookmark | `{data: Bookmark}` |
+| `/v1/user/bookmarks/:id` | DELETE | delete bookmark | 204 No Content |
 
 ### Pagination
-
 | Field | Type | Description |
-|-------|------|-------------|
-| `page` | `int` | Current page (1-indexed) |
-| `per_page` | `int` | Items per page (default 20) |
-| `total` | `int` | Total items |
-| `total_pages` | `int` | Total pages |
-| `has_more` | `bool` | More pages available |
+|---|---|---|
+| `page` | `int` | current (1-indexed) |
+| `per_page` | `int` | items/page (default 20) |
+| `total` | `int` | total items |
+| `total_pages` | `int` | total pages |
+| `has_more` | `bool` | more pages available |
 
-### Request Headers
-
+### Headers
 | Header | Value | Purpose |
-|--------|-------|---------|
-| `Authorization` | `Bearer <token>` | Auth (via AuthInterceptor) |
-| `Accept` | `application/json` | Response format |
-| `X-App-Version` | `1.0.0` | Version tracking |
-| `If-None-Match` | `<etag>` | Cache validation (via CacheInterceptor) |
+|---|---|---|
+| `Authorization` | `Bearer <token>` | auth (AuthInterceptor) |
+| `Accept` | `application/json` | response format |
+| `X-App-Version` | `1.0.0` | version tracking |
+| `If-None-Match` | `<etag>` | cache validation (CacheInterceptor) |
 
----
+## Reader page
 
-## Reader Page Specification
-
-### Route Setup (WrappedRoute)
-
-> This is an illustrative target-architecture example for the point where the
-> app adopts `auto_route`. The current repository does not yet include that
-> package, so treat this snippet as planned structure rather than current code.
-
-`ReaderPage` implements `AutoRouteWrapper` to inject its scoped BLoC:
-
+### Route setup (WrappedRoute)
 ```dart
 @RoutePage()
 class ReaderPage extends StatelessWidget implements AutoRouteWrapper {
@@ -103,189 +85,119 @@ class ReaderPage extends StatelessWidget implements AutoRouteWrapper {
   });
 
   @override
-  Widget wrappedRoute(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<ReaderBloc>()
-        ..add(ReaderChapterRequested(bookId: bookId, chapterIndex: chapterIndex)),
-      child: this,
-    );
-  }
+  Widget wrappedRoute(BuildContext context) => BlocProvider(
+    create: (_) => sl<ReaderBloc>()
+      ..add(ReaderChapterRequested(bookId: bookId, chapterIndex: chapterIndex)),
+    child: this,
+  );
 }
 ```
 
 ### ReaderBloc
 
-**Events**:
-
+**Events:**
 | Event | Payload | Trigger |
-|-------|---------|---------|
-| `ReaderChapterRequested` | `bookId, chapterIndex` | Page opened, chapter navigation |
-| `ReaderNextChapter` | none | "Next" button or swipe |
-| `ReaderPreviousChapter` | none | "Previous" button or swipe |
-| `ReaderBookmarkToggled` | none | Bookmark button tap |
-| `ReaderProgressUpdated` | `scrollPosition` | Scroll listener (debounced 2s) |
-| `ReaderFontScaleChanged` | `double scale` | Font size slider |
-| `ReaderThemeModeToggled` | none | Night mode toggle |
+|---|---|---|
+| `ReaderChapterRequested` | `bookId, chapterIndex` | page opened / chapter nav |
+| `ReaderNextChapter` | — | "Next" button or swipe |
+| `ReaderPreviousChapter` | — | "Previous" button or swipe |
+| `ReaderBookmarkToggled` | — | bookmark tap |
+| `ReaderProgressUpdated` | `scrollPosition` | scroll listener (debounced 2s) |
+| `ReaderFontScaleChanged` | `double scale` | font slider |
+| `ReaderThemeModeToggled` | — | night mode toggle |
 
-**State**:
+**State fields:** `status` (`initial`/`loading`/`loaded`/`error`), `book: Book?`, `chapter: Chapter?`, `chapterIndex: int`, `totalChapters: int`, `isBookmarked: bool`, `progress: ReadingProgress?`, `exception: AppException?`.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `status` | `ReaderStatus` | initial, loading, loaded, error |
-| `book` | `Book?` | Current book metadata |
-| `chapter` | `Chapter?` | Current chapter content |
-| `chapterIndex` | `int` | Current chapter index |
-| `totalChapters` | `int` | Total chapter count |
-| `isBookmarked` | `bool` | Current position bookmarked |
-| `progress` | `ReadingProgress?` | Saved reading position |
-| `exception` | `AppException?` | Error details |
-
----
-
-## Reader UI Layout
+## UI layout
 
 ```
 Scaffold
 ├── AppBar (transparent, appears on tap)
-│   ├── Back button
-│   ├── Chapter title
-│   └── Bookmark button (filled/outlined)
+│   ├── Back | Chapter title | Bookmark button
 │
 ├── Body: GestureDetector (tap to toggle controls)
-│   └── CustomScrollView
-│       └── SliverPadding
-│           └── SelectableText (chapter content)
-│               ├── style: reader text style (scaled)
-│               └── textAlign: justified
+│   └── CustomScrollView → SliverPadding
+│       └── SelectableText (chapter content, justified, scaled style)
 │
 └── BottomSheet (reader controls, appears on tap)
-    ├── Chapter navigation (prev/next buttons + "Chapter 3 of 12")
-    ├── Font size slider (0.8x - 1.4x)
+    ├── Chapter nav (prev/next + "Chapter 3 of 12")
+    ├── Font size slider (0.8x – 1.4x)
     ├── Night mode toggle
-    └── Progress bar (linear, shows % of book)
+    └── Progress bar (linear)
 ```
 
-### Reading Controls Bar
-
+### Controls bar
 | Control | Widget | Action |
-|---------|--------|--------|
-| Previous chapter | `IconButton(Icons.chevron_left)` | `ReaderPreviousChapter` event |
-| Chapter indicator | `Text("Chapter 3 of 12")` | Informational |
-| Next chapter | `IconButton(Icons.chevron_right)` | `ReaderNextChapter` event |
-| Font size | `Slider` | `ReaderFontScaleChanged` event |
-| Night mode | `Switch` | `ReaderThemeModeToggled` event |
-| Progress | `LinearProgressIndicator` | Shows `progress.percentage` |
+|---|---|---|
+| Prev | `IconButton(Icons.chevron_left)` | `ReaderPreviousChapter` |
+| Chapter indicator | `Text("Chapter 3 of 12")` | info |
+| Next | `IconButton(Icons.chevron_right)` | `ReaderNextChapter` |
+| Font size | `Slider` | `ReaderFontScaleChanged` |
+| Night mode | `Switch` | `ReaderThemeModeToggled` |
+| Progress | `LinearProgressIndicator` | `progress.percentage` |
 
-### Auto-Hide Behavior
+### Auto-hide
+- Controls hidden by default during reading.
+- Tap anywhere → toggle visibility.
+- Auto-hide after 5 s of inactivity.
+- Scroll → hide immediately.
 
-- Controls overlay (AppBar + BottomSheet) hidden by default during reading
-- Tap anywhere on content → toggle controls visibility
-- Controls auto-hide after 5 seconds of no interaction
-- Scroll → hide controls immediately
-
----
-
-## Reading Progress Tracking
-
-### When Progress is Saved
+## Progress tracking
 
 | Trigger | Debounce | Destination |
-|---------|----------|-------------|
-| Scroll position changes | 2 seconds | Local (Drift) immediately |
-| Chapter changes | Immediate | Local + Remote |
-| App goes to background | Immediate | Local + Remote |
-| Reader page disposed | Immediate | Local + Remote |
+|---|---|---|
+| Scroll position changes | 2 s | local (Drift) immediately |
+| Chapter changes | immediate | local + remote |
+| App backgrounded | immediate | local + remote |
+| Reader disposed | immediate | local + remote |
 
-### Progress Data
+**Progress fields:** `bookId` (route), `chapterIndex` (state), `scrollPosition` (ScrollController), `percentage` (= `(chaptersRead + scrollFraction) / totalChapters`), `updatedAt` (`DateTime.now()`).
 
-| Field | Source | Description |
-|-------|--------|-------------|
-| `bookId` | Route parameter | Which book |
-| `chapterIndex` | Current state | Which chapter |
-| `scrollPosition` | ScrollController | Pixel offset in chapter |
-| `percentage` | Calculated | `(chaptersRead + scrollFraction) / totalChapters` |
-| `updatedAt` | `DateTime.now()` | When saved |
+### Resume reading
 
-### Resume Reading
-
-When opening a book that has progress:
-1. Load progress from local DB (fast)
-2. Navigate to `ReaderRoute(bookId, chapterIndex: progress.chapterIndex)`
-3. After content loads, scroll to `progress.scrollPosition`
-4. Fetch remote progress in background, use latest between local and remote
-
----
+When opening a book with progress:
+1. Load progress from local DB (fast).
+2. Navigate to `ReaderRoute(bookId, chapterIndex: progress.chapterIndex)`.
+3. After content loads, scroll to `progress.scrollPosition`.
+4. Fetch remote progress in background; use latest between local and remote.
 
 ## Bookmarking
 
-### Bookmark Data
+**Fields:** `id` (UUID client-side), `bookId`, `chapterId`, `position` (char offset), `note` (optional, future), `createdAt`.
 
-| Field | Description |
-|-------|-------------|
-| `id` | UUID generated client-side |
-| `bookId` | Book reference |
-| `chapterId` | Chapter reference |
-| `position` | Character offset in chapter text |
-| `note` | Optional user note (future feature) |
-| `createdAt` | Timestamp |
+**Toggle logic:**
+1. Tap bookmark button.
+2. Check if bookmark exists at current position (chapterId).
+3. Exists → delete (local + queue remote delete).
+4. Not exists → create (local + queue remote create).
+5. Update `isBookmarked` in ReaderState.
 
-### Toggle Logic
+## Text features
 
-1. User taps bookmark button
-2. Check if bookmark exists at current position (chapterId)
-3. If exists → delete (local + queue remote delete)
-4. If not exists → create (local + queue remote create)
-5. Update `isBookmarked` in ReaderState
+**Font scaling** — slider 0.8×–1.4× in 0.05 increments; applied to reader text only (not controls UI); fires `ReaderFontScaleChanged` which delegates to `ThemeBloc`; persisted via SharedPreferences.
 
----
+**Night mode** — toggle fires `ReaderThemeModeToggled` → toggles `ThemeBloc`; reader uses palette's `readerBackground`/`readerText` (darker than standard dark, optimized for sustained reading).
 
-## Text Features
+**Text selection** — `SelectableText` (or `.rich`); long-press to select; copy in toolbar; future: highlight + annotate.
 
-### Font Scaling
-
-- Controlled by slider in reader controls
-- Range: 0.8x to 1.4x in 0.05 increments
-- Applied to reader text only (not controls UI)
-- Fires `ReaderFontScaleChanged` which delegates to `ThemeBloc`
-- Persisted via SharedPreferences
-
-### Night Mode
-
-- Toggle in reader controls
-- Fires `ReaderThemeModeToggled` which toggles `ThemeBloc`
-- Reader uses palette's `readerBackground` and `readerText` colors
-- Darker than standard dark mode (optimized for sustained reading)
-
-### Text Selection
-
-- Reader content uses `SelectableText` (or `SelectableText.rich`)
-- Long-press to select, handles to adjust
-- Copy option in selection toolbar
-- Future: highlight and annotate
-
----
-
-## Offline Reading
+## Offline reading
 
 ### Pre-caching
+On book detail view:
+1. Cache book metadata in Drift.
+2. Pre-fetch + cache first 3 chapters.
+3. Background-fetch remaining on Wi-Fi.
 
-When user views a book detail page:
-1. Cache book metadata in Drift
-2. Pre-fetch and cache first 3 chapters
-3. Background-fetch remaining chapters if on Wi-Fi
+### Offline reader
+1. Reader always checks local cache first.
+2. Cached → display immediately.
+3. Not cached + offline → "chapter not available offline" error.
+4. Not cached + online → fetch, display, cache.
 
-### Offline Reader
-
-1. Reader checks local cache first (always)
-2. If cached → display immediately
-3. If not cached + offline → show offline error with "chapter not available offline"
-4. If not cached + online → fetch, display, cache
-
-### Storage Estimate
-
-| Content | Avg Size | Cached |
-|---------|----------|--------|
-| Book metadata | ~2 KB | Always |
-| Chapter content | ~50 KB | Eagerly (first 3), lazily (rest) |
-| Book cover image | ~200 KB | Via `cached_network_image` |
-| Full book (~20 chapters) | ~1 MB | When user reads through |
+### Storage estimate
+| Content | Avg size | Cached |
+|---|---|---|
+| Book metadata | ~2 KB | always |
+| Chapter content | ~50 KB | eager first 3, lazy rest |
+| Book cover | ~200 KB | via `cached_network_image` |
+| Full book (~20 chapters) | ~1 MB | when user reads through |

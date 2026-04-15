@@ -1,59 +1,52 @@
-# 23 - Environments & Flavors
+# 23 — Environments & Flavors
 
-## Goal
+Keep environment handling simple. Avoid native Android/iOS customization until it solves a real packaging problem.
 
-Keep environment handling simple at the start, and avoid native Android/iOS customization until it solves a real packaging problem.
+## Recommended order
 
-## Recommended Order
+### Step 1 — Dart-side environment config first
 
-### Step 1: Use Dart-Side Environment Config First
-
-Start with a single Dart abstraction for environment values such as:
-
+Start with a single Dart abstraction for environment values:
 - API base URL
 - analytics enablement
 - debug-only UI flags
 - environment label
 
-This keeps the app cross-platform and avoids premature Android/Xcode setup.
+Keeps the app cross-platform and avoids premature Android/Xcode setup.
 
-Example sources of truth:
-
+**Sources of truth:**
 - `String.fromEnvironment(...)`
-- a small injected environment/config object
+- small injected environment/config object
 - Flutter's `appFlavor` value once flavors are added
 
-## When Native Flavors Are Worth Adding
+## When native flavors are worth adding
 
-Add Android product flavors or iOS/macOS schemes only when you need differences such as:
-
+Add Android product flavors or iOS/macOS schemes **only when** you need:
 - distinct app IDs / bundle IDs
 - different display names or launcher icons
-- separate signing or store-distribution tracks
-- platform-specific build settings that cannot be handled cleanly in Dart
+- separate signing / store-distribution tracks
+- platform-specific build settings that can't be handled cleanly in Dart
 
-Inference from Flutter's flavor docs: if those packaging differences do not exist yet, a Dart-side environment model is usually the lower-maintenance starting point.
+**Inference:** if those packaging differences don't exist yet, a Dart-side environment model is the lower-maintenance starting point.
 
-## Recommended Environments
+## Recommended environments
 
-| Environment | Purpose |
-|-------------|---------|
-| `development` | local work and rapid iteration |
+| Env | Purpose |
+|---|---|
+| `development` | local work, rapid iteration |
 | `staging` | QA / preview validation |
 | `production` | release builds |
 
-## Suggested Commands
+## Commands
 
-Without native flavors:
-
+**Without native flavors:**
 ```bash
 flutter run --dart-define=ENV=development
 flutter run --dart-define=ENV=staging
 flutter run --dart-define=ENV=production
 ```
 
-After native flavors are added:
-
+**After native flavors added:**
 ```bash
 flutter run --flavor staging --dart-define=ENV=staging
 flutter run --flavor production --dart-define=ENV=production
@@ -63,5 +56,5 @@ flutter run --flavor production --dart-define=ENV=production
 
 - Do not scatter raw environment checks across the codebase.
 - Keep one environment abstraction and inject it where needed.
-- Prefer Dart-only configuration until native packaging differences are required.
-- Add native flavor setup incrementally, not preemptively.
+- Prefer Dart-only config until native packaging differences are required.
+- Add native flavor setup incrementally, never preemptively.
