@@ -91,10 +91,10 @@ abstract final class AppDimensions {
 
   // ── Auth screen layout fractions ──────────────────────────────────────────
   /// Gradient panel fills this fraction of screen height (compact layouts).
-  static const double authGradientFraction = 0.50;
+  static const double authGradientFraction = 0.70;
 
   /// Branding section occupies this fraction of screen height (compact).
-  static const double authBrandingFraction = 0.30;
+  static const double authBrandingFraction = 0.20;
 
   // ── Animation durations (ms — use with flutter_animate's .ms extension) ──
   static const int animInstant = 150;
