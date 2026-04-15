@@ -152,7 +152,7 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
           return Padding(
             padding: EdgeInsets.fromLTRB(
               AppDimensions.pagePaddingH,
-              AppDimensions.s8,
+              AppDimensions.s16,
               AppDimensions.pagePaddingH,
               AppDimensions.s24 + bottomInset,
             ),
@@ -160,18 +160,6 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Drag handle
-                Center(
-                  child: Container(
-                    width: AppDimensions.s32,
-                    height: AppDimensions.s4,
-                    decoration: BoxDecoration(
-                      color: scheme.outline,
-                      borderRadius: BorderRadius.circular(AppDimensions.r4),
-                    ),
-                  ),
-                ),
-                const Gap(AppDimensions.s20),
                 if (!_step2)
                   _EmailStep(
                     controller: _emailController,
