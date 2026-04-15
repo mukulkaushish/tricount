@@ -1,7 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:tricount/core/error/app_exception.dart';
-import 'package:tricount/core/network/empty_response.dart';
-import 'package:tricount/core/security/token_provider.dart';
+import 'package:tricount/core/network/network.dart';
+import 'package:tricount/core/security/security.dart';
 import 'package:tricount/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:tricount/features/auth/data/datasources/social_auth_datasource.dart';
 import 'package:tricount/features/auth/data/models/auth_token_model.dart';

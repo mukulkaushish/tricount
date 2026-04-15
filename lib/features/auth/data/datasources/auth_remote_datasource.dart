@@ -1,9 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:tricount/core/constants/api_constants.dart';
 import 'package:tricount/core/error/app_exception.dart';
-import 'package:tricount/core/network/empty_response.dart';
-import 'package:tricount/core/network/http_client.dart';
-import 'package:tricount/core/network/request_method.dart';
+import 'package:tricount/core/network/network.dart';
 import 'package:tricount/features/auth/data/models/auth_token_model.dart';
 
 /// Contract for the remote authentication data source.
